@@ -1,1 +1,1 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/CoupleLink-Main-Final/sw.js', { scope: '/CoupleLink-Main-Final/' })})}
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/CoupleLink/sw.js', { scope: '/CoupleLink/' })})}
