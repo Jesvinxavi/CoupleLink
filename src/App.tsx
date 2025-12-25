@@ -7,6 +7,7 @@ import { GameSessionProvider } from "@/context/GameSessionContext"
 import { FantasyBucketListProvider } from "@/context/FantasyBucketListContext"
 import { CouponsProvider } from "@/context/CouponsContext"
 import { JournalModalProvider } from "@/context/JournalModalContext"
+import { PartnerNotesProvider } from "@/context/PartnerNotesContext"
 import AnimatedRoutes from "@/components/AnimatedRoutes"
 import { NotificationListener } from "@/components/NotificationListener"
 import { GlobalCouponListener } from "@/components/GlobalCouponListener"
@@ -20,23 +21,25 @@ function App() {
       <GlobalErrorBoundary>
         <AuthProvider>
           <CoupleProvider>
-            <FantasyBucketListProvider>
-              <CouponsProvider>
-                <GameSessionProvider>
-                  <GlobalModalQueueProvider>
-                    <SexplorationModalProvider>
-                      <JournalModalProvider>
-                        <ChallengeModalProvider>
-                          <NotificationListener />
-                          <GlobalCouponListener />
-                          <AnimatedRoutes />
-                        </ChallengeModalProvider>
-                      </JournalModalProvider>
-                    </SexplorationModalProvider>
-                  </GlobalModalQueueProvider>
-                </GameSessionProvider>
-              </CouponsProvider>
-            </FantasyBucketListProvider>
+            <PartnerNotesProvider>
+              <FantasyBucketListProvider>
+                <CouponsProvider>
+                  <GameSessionProvider>
+                    <GlobalModalQueueProvider>
+                      <SexplorationModalProvider>
+                        <JournalModalProvider>
+                          <ChallengeModalProvider>
+                            <NotificationListener />
+                            <GlobalCouponListener />
+                            <AnimatedRoutes />
+                          </ChallengeModalProvider>
+                        </JournalModalProvider>
+                      </SexplorationModalProvider>
+                    </GlobalModalQueueProvider>
+                  </GameSessionProvider>
+                </CouponsProvider>
+              </FantasyBucketListProvider>
+            </PartnerNotesProvider>
           </CoupleProvider>
         </AuthProvider>
       </GlobalErrorBoundary>

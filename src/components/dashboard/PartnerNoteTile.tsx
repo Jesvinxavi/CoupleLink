@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, memo } from "react"
-import { supabase } from "@/lib/supabase"
+import { useEffect, useState, memo } from "react"
 import type { Database } from "@/types/supabase"
-import { format } from "date-fns"
+import { format, addHours, differenceInMinutes } from "date-fns"
+import { usePartnerNotes } from "@/hooks/usePartnerNotes"
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 
@@ -10,74 +10,57 @@ interface PartnerNoteTileProps {
 }
 
 export const PartnerNoteTile = memo(function PartnerNoteTile({ partner }: PartnerNoteTileProps) {
-    const [note, setNote] = useState<{ caption: string, created_at: string } | null>(null)
-
-    const fetchNote = useCallback(async () => {
-        if (!partner || !partner.couple_id) return
-
-        const { data } = await supabase
-            .from('memories')
-            .select('caption, created_at')
-            .eq('uploader_id', partner.id)
-            .eq('couple_id', partner.couple_id!)
-            .eq('type', 'sticky_note')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-
-        if (data) {
-            setNote({
-                caption: data.caption || "",
-                created_at: data.created_at
-            })
-        } else {
-            setNote(null)
-        }
-    }, [partner?.id])
+    const { partnerLastNote, markAsSeen } = usePartnerNotes();
+    const [timeLeft, setTimeLeft] = useState<string>("");
+    const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
-        if (!partner) return
-
-        // Initial Fetch
-        fetchNote()
-
-        // Robust Subscription
-        const channelName = `partner-notes-${partner.id}`
-        const channel = supabase
-            .channel(channelName)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'memories',
-                    filter: `uploader_id=eq.${partner.id}&couple_id=eq.${partner.couple_id}`
-                },
-                (payload) => {
-                    if (payload.new.type === 'sticky_note') {
-                        setNote({
-                            caption: payload.new.caption || "",
-                            created_at: payload.new.created_at
-                        })
-                    }
-                }
-            )
-            .on('broadcast', { event: 'note_update' }, () => {
-                // Determine if the update is relevant (could filter by ID if passed, but refetching is safe)
-                fetchNote()
-            })
-            .subscribe()
-
-        // Polling Fallback (30s)
-        const interval = setInterval(fetchNote, 30000)
-
-        return () => {
-            supabase.removeChannel(channel)
-            clearInterval(interval)
+        if (!partnerLastNote) {
+            setIsVisible(false);
+            return;
         }
-    }, [partner?.id, fetchNote])
 
-    if (!partner || !note) return null
+        // 1. Mark as seen if not seen
+        if (!partnerLastNote.metadata?.seen_at) {
+            markAsSeen(partnerLastNote);
+            // Don't show yet until we have a seen_at time (which happens via optimistic update in hook) or immediately if we want
+            // Actually, for the timer to start, we need a seen_at. 
+            // The hook optimistically updates, so partnerLastNote will have seen_at quickly.
+        }
+
+        // 2. Check Expiration & Timer
+        const checkStatus = () => {
+            if (!partnerLastNote.metadata?.seen_at) {
+                // If not seen yet (and we just called markAsSeen), show it tentatively or wait? 
+                // Let's show it. 
+                setIsVisible(true);
+                setTimeLeft("24h 00m");
+                return;
+            }
+
+            const seenAt = new Date(partnerLastNote.metadata.seen_at);
+            const expiresAt = addHours(seenAt, 24);
+            const now = new Date();
+
+            if (now > expiresAt) {
+                setIsVisible(false);
+            } else {
+                setIsVisible(true);
+                const diffMins = differenceInMinutes(expiresAt, now);
+                const hours = Math.floor(diffMins / 60);
+                const mins = diffMins % 60;
+                setTimeLeft(`${hours}h ${mins}m`);
+            }
+        };
+
+        checkStatus();
+        const timer = setInterval(checkStatus, 60000); // Update every minute
+
+        return () => clearInterval(timer);
+
+    }, [partnerLastNote, markAsSeen]);
+
+    if (!partner || !partnerLastNote || !isVisible) return null
 
     return (
         <div className="rounded-2xl bg-[#FEF9C3] p-6 shadow-sm border border-yellow-200/50 relative overflow-hidden transition-all hover:shadow-md">
@@ -94,12 +77,18 @@ export const PartnerNoteTile = memo(function PartnerNoteTile({ partner }: Partne
             {/* Content */}
             <div>
                 <p className="font-handwriting text-yellow-900 text-lg leading-snug whitespace-pre-wrap">
-                    {note.caption}
+                    {partnerLastNote.caption}
                 </p>
-                {/* Date moved to a new block below content */}
-                <div className="mt-4 flex justify-end">
+                {/* Date and Timer */}
+                {/* Date and Timer */}
+                <div className="mt-4 flex justify-between items-center">
+                    {timeLeft ? (
+                        <p className="text-xs text-yellow-700/60 font-medium font-mono">
+                            {timeLeft}
+                        </p>
+                    ) : <div></div>}
                     <p className="text-xs text-yellow-700/60 font-medium">
-                        {format(new Date(note.created_at), 'MMM d, h:mm a')}
+                        {format(new Date(partnerLastNote.created_at), 'MMM d, h:mm a')}
                     </p>
                 </div>
             </div>

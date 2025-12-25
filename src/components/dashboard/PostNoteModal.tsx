@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { Loader2, Send } from "lucide-react";
 import { supabase } from '../../lib/supabase';
 import { useCoupleData } from '../../hooks/useCoupleData';
+import { usePartnerNotes } from '../../hooks/usePartnerNotes';
 
 interface PostNoteModalProps {
     isOpen: boolean;
@@ -12,6 +13,7 @@ interface PostNoteModalProps {
 
 export function PostNoteModal({ isOpen, onClose }: PostNoteModalProps) {
     const { couple } = useCoupleData();
+    const { sendNote } = usePartnerNotes();
     const [note, setNote] = useState("");
     const [sending, setSending] = useState(false);
 
@@ -20,30 +22,7 @@ export function PostNoteModal({ isOpen, onClose }: PostNoteModalProps) {
 
         setSending(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("No user found");
-
-            // Insert note as a memory with type 'sticky_note'
-            const { error } = await supabase
-                .from('memories')
-                .insert({
-                    couple_id: couple.id,
-                    uploader_id: user.id,
-                    type: 'sticky_note',
-                    caption: note.trim(),
-                    media_url: null, // No image for notes
-                    created_at: new Date().toISOString()
-                } as any);
-
-            if (error) throw error;
-
-            // Broadcast update
-            await supabase.channel(`partner-notes-${user.id}`).send({
-                type: 'broadcast',
-                event: 'note_update',
-                payload: {}
-            });
-
+            await sendNote(note);
             setNote("");
             onClose();
         } catch (error) {

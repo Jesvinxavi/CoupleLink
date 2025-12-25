@@ -6,7 +6,8 @@ import { supabase } from "@/lib/supabase"
 import type { Database } from "@/types/supabase"
 import { AddEventOverlay, type CalendarEvent } from "../calendar/AddEventOverlay"
 import { UserAvatar } from '../ui/UserAvatar'
-import { differenceInDays, parseISO, setYear, isBefore, addYears, startOfDay } from "date-fns"
+import { differenceInDays, parseISO, setYear, isBefore, addYears, startOfDay, addHours } from "date-fns"
+import { usePartnerNotes } from "@/hooks/usePartnerNotes"
 import { Plus } from "lucide-react"
 import { motion } from "framer-motion"
 
@@ -184,8 +185,8 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
                         <h2 className="text-xl font-bold text-heading-dark truncate">{partner.first_name}</h2>
 
                         <div className="flex flex-col gap-1 mt-1">
-                            {/* Time & Weather */}
-                            <div className="flex items-center gap-3">
+                            {/* Time & Weather & Note Status */}
+                            <div className="flex items-center gap-3 flex-wrap">
                                 {partnerTime && (
                                     <div className="flex items-center gap-1 text-xs text-body-soft">
                                         <span className="material-symbols-outlined text-base">schedule</span>
@@ -198,6 +199,37 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
                                         <span>{timeIcon === 'wb_sunny' ? 'Day' : 'Night'}</span>
                                     </div>
                                 )}
+
+                                {/* Note Status */}
+                                {(() => {
+                                    const { myLastNote } = usePartnerNotes();
+                                    if (!myLastNote) return null;
+
+                                    const seenAt = myLastNote.metadata?.seen_at ? new Date(myLastNote.metadata.seen_at) : null;
+                                    const isSeen = !!seenAt;
+
+                                    // Check expiration if seen
+                                    if (isSeen && seenAt) {
+                                        const expiresAt = addHours(seenAt, 24);
+                                        if (new Date() > expiresAt) return null;
+                                    }
+
+                                    return (
+                                        <div className="flex items-center gap-1 text-xs text-body-soft ml-2 border-l pl-3 border-gray-200">
+                                            {isSeen ? (
+                                                <>
+                                                    <span className="material-symbols-outlined text-base text-blue-500">visibility</span>
+                                                    <span className="text-blue-500 font-medium">Note Seen</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="material-symbols-outlined text-base text-gray-400">send</span>
+                                                    <span>Note Sent</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             {/* Anniversary */}
