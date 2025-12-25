@@ -130,6 +130,25 @@ export default function Settings() {
             if (updateError) throw updateError
 
             setMessage({ type: 'success', text: 'Avatar updated successfully' })
+
+            // CLEANUP: Delete old avatar if it exists and is being replaced
+            if (avatarUrl && avatarUrl !== publicUrl) {
+                // Check if it's a storage URL (simple check)
+                if (avatarUrl.includes('/avatars/')) {
+                    const path = avatarUrl.split('/avatars/')[1];
+                    if (path) {
+                        console.log('Cleaning up old avatar:', path);
+                        const { error: deleteError } = await supabase.storage
+                            .from('avatars')
+                            .remove([path]);
+
+                        if (deleteError) {
+                            console.error('Error deleting old avatar:', deleteError);
+                            // Non-blocking
+                        }
+                    }
+                }
+            }
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message })
         } finally {

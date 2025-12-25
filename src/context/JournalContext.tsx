@@ -186,6 +186,36 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             const finalMediaUrls = [...existingMediaUrls, ...uploadedUrls];
 
             if (editingId) {
+                // CLEANUP: Check for removed images and delete from storage
+                const { data: currentEntry } = await supabase
+                    .from('memories')
+                    .select('media_urls')
+                    .eq('id', editingId)
+                    .single();
+
+                if (currentEntry?.media_urls) {
+                    const removedUrls = currentEntry.media_urls.filter((url: string) =>
+                        !existingMediaUrls.includes(url)
+                    );
+
+                    if (removedUrls.length > 0) {
+                        const filesToRemove = removedUrls.map((url: string) => {
+                            const path = url.split('/memories/')[1];
+                            return path;
+                        }).filter(Boolean);
+
+                        if (filesToRemove.length > 0) {
+                            const { error: removeError } = await supabase.storage
+                                .from('memories')
+                                .remove(filesToRemove);
+
+                            if (removeError) {
+                                console.error('Error removing deleted journal images:', removeError);
+                            }
+                        }
+                    }
+                }
+
                 // Update existing entry
                 const { error } = await supabase
                     .from('memories')
@@ -236,6 +266,35 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
     const deleteEntry = async (id: string) => {
         try {
+            // 1. Get the entry first to find media URLs
+            const { data: entry } = await supabase
+                .from('memories')
+                .select('media_urls')
+                .eq('id', id)
+                .single();
+
+            // 2. Delete from Storage if there are media URLs
+            if (entry && entry.media_urls && entry.media_urls.length > 0) {
+                const filesToRemove = entry.media_urls.map((url: string) => {
+                    // Extract path after /memories/
+                    // Format is typically: .../storage/v1/object/public/memories/USER_ID/FILE_NAME
+                    const path = url.split('/memories/')[1];
+                    return path;
+                }).filter(Boolean);
+
+                if (filesToRemove.length > 0) {
+                    const { error: storageError } = await supabase.storage
+                        .from('memories')
+                        .remove(filesToRemove);
+
+                    if (storageError) {
+                        console.error('Error deleting files from storage:', storageError);
+                        // We continue even if storage delete fails, to ensure DB consistency
+                    }
+                }
+            }
+
+            // 3. Delete from DB
             const { error } = await supabase
                 .from('memories')
                 .delete()

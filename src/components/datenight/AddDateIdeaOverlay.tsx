@@ -175,6 +175,26 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
                     .getPublicUrl(filePath);
 
                 imageUrl = publicUrl;
+
+                // CLEANUP: Delete old image if it exists and is being replaced
+                if (initialData?.imageUrl && initialData.imageUrl !== imageUrl) {
+                    const oldUrl = initialData.imageUrl;
+                    // Check if it's a storage URL (simple check)
+                    if (oldUrl.includes('/date_images/')) {
+                        const path = oldUrl.split('/date_images/')[1];
+                        if (path) {
+                            console.log('Cleaning up old date image:', path);
+                            const { error: deleteError } = await supabase.storage
+                                .from('date_images')
+                                .remove([path]);
+
+                            if (deleteError) {
+                                console.error('Error deleting old date image:', deleteError);
+                                // Non-blocking
+                            }
+                        }
+                    }
+                }
             }
 
             const dateData = {
