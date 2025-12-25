@@ -147,11 +147,15 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                 dbPartnerAnswer !== 'skip' &&
                 dbMyAnswer !== undefined;
 
-
-
             const roundResult = {
                 round: session.current_round,
                 question: currentQuestion?.question,
+                // Store explicit answers by ID to prevent "You/Partner" swap issues
+                answers: {
+                    [myId || '']: dbMyAnswer,
+                    [partnerId || '']: dbPartnerAnswer
+                },
+                // Keep these for backward compatibility
                 myAnswer: dbMyAnswer,
                 partnerAnswer: dbPartnerAnswer,
                 matched: isMatch
@@ -220,23 +224,55 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                     <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Your Answers:</h4>
                     <div className="max-h-[16.25rem] overflow-y-auto pr-1">
                         <div className="space-y-2">
-                            {allAnswers.map((answer: any, idx: number) => (
-                                <div
-                                    key={idx}
-                                    className={`p-3 rounded-lg text-sm ${answer.matched
-                                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                                        : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
-                                        }`}
-                                >
-                                    <p className="font-medium text-gray-800 dark:text-gray-200 mb-1">
-                                        Q{answer.round}: {answer.question?.substring(0, 40)}...
-                                    </p>
-                                    <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
-                                        <span>You: {getAnswerEmoji(answer.myAnswer)} {answer.myAnswer?.charAt(0).toUpperCase() + answer.myAnswer?.slice(1)}</span>
-                                        <span>{partner?.first_name}: {getAnswerEmoji(answer.partnerAnswer)} {answer.partnerAnswer?.charAt(0).toUpperCase() + answer.partnerAnswer?.slice(1)}</span>
+                            {allAnswers.map((answer: any, idx: number) => {
+                                // Resolve answers based on IDs for correctness
+                                // For new data: use answer.answers[id]
+                                // For legacy data: fallback to myAnswer/partnerAnswer, BUT context depends on who is viewing
+                                // Legacy data 'myAnswer' is ALWAYS Player 1's answer. 'partnerAnswer' is ALWAYS Player 2's answer.
+
+                                const isPlayerOne = currentUser?.id === session.player_one_id;
+                                const isPlayerTwo = !isPlayerOne; // Simplification, assuming only 2 players in this context
+
+                                let myCorrectAnswer = answer.answers?.[currentUser?.id || ''];
+                                let partnerCorrectAnswer = answer.answers?.[partner?.id || ''];
+
+                                if (myCorrectAnswer === undefined) {
+                                    // Fallback for legacy data
+                                    if (isPlayerOne) {
+                                        myCorrectAnswer = answer.myAnswer;
+                                    } else {
+                                        myCorrectAnswer = answer.partnerAnswer;
+                                    }
+                                }
+
+                                if (partnerCorrectAnswer === undefined) {
+                                    // Fallback for legacy data
+                                    if (isPlayerOne) {
+                                        partnerCorrectAnswer = answer.partnerAnswer;
+                                    } else {
+                                        // If I am Player 2, my partner is Player 1
+                                        partnerCorrectAnswer = answer.myAnswer;
+                                    }
+                                }
+
+                                return (
+                                    <div
+                                        key={idx}
+                                        className={`p-3 rounded-lg text-sm ${answer.matched
+                                            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                                            : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
+                                            }`}
+                                    >
+                                        <p className="font-medium text-gray-800 dark:text-gray-200 mb-1">
+                                            Q{answer.round}: {answer.question?.substring(0, 40)}...
+                                        </p>
+                                        <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
+                                            <span>You: {getAnswerEmoji(myCorrectAnswer)} {myCorrectAnswer?.charAt(0).toUpperCase() + myCorrectAnswer?.slice(1)}</span>
+                                            <span>{partner?.first_name}: {getAnswerEmoji(partnerCorrectAnswer)} {partnerCorrectAnswer?.charAt(0).toUpperCase() + partnerCorrectAnswer?.slice(1)}</span>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
