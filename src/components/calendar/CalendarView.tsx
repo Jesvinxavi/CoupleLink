@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday, startOfDay, endOfDay } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Pencil, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Pencil, Loader2, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AddEventOverlay } from './AddEventOverlay';
@@ -354,35 +354,46 @@ export function CalendarView() {
                                         style={{ backgroundColor: `${event.color}26` }}
                                     >
                                         <div
-                                            className="w-1 h-10 rounded-full flex-shrink-0"
+                                            className="w-1 self-stretch rounded-full flex-shrink-0"
                                             style={{ backgroundColor: event.color }}
                                         />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="font-bold text-gray-900 dark:text-white truncate">
-                                                    {event.title}
-                                                </h3>
-                                                <span
-                                                    className="text-[10px] px-2 py-0.5 rounded-full text-white font-medium"
-                                                    style={{ backgroundColor: event.color }}
+                                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <h3 className="font-bold text-gray-900 dark:text-white truncate">
+                                                        {event.title}
+                                                    </h3>
+                                                    <span
+                                                        className="text-[10px] px-2 py-0.5 rounded-full text-white font-medium flex-shrink-0"
+                                                        style={{ backgroundColor: event.color }}
+                                                    >
+                                                        {event.category}
+                                                    </span>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditEvent(event);
+                                                    }}
+                                                    className="h-6 w-6 text-gray-400 hover:text-rose-500 -mr-1 shrink-0"
                                                 >
-                                                    {event.category}
-                                                </span>
+                                                    <Pencil className="w-3 h-3" />
+                                                </Button>
                                             </div>
+                                            {event.location && (
+                                                <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    <MapPin className="w-3 h-3" />
+                                                    <span className="truncate">{event.location}</span>
+                                                </div>
+                                            )}
                                             {event.description && (
                                                 <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                                                     {event.description}
                                                 </p>
                                             )}
                                         </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleEditEvent(event)}
-                                            className="opacity-100 transition-opacity h-8 w-8 text-gray-500 hover:text-rose-500"
-                                        >
-                                            <Pencil className="w-4 h-4" />
-                                        </Button>
                                     </div>
                                 ))
                             )}

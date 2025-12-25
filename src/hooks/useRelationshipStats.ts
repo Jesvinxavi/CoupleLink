@@ -267,7 +267,11 @@ export function useRelationshipStats() {
                 .map((m: any) => ({ location: m.location!.trim(), country: m.country, id: m.id, type: 'memory' }));
 
             const eventLocations = events
-                .filter((e: any) => e.location?.trim())
+                .filter((e: any) => {
+                    const hasLocation = e.location?.trim();
+                    const isPast = e.event_date ? new Date(e.event_date).getTime() < new Date().getTime() : false;
+                    return hasLocation && isPast;
+                })
                 .map((e: any) => ({ location: e.location!.trim(), country: e.country, id: e.id, type: 'event' }));
 
             const allLocations = [...memoryLocations, ...eventLocations];
@@ -375,14 +379,14 @@ export function useRelationshipStats() {
             // Count past events as "Dates"
             const totalDates = events?.filter((e: any) => e.event_date && new Date(e.event_date).getTime() < new Date().getTime()).length || 0;
             const totalJournal = journalEntries?.length || 0;
-            
+
             // Count sticky notes (Notes)
             const { data: stickyNotes, error: notesError } = await supabase
                 .from('memories')
                 .select('id')
                 .eq('couple_id', couple.id)
                 .eq('type', 'sticky_note')
-            
+
             if (notesError) console.error('Error fetching sticky notes:', notesError);
             const totalNotes = stickyNotes?.length || 0;
 

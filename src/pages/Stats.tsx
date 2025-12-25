@@ -129,9 +129,12 @@ export default function StatsPage() {
                                     className="md:col-span-1 bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer active:scale-95"
                                 >
                                     <div>
-                                        <div className="flex items-center gap-2 mb-2 text-blue-500">
-                                            <span className="material-symbols-outlined">flight_takeoff</span>
-                                            <span className="font-medium text-sm uppercase tracking-wider">Travel</span>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2 text-blue-500">
+                                                <span className="material-symbols-outlined">flight_takeoff</span>
+                                                <span className="font-medium text-sm uppercase tracking-wider">Travel</span>
+                                            </div>
+                                            <span className="material-symbols-outlined text-gray-400 group-hover:text-blue-500 transition-colors">arrow_forward</span>
                                         </div>
                                         <div className="text-4xl font-bold text-gray-900 dark:text-white">{stats?.travelStats.countriesVisited}</div>
                                         <div className="text-gray-400 text-sm mt-2">Countries visited together</div>
