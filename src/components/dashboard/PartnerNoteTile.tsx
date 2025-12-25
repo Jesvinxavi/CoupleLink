@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, memo } from "react"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/types/supabase"
 import { format } from "date-fns"
@@ -9,7 +9,7 @@ interface PartnerNoteTileProps {
     partner: Profile | null
 }
 
-export function PartnerNoteTile({ partner }: PartnerNoteTileProps) {
+export const PartnerNoteTile = memo(function PartnerNoteTile({ partner }: PartnerNoteTileProps) {
     const [note, setNote] = useState<{ caption: string, created_at: string } | null>(null)
 
     const fetchNote = useCallback(async () => {
@@ -105,4 +105,4 @@ export function PartnerNoteTile({ partner }: PartnerNoteTileProps) {
             </div>
         </div>
     )
-}
+})

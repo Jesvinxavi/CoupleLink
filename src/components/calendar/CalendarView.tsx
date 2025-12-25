@@ -4,7 +4,9 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, en
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Pencil, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { AddEventOverlay, type CalendarEvent } from './AddEventOverlay';
+import { AddEventOverlay } from './AddEventOverlay';
+import type { CalendarEvent } from '@/types/calendar';
+import { expandRecurringEvents } from './eventUtils';
 import { useCoupleData } from '@/hooks/useCoupleData';
 import { supabase } from '@/lib/supabase';
 
@@ -48,7 +50,8 @@ export function CalendarView() {
                 category: e.category || 'Event',
                 color: e.color || '#e11d48',
                 location: e.location,
-                description: e.description
+                description: e.description,
+                recurrence: e.recurrence // Map recurrence field
             }));
 
             setEvents(mappedEvents);
@@ -78,7 +81,9 @@ export function CalendarView() {
                 category: event.category,
                 color: event.color,
                 location: event.location,
-                description: event.description
+                description: event.description,
+                // @ts-ignore - recurrence column missing in types but exists in DB (or should)
+                recurrence: event.recurrence
             };
 
             if (event.id) {
@@ -130,15 +135,21 @@ export function CalendarView() {
         setIsAddModalOpen(true);
     };
 
-    const selectedDateEvents = events.filter(event => {
-        if (isSameDay(new Date(event.event_date), selectedDate)) return true;
+    const allEvents = expandRecurringEvents(events, startDate, endDate);
+
+    const checkEventMatch = (event: CalendarEvent, date: Date) => {
+        // Simple day match
+        if (isSameDay(new Date(event.event_date), date)) return true;
+        // Multiday match
         if (event.end_date) {
             const start = startOfDay(new Date(event.event_date));
             const end = endOfDay(new Date(event.end_date));
-            return selectedDate >= start && selectedDate <= end;
+            return date >= start && date <= end;
         }
         return false;
-    });
+    };
+
+    const selectedDateEvents = allEvents.filter(event => checkEventMatch(event, selectedDate));
 
     return (
         <div className="flex flex-col h-full gap-6">
@@ -179,7 +190,7 @@ export function CalendarView() {
                             const weekStart = weekDays[0];
                             const weekEnd = weekDays[6];
 
-                            const weekEvents = events.filter(event => {
+                            const weekEvents = allEvents.filter(event => {
                                 const eventStart = new Date(event.event_date);
                                 const eventEnd = event.end_date ? new Date(event.end_date) : eventStart;
                                 return (eventStart <= weekEnd && eventEnd >= weekStart);
@@ -339,7 +350,8 @@ export function CalendarView() {
                                 selectedDateEvents.map(event => (
                                     <div
                                         key={event.id}
-                                        className="group flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border border-transparent hover:border-gray-100 dark:border-gray-700 relative"
+                                        className="group flex items-start gap-3 p-3 rounded-xl transition-colors border border-transparent dark:border-gray-700 relative"
+                                        style={{ backgroundColor: `${event.color}26` }}
                                     >
                                         <div
                                             className="w-1 h-10 rounded-full flex-shrink-0"
@@ -367,7 +379,7 @@ export function CalendarView() {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleEditEvent(event)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-gray-400 hover:text-rose-500"
+                                            className="opacity-100 transition-opacity h-8 w-8 text-gray-500 hover:text-rose-500"
                                         >
                                             <Pencil className="w-4 h-4" />
                                         </Button>

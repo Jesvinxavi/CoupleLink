@@ -204,7 +204,7 @@ export function CreateJournalOverlay({
                                         id="date"
                                         type="text"
                                         readOnly
-                                        value={date}
+                                        value={date ? date.split('-').reverse().join('-') : ''}
                                         onChange={(e) => setDate(e.target.value)}
                                         className="flex-1 pointer-events-none bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                                     />

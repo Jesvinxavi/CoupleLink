@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, memo } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { useCoupleData } from "@/hooks/useCoupleData"
 import { supabase } from "@/lib/supabase"
@@ -16,12 +16,13 @@ interface PartnerTileProps {
     partner: Profile | null
 }
 
-export function PartnerTile({ partner }: PartnerTileProps) {
+export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTileProps) {
     const { onlineUsers } = useAuth()
     const { couple } = useCoupleData()
     const [partnerTime, setPartnerTime] = useState<string>("")
     const [timeIcon, setTimeIcon] = useState("schedule")
     const [showExpandedAvatar, setShowExpandedAvatar] = useState(false)
+    const [today] = useState(new Date())
 
     const [anniversaryDays, setAnniversaryDays] = useState<number | null>(null)
     const [isAddAnniversaryOpen, setIsAddAnniversaryOpen] = useState(false)
@@ -80,16 +81,16 @@ export function PartnerTile({ partner }: PartnerTileProps) {
         let anniversaryDateStr = events?.[0]?.event_date || couple.anniversary_date
 
         if (anniversaryDateStr) {
-            const today = startOfDay(new Date())
+            const todayStart = startOfDay(new Date())
             const anniversaryDate = parseISO(anniversaryDateStr)
-            let nextAnniversary = setYear(anniversaryDate, today.getFullYear())
+            let nextAnniversary = setYear(anniversaryDate, todayStart.getFullYear())
 
             // If anniversary has passed this year, look at next year
-            if (isBefore(nextAnniversary, today)) {
+            if (isBefore(nextAnniversary, todayStart)) {
                 nextAnniversary = addYears(nextAnniversary, 1)
             }
 
-            const days = differenceInDays(nextAnniversary, today)
+            const days = differenceInDays(nextAnniversary, todayStart)
             setAnniversaryDays(days)
         } else {
             setAnniversaryDays(null)
@@ -244,7 +245,7 @@ export function PartnerTile({ partner }: PartnerTileProps) {
             <AddEventOverlay
                 isOpen={isAddAnniversaryOpen}
                 onClose={() => setIsAddAnniversaryOpen(false)}
-                selectedDate={new Date()}
+                selectedDate={today}
                 initialValues={{
                     title: 'Anniversary',
                     category: 'Anniversary',
@@ -255,4 +256,4 @@ export function PartnerTile({ partner }: PartnerTileProps) {
             />
         </>
     )
-}
+})

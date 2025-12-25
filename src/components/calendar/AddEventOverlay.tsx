@@ -1,5 +1,6 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -10,18 +11,10 @@ import { Calendar as CalendarIcon, MapPin, Plus, Loader2, Trash2, X } from 'luci
 
 
 
-export interface CalendarEvent {
-    id?: string;
-    title: string;
-    event_date: string;
-    end_date?: string | null;
-    category: string;
-    color: string;
-    location?: string | null;
-    description?: string | null;
-    country?: string | null;
-    recurrence?: 'none' | 'monthly' | 'six_months' | 'yearly';
-}
+import type { CalendarEvent } from '@/types/calendar';
+
+export type { CalendarEvent };
+
 
 interface AddEventOverlayProps {
     isOpen: boolean;
@@ -82,7 +75,18 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
     // Color change confirmation
     const [pendingColor, setPendingColor] = useState<string | null>(null);
     const [showColorConfirm, setShowColorConfirm] = useState(false);
-    const [showColorPicker, setShowColorPicker] = useState(false);
+
+
+    // Color Picker State
+    const [pickerState, setPickerState] = useState<{
+        isOpen: boolean;
+        type: 'main' | 'new'; // 'main' for category select, 'new' for add category
+        anchorRect: DOMRect | null;
+    }>({ isOpen: false, type: 'main', anchorRect: null });
+
+    // Refs for anchoring
+    const mainColorBtnRef = useRef<HTMLButtonElement>(null);
+    const newCategoryColorBtnRef = useRef<HTMLButtonElement>(null);
 
     // Delete confirmation
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -192,8 +196,24 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
     }, [selectedCategoryId, categories, eventToEdit]);
 
     const handleColorSelect = (color: string) => {
-        setPendingColor(color);
-        setShowColorConfirm(true);
+        if (pickerState.type === 'main') {
+            setPendingColor(color);
+            setShowColorConfirm(true);
+        } else {
+            setNewCategoryColor(color);
+        }
+        setPickerState(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const openColorPicker = (type: 'main' | 'new', ref: React.RefObject<HTMLButtonElement | null>) => {
+        if (ref.current) {
+            const rect = ref.current.getBoundingClientRect();
+            setPickerState({
+                isOpen: true,
+                type,
+                anchorRect: rect
+            });
+        }
     };
 
     const confirmColorChange = () => {
@@ -341,49 +361,60 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
 
                                 {/* Category & Color */}
                                 <div className="grid gap-2">
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center h-8">
                                         <Label>Category</Label>
-                                        {!isAddingCategory && (
+                                        {!isAddingCategory ? (
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => setIsAddingCategory(true)}
-                                                className="h-8 text-xs text-gray-900 hover:text-gray-700"
+                                                className="h-7 text-xs text-gray-900 px-2 hover:bg-transparent md:hover:bg-accent md:hover:text-accent-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                                             >
                                                 <Plus className="w-3 h-3 mr-1" />
                                                 Add Category
                                             </Button>
+                                        ) : (
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => setIsAddingCategory(false)}
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-7 text-xs px-2 hover:bg-transparent md:hover:bg-accent md:hover:text-accent-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    onClick={handleAddCategory}
+                                                    size="sm"
+                                                    className="h-7 text-xs bg-gray-900 text-white px-3 hover:bg-gray-900 md:hover:bg-gray-800 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                >
+                                                    Add
+                                                </Button>
+                                            </div>
                                         )}
                                     </div>
 
                                     {isAddingCategory ? (
-                                        <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg animate-in fade-in slide-in-from-top-2">
+                                        <div className="flex gap-2">
                                             <input
+                                                autoFocus
                                                 type="text"
                                                 value={newCategoryName}
                                                 onChange={(e) => setNewCategoryName(e.target.value)}
                                                 onFocus={handleInputFocus}
                                                 placeholder="New Category Name"
-                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                                                className="flex-1 px-3 py-2 h-11 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
                                             />
-                                            <div className="flex flex-wrap gap-2">
-                                                {COLOR_PRESETS.map(color => (
-                                                    <button
-                                                        key={color}
-                                                        onClick={() => setNewCategoryColor(color)}
-                                                        className={`w - 6 h - 6 rounded - full transition - transform hover: scale - 110 ${newCategoryColor === color ? 'ring-2 ring-offset-2 ring-gray-400' : ''} `}
-                                                        style={{ backgroundColor: color }}
-                                                    />
-                                                ))}
-                                            </div>
-                                            <div className="flex gap-2 justify-end">
-                                                <Button onClick={() => setIsAddingCategory(false)} size="sm" variant="ghost">
-                                                    Cancel
-                                                </Button>
-                                                <Button onClick={handleAddCategory} size="sm" className="bg-gray-900 hover:bg-gray-800 text-white">
-                                                    Add
-                                                </Button>
-                                            </div>
+                                            <button
+                                                ref={newCategoryColorBtnRef}
+                                                type="button"
+                                                onClick={() => openColorPicker('new', newCategoryColorBtnRef)}
+                                                className="w-11 h-11 rounded-md border border-gray-200 dark:border-gray-700 flex-shrink-0 transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-rose-500/50 input-button"
+                                                style={{ backgroundColor: newCategoryColor }}
+                                                title="Select Color"
+                                            />
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-2">
@@ -401,37 +432,13 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
 
                                             <div className="relative">
                                                 <button
+                                                    ref={mainColorBtnRef}
                                                     type="button"
-                                                    onClick={() => setShowColorPicker(!showColorPicker)}
+                                                    onClick={() => openColorPicker('main', mainColorBtnRef)}
                                                     className="w-11 h-11 rounded-md border border-input flex items-center justify-center transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                                                     style={{ backgroundColor: selectedColor }}
                                                     title="Change Color"
                                                 />
-
-                                                {showColorPicker && (
-                                                    <>
-                                                        <div
-                                                            className="fixed inset-0 z-50"
-                                                            onClick={() => setShowColorPicker(false)}
-                                                        />
-                                                        <div className="absolute right-0 top-12 z-50 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-[180px] animate-in fade-in zoom-in-95 duration-200">
-                                                            <div className="grid grid-cols-4 gap-2">
-                                                                {COLOR_PRESETS.map(color => (
-                                                                    <button
-                                                                        key={color}
-                                                                        onClick={() => {
-                                                                            handleColorSelect(color);
-                                                                            setShowColorPicker(false);
-                                                                        }}
-                                                                        className={`w - 8 h - 8 rounded - full transition - transform hover: scale - 110 ${selectedColor === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : ''} `}
-                                                                        style={{ backgroundColor: color }}
-                                                                        title={color}
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -457,7 +464,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                                             <input
                                                 type="text"
                                                 readOnly
-                                                value={startDate}
+                                                value={startDate ? startDate.split('-').reverse().join('-') : ''}
                                                 onChange={(e) => setStartDate(e.target.value)}
                                                 onFocus={handleInputFocus}
                                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50 pointer-events-none"
@@ -486,7 +493,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                                                 <input
                                                     type="text"
                                                     readOnly
-                                                    value={endDate}
+                                                    value={endDate ? endDate.split('-').reverse().join('-') : ''}
                                                     onChange={(e) => setEndDate(e.target.value)}
                                                     onFocus={handleInputFocus}
                                                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50 pointer-events-none"
@@ -610,7 +617,39 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                         />
                     </>
                 )}
-            </AnimatePresence>
+            </AnimatePresence >
+
+            {/* Portal Color Picker */}
+            {
+                pickerState.isOpen && pickerState.anchorRect && createPortal(
+                    <>
+                        <div
+                            className="fixed inset-0 z-[70]"
+                            onClick={() => setPickerState(prev => ({ ...prev, isOpen: false }))}
+                        />
+                        <div
+                            className="fixed z-[71] p-3 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-[180px] animate-in fade-in zoom-in-95 duration-200"
+                            style={{
+                                top: Math.min(window.innerHeight - 200, (pickerState.anchorRect?.bottom || 0) + 8),
+                                left: Math.min(window.innerWidth - 190, Math.max(10, (pickerState.anchorRect?.left || 0) - 130 + (pickerState.anchorRect?.width || 0)))
+                            }}
+                        >
+                            <div className="grid grid-cols-4 gap-2">
+                                {COLOR_PRESETS.map(color => (
+                                    <button
+                                        key={color}
+                                        onClick={() => handleColorSelect(color)}
+                                        className={`w-8 h-8 rounded-full transition-transform hover:scale-110 ${(pickerState.type === 'main' ? selectedColor : newCategoryColor) === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : ''}`}
+                                        style={{ backgroundColor: color }}
+                                        title={color}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </>,
+                    document.body
+                )
+            }
         </>
     );
 }

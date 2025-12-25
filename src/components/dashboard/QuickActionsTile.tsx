@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { PenLine, StickyNote } from "lucide-react";
@@ -13,7 +13,7 @@ const JOURNAL_PROMPTS = [
     "your day today"
 ];
 
-export function QuickActionsTile() {
+export const QuickActionsTile = memo(function QuickActionsTile() {
     const navigate = useNavigate();
     const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
     const [prompt, setPrompt] = useState(JOURNAL_PROMPTS[0]);
@@ -77,4 +77,4 @@ export function QuickActionsTile() {
             />
         </>
     );
-}
+})

@@ -7,6 +7,7 @@ import { Plus, Calendar as CalendarIcon, Flag } from 'lucide-react';
 
 export function MilestoneTrackerTile() {
     const { couple } = useCoupleData();
+    const [today] = useState(new Date());
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -121,16 +122,24 @@ export function MilestoneTrackerTile() {
                                     </div>
 
                                     {/* Content */}
-                                    <div className="space-y-1 w-full">
+                                    <div className="space-y-2 w-full flex flex-col items-center">
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                                             {formatDate(event.event_date)}
                                         </p>
-                                        <p className="text-[10px] font-medium text-rose-500 uppercase tracking-wider truncate w-full px-1">
-                                            {event.category}
-                                        </p>
-                                        <h4 className="text-sm font-bold text-heading-dark line-clamp-2 w-full px-1 leading-tight" title={event.title}>
-                                            {event.title}
-                                        </h4>
+                                        <div
+                                            className="w-full rounded-xl p-2 flex flex-col items-center justify-center gap-1 min-h-[60px]"
+                                            style={{ backgroundColor: `${event.color || '#e11d48'}26` }}
+                                        >
+                                            <p
+                                                className="text-[10px] font-bold uppercase tracking-wider truncate w-full px-1"
+                                                style={{ color: event.color || '#e11d48' }}
+                                            >
+                                                {event.category}
+                                            </p>
+                                            <h4 className="text-xs font-bold text-heading-dark line-clamp-2 w-full px-1 leading-tight" title={event.title}>
+                                                {event.title}
+                                            </h4>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -165,7 +174,7 @@ export function MilestoneTrackerTile() {
             <AddEventOverlay
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
-                selectedDate={new Date()}
+                selectedDate={today}
                 onSave={handleSaveEvent}
                 onDelete={async () => { }}
             />

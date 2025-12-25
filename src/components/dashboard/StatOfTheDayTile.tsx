@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom"
 import { useCoupleData } from "@/hooks/useCoupleData"
 import { type RelationshipStats } from "@/hooks/useRelationshipStats"
-import { useMemo } from "react"
+import { useMemo, memo } from "react"
 
 interface Stat {
     label: string
@@ -14,7 +14,7 @@ interface StatOfTheDayTileProps {
     stats: RelationshipStats | null
 }
 
-export function StatOfTheDayTile({ stats: relationshipStats }: StatOfTheDayTileProps) {
+export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relationshipStats }: StatOfTheDayTileProps) {
     const navigate = useNavigate()
     const { couple } = useCoupleData()
 
@@ -126,4 +126,4 @@ export function StatOfTheDayTile({ stats: relationshipStats }: StatOfTheDayTileP
             </div>
         </div>
     )
-}
+})

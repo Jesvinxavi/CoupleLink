@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import type { Fantasy } from '../../hooks/useFantasyBucketList';
 import { ArrowLeft, Trash2, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { format } from 'date-fns';
 
 interface FantasyDetailModalProps {
     fantasy: Fantasy | null;
@@ -147,7 +148,7 @@ export function FantasyDetailModal({
                                 className="text-center text-sm text-gray-500"
                             >
                                 <span className="material-symbols-outlined text-blue-500 text-sm mr-1 align-middle">celebration</span>
-                                Completed on {new Date(fantasy.completed_at).toLocaleDateString()}
+                                Completed on {format(new Date(fantasy.completed_at), 'dd-MM-yyyy')}
                             </motion.div>
                         )}
 
