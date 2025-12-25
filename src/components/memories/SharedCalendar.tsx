@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { useState } from 'react';
 import { useCoupleData } from '../../hooks/useCoupleData';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
@@ -9,66 +8,32 @@ import { Label } from '../ui/label';
 import { Calendar } from '../ui/calendar';
 import { Plus, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-
-interface CalendarEvent {
-    id: string;
-    title: string | null;
-    event_date: string;
-    category: string | null;
-}
+import { useCalendarContext } from '../../context/CalendarContext';
 
 export function SharedCalendar() {
     const { couple } = useCoupleData();
-    const [events, setEvents] = useState<CalendarEvent[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { events, loading, saveEvent } = useCalendarContext();
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newEventTitle, setNewEventTitle] = useState('');
     const [newEventCategory, setNewEventCategory] = useState('Date Night');
     const [submitting, setSubmitting] = useState(false);
 
-    const fetchEvents = async () => {
-        if (!couple) return;
-        try {
-            setLoading(true);
-            const { data, error } = await supabase
-                .from('calendar_events')
-                .select('*')
-                .eq('couple_id', couple.id)
-                .order('event_date', { ascending: true });
-
-            if (error) throw error;
-            setEvents(data as any);
-        } catch (err) {
-            console.error('Error fetching events:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchEvents();
-    }, [couple]);
-
     const handleAddEvent = async () => {
         if (!couple || !date || !newEventTitle.trim()) return;
 
         setSubmitting(true);
         try {
-            const { error } = await supabase
-                .from('calendar_events')
-                .insert({
-                    couple_id: couple.id,
-                    title: newEventTitle,
-                    event_date: format(date, 'yyyy-MM-dd'),
-                    category: newEventCategory
-                });
-
-            if (error) throw error;
+            await saveEvent({
+                title: newEventTitle,
+                event_date: format(date, 'yyyy-MM-dd'),
+                category: newEventCategory,
+                color: '#e11d48', // Default color
+                id: undefined, // Type safety
+            });
 
             setNewEventTitle('');
             setIsDialogOpen(false);
-            fetchEvents();
         } catch (err) {
             console.error('Error adding event:', err);
         } finally {

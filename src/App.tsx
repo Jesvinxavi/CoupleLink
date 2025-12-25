@@ -8,11 +8,12 @@ import { FantasyBucketListProvider } from "@/context/FantasyBucketListContext"
 import { CouponsProvider } from "@/context/CouponsContext"
 import { JournalModalProvider } from "@/context/JournalModalContext"
 import { PartnerNotesProvider } from "@/context/PartnerNotesContext"
+import { JournalProvider } from "@/context/JournalContext"
+import { CalendarProvider } from "@/context/CalendarContext"
 import AnimatedRoutes from "@/components/AnimatedRoutes"
 import { NotificationListener } from "@/components/NotificationListener"
 import { GlobalCouponListener } from "@/components/GlobalCouponListener"
 import { GlobalModalQueueProvider } from "@/context/GlobalModalQueueContext"
-
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 function App() {
@@ -22,23 +23,27 @@ function App() {
         <AuthProvider>
           <CoupleProvider>
             <PartnerNotesProvider>
-              <FantasyBucketListProvider>
-                <CouponsProvider>
-                  <GameSessionProvider>
-                    <GlobalModalQueueProvider>
-                      <SexplorationModalProvider>
-                        <JournalModalProvider>
-                          <ChallengeModalProvider>
-                            <NotificationListener />
-                            <GlobalCouponListener />
-                            <AnimatedRoutes />
-                          </ChallengeModalProvider>
-                        </JournalModalProvider>
-                      </SexplorationModalProvider>
-                    </GlobalModalQueueProvider>
-                  </GameSessionProvider>
-                </CouponsProvider>
-              </FantasyBucketListProvider>
+              <JournalProvider>
+                <CalendarProvider>
+                  <FantasyBucketListProvider>
+                    <CouponsProvider>
+                      <GameSessionProvider>
+                        <GlobalModalQueueProvider>
+                          <SexplorationModalProvider>
+                            <JournalModalProvider>
+                              <ChallengeModalProvider>
+                                <NotificationListener />
+                                <GlobalCouponListener />
+                                <AnimatedRoutes />
+                              </ChallengeModalProvider>
+                            </JournalModalProvider>
+                          </SexplorationModalProvider>
+                        </GlobalModalQueueProvider>
+                      </GameSessionProvider>
+                    </CouponsProvider>
+                  </FantasyBucketListProvider>
+                </CalendarProvider>
+              </JournalProvider>
             </PartnerNotesProvider>
           </CoupleProvider>
         </AuthProvider>

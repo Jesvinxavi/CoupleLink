@@ -34,13 +34,14 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
     const [error, setError] = useState<string | null>(null);
     // Track gift IDs we've already processed to prevent duplicates
     const processedGiftIds = useRef<Set<string>>(new Set());
+    const hasLoaded = useRef(false);
 
     const fetchCoupons = useCallback(async () => {
         if (!couple?.id || !userProfile?.id) return;
 
         try {
             // Only set loading on initial fetch if empty, to avoid flickering
-            if (coupons.length === 0) setLoading(true);
+            if (!hasLoaded.current) setLoading(true);
 
             const { data, error } = await supabase
                 .from('coupons')
@@ -61,6 +62,7 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             });
 
             setCoupons(typedCoupons);
+            hasLoaded.current = true;
         } catch (err: any) {
             console.error('Error fetching coupons:', err);
             setError(err.message);

@@ -1,5 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
+import { useRef, useState, useEffect } from 'react';
 import { useCoupleData } from '../../hooks/useCoupleData';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
@@ -10,34 +9,17 @@ import { ImageCarousel } from '../ui/ImageCarousel';
 import { AnimatePresence, motion } from 'framer-motion';
 import { UserAvatar } from '../ui/UserAvatar';
 import { useJournalModals } from '../../context/JournalModalContext';
+import { useJournalContext, type JournalEntry } from '../../context/JournalContext';
 
-export interface JournalEntry {
-    id: string;
-    caption: string | null;
-    created_at: string;
-    uploader_id: string | null;
-    title: string | null;
-    location: string | null;
-    country: string | null;
-    media_urls: string[] | null;
-    profiles?: {
-        first_name: string | null;
-        avatar_url: string | null;
-    };
-    reactions?: {
-        id: string;
-        emoji: string;
-        user_id: string;
-    }[];
-}
+// Export imported type for compatibility if needed elsewhere, or rely on Context export
+// export type { JournalEntry };
 
 const EMOJI_OPTIONS = ['❤️', '😂', '😮', '😢', '👏'];
 
 export function JournalFeed() {
-    const { couple, currentUser } = useCoupleData();
-    const { openNewPost, openEditPost, journalVersion } = useJournalModals();
-    const [entries, setEntries] = useState<JournalEntry[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { currentUser } = useCoupleData();
+    const { openNewPost, openEditPost } = useJournalModals();
+    const { entries, loading, toggleReaction } = useJournalContext();
 
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -46,41 +28,6 @@ export function JournalFeed() {
     const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null); // Entry ID
     const [showAllEmojis, setShowAllEmojis] = useState(false);
     const pickerRef = useRef<HTMLDivElement>(null);
-
-    const fetchEntries = async () => {
-        if (!couple) return;
-        try {
-            setLoading(true);
-            const { data, error } = await supabase
-                .from('memories')
-                .select(`
-                    *,
-                    profiles:uploader_id (
-                        first_name,
-                        avatar_url
-                    ),
-                    reactions:journal_reactions (
-                        id,
-                        emoji,
-                        user_id
-                    )
-                `)
-                .eq('couple_id', couple.id)
-                .eq('type', 'journal')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setEntries(data as any);
-        } catch (err) {
-            console.error('Error fetching journal entries:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchEntries();
-    }, [couple, journalVersion]);
 
     // Close picker when clicking outside
     useEffect(() => {
@@ -93,8 +40,6 @@ export function JournalFeed() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-
-
 
     const handleEdit = (entry: JournalEntry) => {
         openEditPost(entry);
@@ -119,38 +64,9 @@ export function JournalFeed() {
     };
 
     const handleReaction = async (entryId: string, emoji: string) => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            // Check if user already reacted with this emoji
-            const existingReaction = entries
-                .find(e => e.id === entryId)
-                ?.reactions?.find(r => r.user_id === user.id && r.emoji === emoji);
-
-            if (existingReaction) {
-                // Remove reaction
-                await (supabase as any)
-                    .from('journal_reactions')
-                    .delete()
-                    .eq('id', existingReaction.id);
-            } else {
-                // Add reaction
-                await (supabase as any)
-                    .from('journal_reactions')
-                    .insert({
-                        memory_id: entryId,
-                        user_id: user.id,
-                        emoji
-                    });
-            }
-
-            setShowReactionPicker(null);
-            setShowAllEmojis(false);
-            fetchEntries(); // Refresh to show updated reactions
-        } catch (err) {
-            console.error('Error handling reaction:', err);
-        }
+        setShowReactionPicker(null);
+        setShowAllEmojis(false);
+        await toggleReaction(entryId, emoji);
     };
 
     const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {

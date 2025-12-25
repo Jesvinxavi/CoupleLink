@@ -7,7 +7,7 @@ import { Textarea } from '../ui/textarea';
 
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import { Calendar, MapPin, Image as ImageIcon, X, Loader2, Trash2 } from 'lucide-react';
-import type { JournalEntry } from './JournalFeed';
+import type { JournalEntry } from '../../context/JournalContext';
 
 interface CreateJournalOverlayProps {
     isOpen: boolean;

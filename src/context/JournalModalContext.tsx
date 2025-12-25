@@ -1,14 +1,12 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCoupleData } from '../hooks/useCoupleData';
-import { useJournalEntry } from '../hooks/useJournalEntry';
-import { CreateJournalOverlay } from '../components/journal/CreateJournalOverlay'; // Adjust path if needed
-import type { JournalEntry } from '../components/journal/JournalFeed';
+import { useJournalContext, type JournalEntry } from './JournalContext';
+import { CreateJournalOverlay } from '../components/journal/CreateJournalOverlay';
 
 interface JournalModalContextType {
     openNewPost: () => void;
     openEditPost: (entry: JournalEntry) => void;
-    journalVersion: number;
 }
 
 const JournalModalContext = createContext<JournalModalContextType | null>(null);
@@ -29,13 +27,12 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
     const navigate = useNavigate();
     const location = useLocation();
     const { couple } = useCoupleData();
-    const { saveJournalEntry, deleteJournalEntry } = useJournalEntry();
+    const { saveEntry, deleteEntry } = useJournalContext();
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [journalVersion, setJournalVersion] = useState(0);
 
     // Open modal and navigate to journal
     const openWithNavigation = (openFn: () => void) => {
@@ -55,7 +52,7 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
 
     const openEditPost = (entry: JournalEntry) => {
         setEditingEntry(entry);
-        setIsDialogOpen(true); // Edit is usually done on the page itself, but good to have capability
+        setIsDialogOpen(true);
     };
 
     const handleClose = () => {
@@ -67,8 +64,7 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
         if (!couple) return;
         setIsSubmitting(true);
         try {
-            await saveJournalEntry(data, couple, editingEntry?.id);
-            setJournalVersion(v => v + 1);
+            await saveEntry(data, editingEntry?.id);
             handleClose();
         } catch (error) {
             console.error('Error saving journal entry:', error);
@@ -82,11 +78,8 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
         if (!editingEntry) return;
         setIsDeleting(true);
         try {
-            await deleteJournalEntry(editingEntry.id);
-            setJournalVersion(v => v + 1);
-            handleClose(); // Close the edit/post modal
-            // If there was a confirmation modal, it should be handled by the overlay or separately. 
-            // CreateJournalOverlay has 'onDelete'.
+            await deleteEntry(editingEntry.id);
+            handleClose();
         } catch (error) {
             console.error('Error deleting journal entry:', error);
             alert('Failed to delete post. Please try again.');
@@ -96,7 +89,7 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
     };
 
     return (
-        <JournalModalContext.Provider value={{ openNewPost, openEditPost, journalVersion }}>
+        <JournalModalContext.Provider value={{ openNewPost, openEditPost }}>
             {children}
             <CreateJournalOverlay
                 isOpen={isDialogOpen}

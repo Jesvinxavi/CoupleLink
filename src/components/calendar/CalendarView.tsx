@@ -1,25 +1,21 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday, startOfDay, endOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Pencil, Loader2, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AddEventOverlay } from './AddEventOverlay';
-import type { CalendarEvent } from '@/types/calendar';
 import { expandRecurringEvents } from './eventUtils';
 import { useCoupleData } from '@/hooks/useCoupleData';
-import { supabase } from '@/lib/supabase';
-
-
+import { useCalendarContext, type CalendarEvent } from '@/context/CalendarContext';
 
 export function CalendarView() {
     const { couple } = useCoupleData();
+    const { events, loading, saveEvent, deleteEvent } = useCalendarContext();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-    const [loading, setLoading] = useState(false);
 
     const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
     const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
@@ -31,93 +27,27 @@ export function CalendarView() {
 
     const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
-    const fetchEvents = async () => {
-        if (!couple) return;
-        try {
-            setLoading(true);
-            const { data, error } = await supabase
-                .from('calendar_events')
-                .select('*')
-                .eq('couple_id', couple.id);
-
-            if (error) throw error;
-
-            const mappedEvents: CalendarEvent[] = (data || []).map((e: any) => ({
-                id: e.id,
-                title: e.title,
-                event_date: e.event_date,
-                end_date: e.end_date,
-                category: e.category || 'Event',
-                color: e.color || '#e11d48',
-                location: e.location,
-                description: e.description,
-                recurrence: e.recurrence // Map recurrence field
-            }));
-
-            setEvents(mappedEvents);
-        } catch (error) {
-            console.error('Error fetching events:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchEvents();
-    }, [couple]);
-
     const handleSaveEvent = async (event: CalendarEvent) => {
         if (!couple) {
             alert('Error: No couple data found. Please try refreshing the page.');
             return;
         }
-
         try {
-            const eventData = {
-                couple_id: couple.id,
-                title: event.title,
-                event_date: event.event_date,
-                end_date: event.end_date,
-                category: event.category,
-                color: event.color,
-                location: event.location,
-                description: event.description,
-                // @ts-ignore - recurrence column missing in types but exists in DB (or should)
-                recurrence: event.recurrence
-            };
-
-            if (event.id) {
-                // Update
-                const { error } = await supabase
-                    .from('calendar_events')
-                    .update(eventData)
-                    .eq('id', event.id);
-                if (error) throw error;
-            } else {
-                // Insert
-                const { error } = await supabase
-                    .from('calendar_events')
-                    .insert(eventData);
-                if (error) throw error;
-            }
-
-            await fetchEvents();
+            await saveEvent(event);
+            // Modal close handled by caller if strictly async awaiting? 
+            // In original code, fetchEvents was called. 
+            // Here saveEvent is async.
         } catch (error: any) {
             console.error('Error saving event:', error);
-            alert(`Failed to save event: ${error.message || error.error_description || JSON.stringify(error)} `);
+            alert(`Failed to save event: ${error.message || JSON.stringify(error)} `);
+            throw error; // Re-throw so overlay knows to stop loading if it wants
         }
     };
 
     const handleDeleteEvent = async (eventId: string) => {
         if (!couple) return;
         try {
-            const { error } = await supabase
-                .from('calendar_events')
-                .delete()
-                .eq('id', eventId);
-
-            if (error) throw error;
-            await fetchEvents();
+            await deleteEvent(eventId);
             setIsAddModalOpen(false);
         } catch (error: any) {
             console.error('Error deleting event:', error);
