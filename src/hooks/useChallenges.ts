@@ -588,6 +588,7 @@ export const useChallenges = (): ChallengeState => {
                         uploader_id: currentUser.id,
                         type: 'challenge',
                         title: challenge.title,
+                        challenge_id: challenge.id, // Add challenge_id
                         caption: challenge.description,
                         media_url: mediaUrl,
                         created_at: new Date().toISOString(),
