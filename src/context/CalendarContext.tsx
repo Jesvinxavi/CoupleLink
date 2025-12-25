@@ -1,20 +1,10 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useCoupleData } from '../hooks/useCoupleData';
-import { useAuth } from './AuthContext';
+import type { CalendarEvent } from '../types/calendar';
 
-export interface CalendarEvent {
-    id?: string;
-    title: string;
-    event_date: string; // YYYY-MM-DD
-    end_date?: string; // YYYY-MM-DD
-    category: string;
-    color: string;
-    location?: string;
-    description?: string;
-    recurrence?: string; // 'none', 'daily', 'weekly', 'biweekly', 'monthly', 'yearly'
-    couple_id?: string;
-}
+// Re-export for convenience if needed, or consumers should import from types
+export type { CalendarEvent };
 
 interface CalendarContextType {
     events: CalendarEvent[];
@@ -28,7 +18,7 @@ const CalendarContext = createContext<CalendarContextType | undefined>(undefined
 
 export function CalendarProvider({ children }: { children: ReactNode }) {
     const { couple } = useCoupleData();
-    const { user } = useAuth();
+    // Removed unused user hook
 
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -133,7 +123,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
                 color: event.color,
                 location: event.location,
                 description: event.description,
-                recurrence: event.recurrence
+                recurrence: event.recurrence as any // Database might be loose string, type is specific
             };
 
             if (event.id) {
