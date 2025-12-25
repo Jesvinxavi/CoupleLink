@@ -149,7 +149,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                 }
                 setLocation(eventToEdit.location || '');
                 setDescription(eventToEdit.description || '');
-                setRecurrence(eventToEdit.recurrence || 'none');
+                setRecurrence((eventToEdit.recurrence as any) || 'none');
 
                 // Find or create category
                 const existingCategory = categories.find(c => c.name === eventToEdit.category);
@@ -167,7 +167,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                 setIsMultiDay(!!initialValues?.end_date);
                 setLocation(initialValues?.location || '');
                 setDescription(initialValues?.description || '');
-                setRecurrence(initialValues?.recurrence || 'none');
+                setRecurrence((initialValues?.recurrence as any) || 'none');
 
                 if (initialValues?.category) {
                     const category = categories.find(c => c.name === initialValues.category);
