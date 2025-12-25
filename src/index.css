@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24
+}
+
+/* Hide number input spinners */
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spinner {
+  -moz-appearance: textfield;
+}
+
+@layer base {
+  :root {
+    --background: 350 100% 96%;
+    /* #f7f7f7 */
+    --foreground: 0 0% 33%;
+    /* #555555 */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+    --primary: 354 79% 52%;
+    /* #EA2831 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 350 100% 88%;
+    /* #ffc0cb */
+    --accent-foreground: 0 0% 20%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 354 79% 52%;
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 0 0% 13%;
+    /* #211111 */
+    --foreground: 0 0% 97%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 97%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 97%;
+    --primary: 354 79% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 97%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 350 100% 88%;
+    --accent-foreground: 0 0% 97%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 97%;
+    --border: 0 0% 25%;
+    --input: 0 0% 25%;
+    --ring: 354 79% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply text-foreground font-display;
+    background-color: hsl(var(--background));
+  }
+}
