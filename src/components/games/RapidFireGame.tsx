@@ -231,7 +231,6 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                                 // Legacy data 'myAnswer' is ALWAYS Player 1's answer. 'partnerAnswer' is ALWAYS Player 2's answer.
 
                                 const isPlayerOne = currentUser?.id === session.player_one_id;
-                                const isPlayerTwo = !isPlayerOne; // Simplification, assuming only 2 players in this context
 
                                 let myCorrectAnswer = answer.answers?.[currentUser?.id || ''];
                                 let partnerCorrectAnswer = answer.answers?.[partner?.id || ''];
