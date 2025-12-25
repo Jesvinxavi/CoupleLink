@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Loader2, Send } from "lucide-react";
-import { supabase } from '../../lib/supabase';
 import { useCoupleData } from '../../hooks/useCoupleData';
 import { usePartnerNotes } from '../../hooks/usePartnerNotes';
 

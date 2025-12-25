@@ -8,5 +8,5 @@ export interface CalendarEvent {
     location?: string | null;
     description?: string | null;
     country?: string | null;
-    recurrence?: 'none' | 'monthly' | 'six_months' | 'yearly';
+    recurrence?: string; // 'none', 'daily', 'weekly', 'monthly', etc.
 }
