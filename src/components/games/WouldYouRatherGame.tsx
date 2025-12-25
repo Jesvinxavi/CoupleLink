@@ -94,11 +94,15 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
 
             const isMatch = dbMyAnswer === dbPartnerAnswer && dbMyAnswer !== undefined;
 
-
-
             const roundResult = {
                 round: session.current_round,
                 question: currentQuestion?.question,
+                // Store explicit answers by ID to prevent "You/Partner" swap issues
+                answers: {
+                    [myId || '']: dbMyAnswer,
+                    [partnerId || '']: dbPartnerAnswer
+                },
+                // Keep these for backward compatibility
                 myAnswer: dbMyAnswer,
                 partnerAnswer: dbPartnerAnswer,
                 matched: isMatch
