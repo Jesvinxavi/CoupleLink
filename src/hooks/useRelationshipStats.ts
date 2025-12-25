@@ -157,7 +157,7 @@ export function useRelationshipStats() {
                 const myMem = mems.find((m: any) => m.uploader_id === userProfile.id);
                 const partnerMem = mems.find((m: any) => m.uploader_id !== userProfile.id);
 
-                if (myMem) {
+                if (myMem && partnerMem) {
                     const type = myMem.metadata?.challenge_type || 'daily';
                     const memDate = new Date(myMem.created_at).getTime();
                     const isRecent = memDate > ninetyDaysAgoTime;

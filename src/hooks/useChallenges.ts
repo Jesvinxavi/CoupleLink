@@ -318,7 +318,30 @@ export const useChallenges = (): ChallengeState => {
                 .eq('type', 'challenge');
 
             if (myError) throw myError;
-            setMyMemories(mMemories || []);
+
+            setMyMemories(prev => {
+                const newMemories = mMemories || [];
+
+                // Preserve optimistic updates (temp ids) if not yet present in fetched data
+                const optimisticMemories = prev.filter(m => m.id.toString().startsWith('temp-'));
+
+                const combined = [...newMemories];
+
+                optimisticMemories.forEach(opt => {
+                    // Check if this optimistic memory is already represented in the new data (by title and approximate time)
+                    // We assume title + type is unique enough for the active window
+                    const exists = newMemories.some(real =>
+                        real.title === opt.title &&
+                        (real.metadata as any)?.challenge_type === opt.metadata?.challenge_type
+                    );
+
+                    if (!exists) {
+                        combined.push(opt);
+                    }
+                });
+
+                return combined;
+            });
 
             if (mMemories) {
                 // Authoritative Sync: Rebuild history from DB to ensure consistency (handles deletions/desyncs)
@@ -478,11 +501,8 @@ export const useChallenges = (): ChallengeState => {
 
         } catch (e) {
             console.error('Error marking confetti seen:', e);
-        } finally {
-            // Force refresh so UI (ChallengesTile) knows it's seen immediately
-            await refreshCoupleData();
         }
-    }, [couple?.id, userProfile?.id, refreshCoupleData]);
+    }, [couple?.id, userProfile?.id]);
 
     const completeChallenge = async (type: 'daily' | 'weekly' | 'monthly', file?: File | null, winnerSelection?: 'me' | 'partner' | 'tie') => {
         const challenge = type === 'daily' ? daily : type === 'weekly' ? weekly : monthly;
