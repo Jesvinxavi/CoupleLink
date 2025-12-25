@@ -103,7 +103,7 @@ export default function Challenges() {
                                 variants={container}
                                 initial="hidden"
                                 animate="show"
-                                className="flex flex-col gap-6"
+                                className="flex flex-col gap-4"
                             >
                                 {/* Today's Question - Full Width */}
                                 <motion.div variants={item} className="w-full">
