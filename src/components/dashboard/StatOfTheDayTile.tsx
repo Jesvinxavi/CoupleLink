@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { useCoupleData } from "@/hooks/useCoupleData"
 import { type RelationshipStats } from "@/hooks/useRelationshipStats"
 import { useMemo, memo } from "react"
@@ -15,7 +15,7 @@ interface StatOfTheDayTileProps {
 }
 
 export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relationshipStats }: StatOfTheDayTileProps) {
-    const navigate = useNavigate()
+
     const { couple } = useCoupleData()
 
     const stats: Stat[] = useMemo(() => {
@@ -86,9 +86,9 @@ export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relation
     if (!currentStat) return null
 
     return (
-        <div
-            onClick={() => navigate("/stats")}
-            className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm transition-all hover:shadow-md cursor-pointer h-full"
+        <Link
+            to="/stats"
+            className="group block relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm transition-all hover:shadow-md cursor-pointer h-full"
         >
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -124,6 +124,6 @@ export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relation
                     {currentStat.icon}
                 </span>
             </div>
-        </div>
+        </Link>
     )
 })

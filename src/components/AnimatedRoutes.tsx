@@ -1,6 +1,6 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom"
 import { AnimatePresence } from "framer-motion"
-import { useEffect } from "react"
+
 import { useAuth } from "@/context/AuthContext"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import { PageTransition } from "@/components/PageTransition"
@@ -67,10 +67,7 @@ export default function AnimatedRoutes() {
     const location = useLocation();
     const { showTokenModal, handleCloseTokenModal } = useStreak();
 
-    // Scroll to top on route change
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, [location.pathname]);
+
 
     return (
         <>

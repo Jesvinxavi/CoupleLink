@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useJournalModals } from '../../context/JournalModalContext';
 
 import { PenLine, StickyNote } from "lucide-react";
 import { PostNoteModal } from './PostNoteModal';
@@ -14,7 +14,8 @@ const JOURNAL_PROMPTS = [
 ];
 
 export const QuickActionsTile = memo(function QuickActionsTile() {
-    const navigate = useNavigate();
+    // const navigate = useNavigate(); // Removed unused
+    const { openNewPost } = useJournalModals();
     const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
     const [prompt, setPrompt] = useState(JOURNAL_PROMPTS[0]);
 
@@ -25,8 +26,7 @@ export const QuickActionsTile = memo(function QuickActionsTile() {
     }, []);
 
     const handleJournalClick = () => {
-        // Navigate to journal page with query param to open new post modal
-        navigate('/journal?action=new_post');
+        openNewPost();
     };
 
     return (

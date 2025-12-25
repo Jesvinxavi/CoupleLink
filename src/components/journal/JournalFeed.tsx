@@ -8,9 +8,8 @@ import { Plus, Book, MapPin, Pencil, Search } from 'lucide-react';
 import { DateBadge } from '../ui/DateBadge';
 import { ImageCarousel } from '../ui/ImageCarousel';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ConfirmationModal } from '../ui/ConfirmationModal';
-import { CreateJournalOverlay } from './CreateJournalOverlay';
 import { UserAvatar } from '../ui/UserAvatar';
+import { useJournalModals } from '../../context/JournalModalContext';
 
 export interface JournalEntry {
     id: string;
@@ -36,16 +35,11 @@ const EMOJI_OPTIONS = ['❤️', '😂', '😮', '😢', '👏'];
 
 export function JournalFeed() {
     const { couple, currentUser } = useCoupleData();
+    const { openNewPost, openEditPost, journalVersion } = useJournalModals();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Form State
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
 
     // Reaction State
     const [longPressTimer, setLongPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -86,17 +80,7 @@ export function JournalFeed() {
 
     useEffect(() => {
         fetchEntries();
-    }, [couple]);
-
-    // Check for action=new_post in URL
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('action') === 'new_post') {
-            setIsDialogOpen(true);
-            // Clean up URL
-            window.history.replaceState({}, '', window.location.pathname);
-        }
-    }, []);
+    }, [couple, journalVersion]);
 
     // Close picker when clicking outside
     useEffect(() => {
@@ -113,117 +97,9 @@ export function JournalFeed() {
 
 
     const handleEdit = (entry: JournalEntry) => {
-        setEditingId(entry.id);
-        setIsDialogOpen(true);
-    };
-
-    const resetForm = () => {
-        setEditingId(null);
-        setIsDialogOpen(false);
-    };
-
-    const handleSaveEntry = async (data: { title: string; location: string; date: string; text: string; selectedFiles: File[]; existingMediaUrls: string[] }) => {
-        const { title, location, date, text, selectedFiles, existingMediaUrls } = data;
-
-        if (!text.trim() || !title.trim() || !date) return;
-        if (!couple) return;
-
-        setIsSubmitting(true);
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No user');
-
-            let uploadedUrls: string[] = [];
-
-            // Upload new images
-            if (selectedFiles.length > 0) {
-                for (const file of selectedFiles) {
-                    const fileExt = file.name.split('.').pop();
-                    const fileName = `${Math.random()}.${fileExt}`;
-                    const filePath = `${couple.id}/${fileName}`;
-
-                    const { error: uploadError } = await supabase.storage
-                        .from('memories')
-                        .upload(filePath, file);
-
-                    if (uploadError) throw uploadError;
-
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('memories')
-                        .getPublicUrl(filePath);
-
-                    uploadedUrls.push(publicUrl);
-                }
-            }
-
-            const finalMediaUrls = [...existingMediaUrls, ...uploadedUrls];
-
-            if (editingId) {
-                // Update existing entry
-                const { error } = await supabase
-                    .from('memories')
-                    .update({
-                        caption: text,
-                        title: title || null,
-                        location: location || null,
-                        media_urls: finalMediaUrls.length > 0 ? finalMediaUrls : null,
-                        created_at: new Date(date).toISOString()
-                    })
-                    .eq('id', editingId);
-
-                if (error) throw error;
-            } else {
-                // Insert new entry
-                const { error } = await supabase
-                    .from('memories')
-                    .insert({
-                        couple_id: couple.id,
-                        uploader_id: user.id,
-                        type: 'journal',
-                        caption: text,
-                        title: title || null,
-                        location: location || null,
-                        media_urls: finalMediaUrls.length > 0 ? finalMediaUrls : null,
-                        created_at: new Date(date).toISOString()
-                    });
-
-                if (error) throw error;
-            }
-
-            resetForm();
-            fetchEntries();
-
-        } catch (err) {
-            console.error('Error saving post:', err);
-            alert('Failed to save post. Please try again.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-
-
-    const handleDelete = async () => {
-        if (!editingId || !couple) return;
-
-        setIsDeleting(true);
-        try {
-            const { error } = await supabase
-                .from('memories')
-                .delete()
-                .eq('id', editingId);
-
-            if (error) throw error;
-
-            setIsDeleteAlertOpen(false);
-            resetForm();
-            fetchEntries();
-        } catch (err) {
-            console.error('Error deleting post:', err);
-            alert('Failed to delete post. Please try again.');
-        } finally {
-            setIsDeleting(false);
-        }
+        openEditPost(entry);
+        setShowReactionPicker(null);
+        setShowAllEmojis(false);
     };
 
     const handleTouchStart = (entryId: string) => {
@@ -316,49 +192,12 @@ export function JournalFeed() {
                 <Button
                     className="bg-rose-500 hover:bg-rose-600 text-white gap-2"
                     onClick={() => {
-                        resetForm();
-                        setIsDialogOpen(true);
+                        openNewPost();
                     }}
                 >
                     <Plus className="w-4 h-4" />
                     New Post
                 </Button>
-
-                <CreateJournalOverlay
-                    isOpen={isDialogOpen}
-                    onClose={() => setIsDialogOpen(false)}
-                    onSubmit={async (data) => {
-                        // Map internal form data to state
-                        // Ideally we refactor handle submit to accept args, 
-                        // but sticking to state updates to minimize code changes rapidly
-
-                        // We need to set state and then call submit, BUT handleSubmit uses state.
-                        // Better to refactor handleSubmit to accept data, or update state here and rely on logic?
-                        // Let's refactor handleSubmit to optionally accept data or use state?
-                        // Actually, 'CreateJournalOverlay' handles the UI, but we need to pass the "execute" logic.
-
-                        // Let's modify handleSubmit to generic function that takes values
-                        await handleSaveEntry(data);
-                    }}
-                    onDelete={handleDelete}
-                    initialEntry={editingId ? entries.find(e => e.id === editingId) : null}
-                    isSubmitting={isSubmitting}
-                    isDeleting={isDeleting}
-                />
-
-
-
-                {/* Delete Confirmation Dialog */}
-                <ConfirmationModal
-                    isOpen={isDeleteAlertOpen}
-                    onClose={() => setIsDeleteAlertOpen(false)}
-                    onConfirm={handleDelete}
-                    title="Delete Post?"
-                    description="Are you sure you want to delete this memory? This action cannot be undone."
-                    variant="destructive"
-                    confirmText="Delete"
-                    loading={isDeleting}
-                />
             </div>
 
             {/* Feed */}

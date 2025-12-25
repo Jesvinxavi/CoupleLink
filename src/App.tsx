@@ -6,6 +6,7 @@ import { ChallengeModalProvider } from "@/context/ChallengeModalContext"
 import { GameSessionProvider } from "@/context/GameSessionContext"
 import { FantasyBucketListProvider } from "@/context/FantasyBucketListContext"
 import { CouponsProvider } from "@/context/CouponsContext"
+import { JournalModalProvider } from "@/context/JournalModalContext"
 import AnimatedRoutes from "@/components/AnimatedRoutes"
 import { NotificationListener } from "@/components/NotificationListener"
 import { GlobalCouponListener } from "@/components/GlobalCouponListener"
@@ -24,11 +25,13 @@ function App() {
                 <GameSessionProvider>
                   <GlobalModalQueueProvider>
                     <SexplorationModalProvider>
-                      <ChallengeModalProvider>
-                        <NotificationListener />
-                        <GlobalCouponListener />
-                        <AnimatedRoutes />
-                      </ChallengeModalProvider>
+                      <JournalModalProvider>
+                        <ChallengeModalProvider>
+                          <NotificationListener />
+                          <GlobalCouponListener />
+                          <AnimatedRoutes />
+                        </ChallengeModalProvider>
+                      </JournalModalProvider>
                     </SexplorationModalProvider>
                   </GlobalModalQueueProvider>
                 </GameSessionProvider>
