@@ -98,7 +98,7 @@ export default function DateNightPage() {
         {
             title: "The Louvre",
             description: "Explore the world's largest art museum and a historic monument in Paris, France. See the Mona Lisa and the Venus de Milo.",
-            imageUrl: "https://images.unsplash.com/photo-1499856871940-a09627c6dcf6?auto=format&fit=crop&q=80&w=800",
+            imageUrl: "https://images.unsplash.com/photo-1655573293252-740f354a6756?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
             duration: "1-2 Hours",
             link: "https://www.louvre.fr/en/online-tours",
             buttonText: "Visit Museum"
@@ -141,7 +141,7 @@ export default function DateNightPage() {
         {
             title: "Homemade Pasta",
             description: "Learn to make fresh pasta from scratch. A fun, hands-on activity that ends with a delicious meal.",
-            imageUrl: "https://images.unsplash.com/photo-1556910103-1c02745a30bf?auto=format&fit=crop&q=80&w=800",
+            imageUrl: "https://images.unsplash.com/photo-1611270629569-8b357cb88da9?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
             duration: "1.5 Hours",
             cost: "$$",
             link: "https://www.youtube.com/results?search_query=romantic+pasta+dinner+for+two",
@@ -171,7 +171,7 @@ export default function DateNightPage() {
         {
             title: "Virtual Museum Tour",
             description: "Walk through world-class museums together and discuss art from the comfort of your sofa.",
-            imageUrl: "https://images.unsplash.com/photo-1565060169194-1372607d7923?auto=format&fit=crop&q=80&w=800",
+            imageUrl: "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?q=80&w=1160&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
             duration: "1-2 Hours",
             cost: "Free",
             categories: ["Culture", "Chill", "Long Distance"],
@@ -183,7 +183,7 @@ export default function DateNightPage() {
         {
             title: "Cook-Along Dinner",
             description: "Pick a recipe, buy the ingredients, and cook 'together' over video call.",
-            imageUrl: "https://images.unsplash.com/photo-1556910103-1c02745a30bf?auto=format&fit=crop&q=80&w=800",
+            imageUrl: "https://images.unsplash.com/photo-1507048331197-7d4ac70811cf?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
             duration: "2 Hours",
             cost: "$$",
             categories: ["Food", "Active", "Long Distance"],
@@ -215,7 +215,7 @@ export default function DateNightPage() {
         {
             title: "Virtual Escape Room",
             description: "Solve puzzles and riddles together to escape before time runs out!",
-            imageUrl: "https://images.unsplash.com/photo-1511882150382-421056c89033?auto=format&fit=crop&q=80&w=800",
+            imageUrl: "https://plus.unsplash.com/premium_photo-1692063696055-5f8df260b7c1?q=80&w=1032&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
             duration: "1-1.5 Hours",
             cost: "$$",
             categories: ["Adventure", "Active", "Long Distance"],
