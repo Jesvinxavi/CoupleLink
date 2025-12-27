@@ -68,13 +68,13 @@ export function ChallengeSummaryTile() {
         <div
             className="col-span-12 md:col-span-4 h-full bg-white rounded-3xl p-4 shadow-sm border border-gray-100 transition-all relative overflow-hidden group"
         >
-            <div 
+            <div
                 onClick={() => navigate('/challenges')}
                 className="flex items-center justify-between mb-3 cursor-pointer"
             >
                 <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-rose-500">emoji_events</span>
-                    <h3 className="font-bold text-heading-dark">Challenges</h3>
+                    <span className="material-symbols-outlined text-rose-500 text-xl">emoji_events</span>
+                    <h3 className="text-lg font-bold text-heading-dark">Challenges</h3>
                 </div>
                 <span className="material-symbols-outlined text-gray-400 group-hover:text-rose-500 transition-colors">arrow_forward</span>
             </div>

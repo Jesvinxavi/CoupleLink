@@ -6,7 +6,7 @@ interface StreakStatsTileProps {
 export function StreakStatsTile({ currentStreak, longestStreak }: StreakStatsTileProps) {
 
     return (
-        <div className="rounded-2xl bg-white p-6 shadow-sm h-full flex flex-col justify-between">
+        <div className="rounded-2xl bg-white p-4 shadow-sm h-full flex flex-col justify-between">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-4xl text-[#EA2831]">

@@ -84,7 +84,7 @@ export function MilestoneTrackerTile() {
 
     return (
         <>
-            <div className="rounded-2xl bg-white p-5 shadow-sm h-full">
+            <div className="rounded-2xl bg-white p-4 shadow-sm h-full">
                 <div className={`flex items-center justify-between ${events.length > 0 ? 'mb-4' : 'mb-2'}`}>
                     <h3 className="text-lg font-bold text-heading-dark flex items-center gap-2">
                         <Flag className="w-5 h-5 text-rose-500" />

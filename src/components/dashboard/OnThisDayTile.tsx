@@ -286,7 +286,7 @@ export function OnThisDayTile() {
 
     if (loading) {
         return (
-            <div className="h-full min-h-[180px] rounded-2xl bg-white p-6 shadow-sm flex items-center justify-center">
+            <div className="rounded-2xl bg-white p-6 shadow-sm flex items-center justify-center">
                 <Loader2 className="w-6 h-6 animate-spin text-rose-500" />
             </div>
         );
@@ -298,7 +298,7 @@ export function OnThisDayTile() {
         // Let's show a placeholder encouraging action.
         return (
             <div
-                className="group relative h-full min-h-[180px] overflow-hidden rounded-2xl bg-gradient-to-br from-rose-50 to-white p-6 shadow-sm flex flex-col justify-center items-center text-center"
+                className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-50 to-white p-6 shadow-sm flex flex-col justify-center items-center text-center"
             >
                 <div className="mb-3 rounded-full bg-white p-3 shadow-sm">
                     <Calendar className="w-6 h-6 text-rose-500" />
@@ -315,16 +315,17 @@ export function OnThisDayTile() {
     };
 
     const getIcon = () => {
+        const iconClasses = "w-5 h-5 text-rose-500";
         switch (item.type) {
-            case 'photo': return <ImageIcon className="w-5 h-5 text-blue-500" />;
-            case 'journal': return <Quote className="w-5 h-5 text-amber-500" />;
-            case 'challenge': return <HelpCircle className="w-5 h-5 text-purple-500" />;
-            case 'position': return <Heart className="w-5 h-5 text-rose-500" />;
-            case 'fantasy': return <Sparkles className="w-5 h-5 text-amber-500" />;
-            case 'voucher': return <Ticket className="w-5 h-5 text-pink-500" />;
-            case 'sticky_note': return <StickyNote className="w-5 h-5 text-yellow-600" />;
-            case 'event': return <CalendarDays className="w-5 h-5 text-indigo-500" />;
-            default: return <Calendar className="w-5 h-5 text-rose-500" />;
+            case 'photo': return <ImageIcon className={iconClasses} />;
+            case 'journal': return <Quote className={iconClasses} />;
+            case 'challenge': return <HelpCircle className={iconClasses} />;
+            case 'position': return <Heart className={iconClasses} />;
+            case 'fantasy': return <Sparkles className={iconClasses} />;
+            case 'voucher': return <Ticket className={iconClasses} />;
+            case 'sticky_note': return <StickyNote className={iconClasses} />;
+            case 'event': return <CalendarDays className={iconClasses} />;
+            default: return <Calendar className={iconClasses} />;
         }
     };
 
@@ -374,8 +375,9 @@ export function OnThisDayTile() {
     return (
         <>
             <motion.div
+                layoutId={`memory-${item.id}`}
                 onClick={() => setIsExpanded(true)}
-                className="group relative h-full min-h-[180px] overflow-hidden rounded-2xl bg-white shadow-sm cursor-pointer flex flex-col"
+                className="group relative overflow-hidden rounded-2xl bg-white shadow-sm border border-gray-100 transition-all hover:shadow-md cursor-pointer flex flex-col"
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
@@ -391,27 +393,29 @@ export function OnThisDayTile() {
                     </div>
                 )}
 
-                <div className="relative z-10 flex flex-col h-full p-6">
+                <div className="relative z-10 flex flex-col p-4">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-1">
-                        <div className={`flex items-center gap-1 ${item.type === 'photo' ? 'text-white' : ''}`}>
-                            <div className={`rounded-full p-1.5 ${item.type === 'photo' ? 'bg-white/20 backdrop-blur-sm' : 'bg-gray-100'}`}>
-                                {getIcon()}
-                            </div>
-                            <span className={`text-xs font-bold uppercase tracking-wider ${item.type === 'photo' ? 'text-white/90' : 'text-body-soft'}`}>
-                                {getLabel()}
-                            </span>
-                            {getCategoryBadge()}
+                    <div className="flex items-start gap-2 mb-3">
+                        <div className={`shrink-0 ${item.type === 'photo' ? 'p-1.5 rounded-full bg-white/20 backdrop-blur-sm' : 'mt-1'}`}>
+                            {getIcon()}
                         </div>
-                        <span className={`text-xs font-medium ${item.type === 'photo' ? 'text-white/80' : 'text-body-soft'}`}>
-                            {formatDate(item.created_at)}
-                        </span>
+                        <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                                <h3 className={`text-lg font-bold ${item.type === 'photo' ? 'text-white' : 'text-heading-dark'}`}>
+                                    {getLabel()}
+                                </h3>
+                                {getCategoryBadge()}
+                            </div>
+                            <p className={`text-xs ${item.type === 'photo' ? 'text-white/80' : 'text-body-soft'}`}>
+                                {formatDate(item.created_at)}
+                            </p>
+                        </div>
                     </div>
 
                     {/* Content Preview */}
-                    <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex flex-col justify-start">
                         {item.type === 'photo' ? (
-                            <div className="mt-auto space-y-2">
+                            <div className="space-y-0.5">
                                 {/* Show type badge if no cover image */}
                                 {item.title && !coverImage && (
                                     <h4 className="font-bold text-heading-dark text-base line-clamp-1">
@@ -428,7 +432,7 @@ export function OnThisDayTile() {
                                 )}
                             </div>
                         ) : item.type === 'journal' ? (
-                            <div className="space-y-2">
+                            <div className="space-y-0.5">
                                 {item.title && (
                                     <h4 className="font-bold text-heading-dark text-base line-clamp-1">
                                         {item.title}
@@ -441,7 +445,7 @@ export function OnThisDayTile() {
                                 )}
                             </div>
                         ) : item.type === 'challenge' ? (
-                            <div className="space-y-2">
+                            <div className="space-y-0.5">
                                 {/* Challenge Title */}
                                 <h4 className="font-bold text-heading-dark text-base line-clamp-2">
                                     {item.title || item.activity_question || 'Challenge'}
@@ -466,7 +470,7 @@ export function OnThisDayTile() {
                                 )}
                             </div>
                         ) : item.type === 'position' ? (
-                            <div className="space-y-2">
+                            <div className="space-y-0.5">
                                 <div className="flex items-center gap-3">
                                     {position && <PositionSVG position={position} size="sm" />}
                                     <div>
@@ -482,11 +486,11 @@ export function OnThisDayTile() {
                             </div>
                         ) : item.type === 'fantasy' ? (
                             // Completed fantasy style - amber to match fantasy pill
-                            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
-                                <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-medium">
+                            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                                <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-medium text-sm">
                                     {item.title}
                                 </p>
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-[10px] text-gray-400 mt-0.5">
                                     Suggested by {getAuthorLabel(item.requester_id)}
                                 </p>
                             </div>
@@ -516,11 +520,11 @@ export function OnThisDayTile() {
                                 </div>
                             </div>
                         ) : item.type === 'sticky_note' ? (
-                            <div className="space-y-2">
-                                <p className="text-xs text-yellow-700 font-medium mb-1">
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-yellow-700 font-medium h-3">
                                     Note from {getAuthorLabel(item.uploader_id)}
                                 </p>
-                                <div className="bg-[#FEF9C3] p-4 rounded-lg shadow-sm border border-yellow-200/50 transform rotate-1 transition-transform group-hover:rotate-0">
+                                <div className="bg-[#FEF9C3] p-3 rounded-lg shadow-sm border border-yellow-200/50 transform rotate-1 transition-transform group-hover:rotate-0">
                                     <p className="text-yellow-900 font-handwriting text-lg leading-snug line-clamp-3">
                                         "{item.content}"
                                     </p>
@@ -529,7 +533,7 @@ export function OnThisDayTile() {
                         ) : item.type === 'event' ? (
                             // Event tile style from CalendarView - uses dynamic event_color
                             <div
-                                className="flex items-start gap-2 p-2 rounded-xl"
+                                className="flex items-start gap-2 p-1.5 rounded-xl"
                                 style={{ backgroundColor: `${item.event_color || '#e11d48'}26` }}
                             >
                                 <div
@@ -551,8 +555,8 @@ export function OnThisDayTile() {
                                         )}
                                     </div>
                                     {item.location && (
-                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            <MapPin className="w-3 h-3" />
+                                        <div className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400">
+                                            <MapPin className="w-2.5 h-2.5" />
                                             <span className="truncate">{item.location}</span>
                                         </div>
                                     )}
@@ -560,7 +564,7 @@ export function OnThisDayTile() {
                             </div>
                         ) : (
                             // Default/fallback for unknown types
-                            <div className="space-y-2">
+                            <div className="space-y-0.5">
                                 {item.title && (
                                     <h4 className="font-bold text-heading-dark text-base line-clamp-1">
                                         {item.title}
@@ -572,13 +576,11 @@ export function OnThisDayTile() {
                                     </p>
                                 )}
                                 {!item.title && !item.content && (
-                                    <p className="text-xs text-gray-400">A memory from the past</p>
+                                    <p className="text-[10px] text-gray-400">A memory from the past</p>
                                 )}
                             </div>
                         )}
                     </div>
-
-
                 </div>
             </motion.div>
 
@@ -602,26 +604,26 @@ export function OnThisDayTile() {
                                 className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden pointer-events-auto max-h-[85vh] flex flex-col"
                             >
                                 {/* Header Section - Always at top */}
-                                <div className="flex items-center justify-between p-6 border-b border-gray-50 shrink-0 bg-white">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-rose-100 p-2 rounded-full">
+                                <div className="flex items-start justify-between p-6 border-b border-gray-50 shrink-0 bg-white">
+                                    <div className="flex items-start gap-3">
+                                        <div className="shrink-0 mt-1">
                                             {getIcon()}
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <p className="text-xs font-bold uppercase tracking-wider text-rose-500">
+                                                <h3 className="text-lg font-bold text-heading-dark">
                                                     {getLabel()}
-                                                </p>
+                                                </h3>
                                                 {getCategoryBadge()}
                                             </div>
-                                            <p className="text-sm text-body-soft">
+                                            <p className="text-xs text-body-soft">
                                                 {formatDate(item.created_at)}
                                             </p>
                                         </div>
                                     </div>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-                                        className="bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full p-2 transition-colors"
+                                        className="bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full p-2 transition-colors mt-1"
                                     >
                                         <X className="w-5 h-5" />
                                     </button>

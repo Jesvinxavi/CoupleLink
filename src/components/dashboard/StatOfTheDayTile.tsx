@@ -88,23 +88,23 @@ export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relation
     return (
         <Link
             to="/stats"
-            className="group block relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm transition-all hover:shadow-md cursor-pointer h-full"
+            className="group block relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm transition-all hover:shadow-md cursor-pointer h-full"
         >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-xl text-body-soft">
+                    <span className="material-symbols-outlined text-rose-500 text-xl">
                         lightbulb
                     </span>
-                    <span className="text-xs font-medium text-body-soft uppercase tracking-wider">
+                    <h3 className="text-lg font-bold text-heading-dark">
                         Stat of the Week
-                    </span>
+                    </h3>
                 </div>
-                <span className="material-symbols-outlined text-gray-300 group-hover:text-rose-500 transition-colors">
+                <span className="material-symbols-outlined text-gray-400 group-hover:text-rose-500 transition-colors">
                     arrow_forward
                 </span>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-1">
                 <div className="flex items-center gap-3 mb-1">
                     <span className={`material-symbols-outlined text-2xl ${currentStat.color}`}>
                         {currentStat.icon}

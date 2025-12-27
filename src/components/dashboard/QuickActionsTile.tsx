@@ -41,7 +41,7 @@ export const QuickActionsTile = memo(function QuickActionsTile() {
                         <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mb-3 shadow-sm text-rose-500 group-hover:scale-110 transition-transform">
                             <PenLine className="w-4 h-4" />
                         </div>
-                        <h3 className="font-bold text-gray-900 group-hover:text-rose-700 transition-colors">Journal</h3>
+                        <h3 className="text-lg font-bold text-heading-dark group-hover:text-rose-700 transition-colors">Journal</h3>
                         <p className="text-xs text-gray-500 mt-1 group-hover:text-rose-600/80 transition-colors line-clamp-2">
                             Write about <span className="font-medium">{prompt}</span>...
                         </p>
@@ -60,7 +60,7 @@ export const QuickActionsTile = memo(function QuickActionsTile() {
                         <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mb-3 shadow-sm text-yellow-600 group-hover:scale-110 transition-transform">
                             <StickyNote className="w-4 h-4" />
                         </div>
-                        <h3 className="font-bold text-gray-900 group-hover:text-yellow-800 transition-colors">Post Note</h3>
+                        <h3 className="text-lg font-bold text-heading-dark group-hover:text-yellow-800 transition-colors">Post Note</h3>
                         <p className="text-xs text-gray-500 mt-1 group-hover:text-yellow-700/80 transition-colors">
                             Leave a sticky
                         </p>
