@@ -791,6 +791,45 @@ export type Database = {
       }
       use_rain_check: { Args: { p_couple_id: string }; Returns: boolean }
 
+      get_on_this_day_contents: {
+        Args: {
+          p_couple_id: string
+          p_month: number
+          p_day: number
+          p_timezone?: string
+        }
+        Returns: {
+          id: string
+          type: string
+          title: string | null
+          content: string | null
+          created_at: string
+          media_urls: string[] | null
+          location: string | null
+          uploader_id: string | null
+          extra_data: Json | null
+        }[]
+      }
+
+      get_random_throwback: {
+        Args: {
+          p_couple_id: string
+          p_seed: number
+          p_exclude_date?: string
+        }
+        Returns: {
+          id: string
+          type: string
+          title: string | null
+          content: string | null
+          created_at: string
+          media_urls: string[] | null
+          location: string | null
+          uploader_id: string | null
+          extra_data: Json | null
+        }[]
+      }
+
       check_existing_archive_for_pair: {
         Args: Record<string, never>
         Returns: {

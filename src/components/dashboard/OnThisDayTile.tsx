@@ -48,241 +48,121 @@ export function OnThisDayTile() {
                 const today = new Date();
                 const month = today.getMonth() + 1; // 1-12
                 const day = today.getDate(); // 1-31
+                const seed = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
 
-                // 1. Fetch Memories (Journal & Photos)
-                const { data: memories, error: memError } = await supabase
-                    .from('memories')
-                    .select('*')
-                    .eq('couple_id', couple.id);
 
-                if (memError) console.error('Error fetching memories:', memError);
 
-                // 2. Fetch User Answers (Challenges)
-                const { data: answers, error: ansError } = await supabase
-                    .from('user_answers')
-                    .select(`
-                        *,
-                        activity:activities(content)
-                    `)
-                    .eq('couple_id', couple.id);
-
-                if (ansError) console.error('Error fetching answers:', ansError);
-
-                // Process answers to group by activity/date - user-agnostic storage
-                const processedAnswers: MemoryItem[] = [];
-                const processedActivityIds = new Set<string>();
-
-                (answers || []).forEach((a: any) => {
-                    if (processedActivityIds.has(a.activity_id)) return;
-                    processedActivityIds.add(a.activity_id);
-
-                    // Store answers by couple position, not viewer-relative
-                    const userOneAnswer = answers?.find((ans: any) =>
-                        ans.activity_id === a.activity_id && ans.user_id === couple?.user_one_id
-                    );
-                    const userTwoAnswer = answers?.find((ans: any) =>
-                        ans.activity_id === a.activity_id && ans.user_id === couple?.user_two_id
-                    );
-
-                    processedAnswers.push({
-                        id: a.id,
-                        type: 'challenge',
-                        content: null,
-                        created_at: a.created_at,
-                        activity_question: a.activity?.content?.question || 'Daily Challenge',
-                        user_one_id: couple?.user_one_id,
-                        user_one_answer: userOneAnswer?.answer_text || null,
-                        user_two_id: couple?.user_two_id,
-                        user_two_answer: userTwoAnswer?.answer_text || null,
+                // 1. Try "On This Day" via RPC
+                const { data: onThisDayData, error: otdError } = await supabase
+                    .rpc('get_on_this_day_contents', {
+                        p_couple_id: couple.id,
+                        p_month: month,
+                        p_day: day,
+                        p_timezone: currentUser.timezone || 'UTC'
                     });
-                });
 
-                // 3. Fetch completed positions (with error handling)
-                let positionItems: MemoryItem[] = [];
-                try {
-                    const { data: positionsData, error: posError } = await (supabase as any)
-                        .from('completed_positions')
-                        .select('*')
-                        .eq('couple_id', couple.id);
+                if (otdError) throw otdError;
 
-                    if (posError) console.error('Error fetching positions:', posError);
+                // Type definition for RPC response item
+                type OnThisDayItem = {
+                    id: string;
+                    type: string;
+                    title: string | null;
+                    content: string | null;
+                    created_at: string;
+                    media_urls: string[] | null;
+                    location: string | null;
+                    uploader_id: string | null;
+                    extra_data: any; // Ideally strictly typed too, but mapped to generic Json in Supabase types
+                };
 
-                    positionItems = (positionsData || [])
-                        .filter((p: any) => p.completed_at) // Only include items with a date
-                        .map((p: any) => {
-                            const positionInfo = positions.find(pos => pos.id === p.position_id);
-                            return {
-                                id: p.id || p.position_id,
-                                type: 'position' as const,
-                                content: positionInfo?.description || null,
-                                title: positionInfo?.name || p.position_id,
-                                created_at: p.completed_at,
-                                category: positionInfo?.category
-                            };
+                let selectedItem: OnThisDayItem | null = null;
+                let isThrowbackItem = false;
+
+                if (onThisDayData && onThisDayData.length > 0) {
+                    // Pick random item from "On This Day" using consistent daily seed
+                    const index = seed % onThisDayData.length;
+                    selectedItem = onThisDayData[index];
+                    isThrowbackItem = false;
+                    isThrowbackItem = false;
+                } else {
+
+                    // 2. Fallback: "Throwback" via RPC
+                    // Use a 2-day seed for rotation
+                    const twoDaySeed = Math.floor(today.getTime() / (1000 * 60 * 60 * 24 * 2));
+                    // We need a float seed for the random function, normalize to 0-1
+                    // Using a simple hash of the seed to get 0-1
+                    const randomSeed = (Math.sin(twoDaySeed) + 1) / 2;
+
+                    const excludeDate = today.toISOString().split('T')[0];
+
+
+                    const { data: throwbackData, error: tbError } = await supabase
+                        .rpc('get_random_throwback', {
+                            p_couple_id: couple.id,
+                            p_seed: randomSeed,
+                            p_exclude_date: excludeDate
                         });
-                } catch (e) {
-                    console.error('Error processing positions:', e);
-                }
 
-                // 4. Fetch completed fantasies (with error handling)
-                let fantasyItems: MemoryItem[] = [];
-                try {
-                    const { data: fantasiesData, error: fantError } = await (supabase as any)
-                        .from('fantasy_bucket_list')
-                        .select('*')
-                        .eq('couple_id', couple.id)
-                        .eq('status', 'completed');
+                    if (tbError) throw tbError;
 
-                    if (fantError) console.error('Error fetching fantasies:', fantError);
 
-                    fantasyItems = (fantasiesData || [])
-                        .filter((f: any) => f.completed_at)
-                        .map((f: any) => ({
-                            id: f.id,
-                            type: 'fantasy' as const,
-                            content: null,
-                            title: f.fantasy_text,
-                            created_at: f.completed_at,
-                            requester_id: f.requester_id, // For attribution
-                        }));
-                } catch (e) {
-                    console.error('Error processing fantasies:', e);
-                }
 
-                // 5. Fetch redeemed vouchers (with error handling)
-                let voucherItems: MemoryItem[] = [];
-                try {
-                    const { data: vouchersData, error: vouchError } = await supabase
-                        .from('coupons')
-                        .select('*')
-                        .eq('couple_id', couple.id)
-                        .not('redeemed_at', 'is', null);
-
-                    if (vouchError) console.error('Error fetching vouchers:', vouchError);
-
-                    voucherItems = (vouchersData || [])
-                        .filter((v: any) => v.redeemed_at)
-                        .map((v: any) => ({
-                            id: v.id,
-                            type: 'voucher' as const,
-                            content: v.description,
-                            title: v.title,
-                            created_at: v.redeemed_at,
-                            assigned_to: v.assigned_to, // For attribution
-                        }));
-                } catch (e) {
-                    console.error('Error processing vouchers:', e);
-                }
-
-                // 6. Fetch past calendar events
-                let eventItems: MemoryItem[] = [];
-                try {
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const { data: eventsData, error: eventError } = await supabase
-                        .from('calendar_events')
-                        .select('*')
-                        .eq('couple_id', couple.id)
-                        .lt('event_date', todayStr);
-
-                    if (eventError) console.error('Error fetching events:', eventError);
-
-                    eventItems = (eventsData || [])
-                        .filter((e: any) => e.event_date)
-                        .map((e: any) => ({
-                            id: e.id,
-                            type: 'event' as const,
-                            content: e.description,
-                            title: e.title,
-                            location: e.location,
-                            created_at: e.event_date,
-                            category: e.category,
-                            event_color: e.color || '#e11d48', // Calendar event color
-                        }));
-                } catch (e) {
-                    console.error('Error processing events:', e);
-                }
-
-                // Normalize data - filter out items without valid dates
-                const allItems: MemoryItem[] = [
-                    ...(memories || []).map((m: any) => {
-                        // Handle different memory types
-                        if (m.type === 'challenge') {
-                            return {
-                                id: m.id,
-                                type: 'challenge' as const,
-                                content: m.caption,
-                                title: m.title,
-                                activity_question: m.caption || m.title,
-                                media_urls: m.media_urls || (m.media_url ? [m.media_url] : []),
-                                created_at: m.created_at,
-                                uploader_id: m.uploader_id,
-                            };
-                        }
-                        return {
-                            id: m.id,
-                            type: (['journal', 'photo', 'sticky_note'].includes(m.type) ? m.type : 'photo') as 'journal' | 'photo' | 'sticky_note',
-                            content: m.caption,
-                            title: m.title,
-                            media_urls: m.media_urls || (m.media_url ? [m.media_url] : []),
-                            location: m.location,
-                            created_at: m.created_at,
-                            uploader_id: m.uploader_id, // For attribution
-                        };
-                    }),
-                    ...processedAnswers,
-                    ...positionItems,
-                    ...fantasyItems,
-                    ...voucherItems,
-                    ...eventItems,
-                ].filter(item => item.created_at); // Only include items with valid dates
-
-                // Filter for "On This Day" (same month/day, different year)
-                const onThisDayItems = allItems.filter(item => {
-                    const itemDate = new Date(item.created_at);
-                    return (
-                        itemDate.getMonth() + 1 === month &&
-                        itemDate.getDate() === day &&
-                        itemDate.getFullYear() !== today.getFullYear()
-                    );
-                });
-
-                if (onThisDayItems.length > 0) {
-                    // Pick random item from "On This Day"
-                    // Use date-based seed to keep it consistent for the day
-                    const seed = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
-                    const index = seed % onThisDayItems.length;
-                    setItem(onThisDayItems[index]);
-                    setIsThrowback(false);
-                } else if (allItems.length > 0) {
-                    // Fallback: Pick random "Throwback" from all past items
-                    // Filter out items from today
-                    const pastItems = allItems.filter(item => {
-                        const itemDate = new Date(item.created_at);
-                        return itemDate.toDateString() !== today.toDateString();
-                    });
-
-                    if (pastItems.length > 0) {
-                        // Rotate every 2 days
-                        const twoDaySeed = Math.floor(today.getTime() / (1000 * 60 * 60 * 24 * 2));
-                        const index = twoDaySeed % pastItems.length;
-                        setItem(pastItems[index]);
-                        setIsThrowback(true);
-                    } else {
-                        setItem(null);
+                    if (throwbackData && throwbackData.length > 0) {
+                        selectedItem = throwbackData[0];
+                        isThrowbackItem = true;
                     }
+                }
+
+
+
+                if (selectedItem) {
+                    // Transform RPC result to MemoryItem
+                    // Challenges need answer mapping
+                    let challengeAnswers: any = {};
+                    if (selectedItem.type === 'challenge' && selectedItem.extra_data?.answers) {
+                        const answers = selectedItem.extra_data.answers as any[];
+                        const userOne = answers.find((a: any) => a.user_id === couple.user_one_id);
+                        const userTwo = answers.find((a: any) => a.user_id === couple.user_two_id);
+                        challengeAnswers = {
+                            user_one_id: couple.user_one_id,
+                            user_one_answer: userOne?.answer,
+                            user_two_id: couple.user_two_id,
+                            user_two_answer: userTwo?.answer
+                        };
+                    }
+
+                    setItem({
+                        id: selectedItem.id,
+                        type: selectedItem.type as any,
+                        content: selectedItem.content,
+                        title: selectedItem.title,
+                        media_urls: selectedItem.media_urls,
+                        location: selectedItem.location,
+                        created_at: selectedItem.created_at,
+                        uploader_id: selectedItem.uploader_id,
+                        requester_id: selectedItem.uploader_id, // For fantasy (requester_id mapped to uploader_id in RPC)
+                        assigned_to: selectedItem.extra_data?.assigned_to,
+                        category: selectedItem.extra_data?.category,
+                        event_color: selectedItem.extra_data?.event_color,
+                        activity_question: selectedItem.extra_data?.activity_question,
+                        ...challengeAnswers
+                    });
+                    setIsThrowback(isThrowbackItem);
                 } else {
                     setItem(null);
                 }
 
             } catch (err) {
                 console.error('Error fetching On This Day:', err);
+                setItem(null);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchOnThisDay();
-    }, [couple?.id, currentUser?.id]);
+    }, [couple?.id, currentUser?.id, currentUser?.timezone]);
 
     if (loading) {
         return (
@@ -537,12 +417,15 @@ export function OnThisDayTile() {
                             </div>
                         ) : item.type === 'event' ? (
                             // Event tile style from CalendarView - uses dynamic event_color
-                            <div
-                                className="flex items-start gap-2 px-1.5 py-2.5 rounded-xl self-center min-w-[240px] w-fit"
-                                style={{ backgroundColor: `${item.event_color || '#e11d48'}26` }}
-                            >
+                            <div className="relative flex items-start gap-2 px-1.5 py-2.5 rounded-xl self-center min-w-[240px] w-fit overflow-hidden">
+                                {/* Background with opacity for robust color handling */}
                                 <div
-                                    className="w-1 self-stretch rounded-full flex-shrink-0"
+                                    className="absolute inset-0 opacity-15"
+                                    style={{ backgroundColor: item.event_color || '#e11d48' }}
+                                />
+
+                                <div
+                                    className="relative w-1 self-stretch rounded-full flex-shrink-0"
                                     style={{ backgroundColor: item.event_color || '#e11d48' }}
                                 />
                                 <div className="flex-1 min-w-0">
