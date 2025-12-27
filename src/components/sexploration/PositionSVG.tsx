@@ -2,7 +2,7 @@ import type { Position } from '../../data/positionsData';
 
 interface PositionSVGProps {
     position: Position;
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'xs' | 'sm' | 'md' | 'lg';
     className?: string;
 }
 
@@ -138,7 +138,8 @@ const categoryDefaults: Record<string, { figure1: string; figure2: string }> = {
 };
 
 export function PositionSVG({ position, size = 'md', className = '' }: PositionSVGProps) {
-    const sizeMap = {
+    const sizeMap: Record<string, any> = {
+        xs: { width: 32, height: 32, strokeWidth: 1.5 },
         sm: { width: 40, height: 40, strokeWidth: 2 },
         md: { width: 56, height: 56, strokeWidth: 2.5 },
         lg: { width: 96, height: 96, strokeWidth: 3 },

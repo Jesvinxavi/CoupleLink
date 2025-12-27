@@ -395,27 +395,32 @@ export function OnThisDayTile() {
 
                 <div className="relative z-10 flex flex-col p-4">
                     {/* Header */}
-                    <div className="flex items-start gap-2 mb-3">
-                        <div className={`shrink-0 ${item.type === 'photo' ? 'p-1.5 rounded-full bg-white/20 backdrop-blur-sm' : 'mt-1'}`}>
-                            {getIcon()}
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-2">
-                                <h3 className={`text-lg font-bold ${item.type === 'photo' ? 'text-white' : 'text-heading-dark'}`}>
-                                    {getLabel()}
-                                </h3>
-                                {getCategoryBadge()}
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start gap-2">
+                            <div className={`shrink-0 ${item.type === 'photo' ? 'p-1.5 rounded-full bg-white/20 backdrop-blur-sm' : 'mt-1'}`}>
+                                {getIcon()}
                             </div>
-                            <p className={`text-xs ${item.type === 'photo' ? 'text-white/80' : 'text-body-soft'}`}>
-                                {formatDate(item.created_at)}
-                            </p>
+                            <div className="flex flex-col min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h3 className={`text-lg font-bold ${item.type === 'photo' ? 'text-white' : 'text-heading-dark'}`}>
+                                        {getLabel()}
+                                    </h3>
+                                    {getCategoryBadge()}
+                                </div>
+                                <p className={`text-xs -mt-0.5 ${item.type === 'photo' ? 'text-white/80' : 'text-body-soft'}`}>
+                                    {formatDate(item.created_at)}
+                                </p>
+                            </div>
                         </div>
+                        <span className={`material-symbols-outlined transition-colors ${item.type === 'photo' ? 'text-white/60 group-hover:text-white' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                            arrow_forward
+                        </span>
                     </div>
 
                     {/* Content Preview */}
-                    <div className="flex flex-col justify-start">
+                    <div className={`flex flex-col ${item.type === 'photo' && coverImage ? 'flex-1 min-h-[140px] justify-end' : 'justify-start'}`}>
                         {item.type === 'photo' ? (
-                            <div className="space-y-0.5">
+                            <div className={`space-y-1 ${coverImage ? 'mt-auto' : ''}`}>
                                 {/* Show type badge if no cover image */}
                                 {item.title && !coverImage && (
                                     <h4 className="font-bold text-heading-dark text-base line-clamp-1">
@@ -423,7 +428,7 @@ export function OnThisDayTile() {
                                     </h4>
                                 )}
                                 {item.content && (
-                                    <p className={`font-medium line-clamp-2 leading-snug ${coverImage ? 'text-white text-lg' : 'text-body-soft text-sm'}`}>
+                                    <p className={`font-medium line-clamp-2 leading-snug ${coverImage ? 'text-white text-lg drop-shadow-sm' : 'text-body-soft text-base'}`}>
                                         {coverImage ? `"${item.content}"` : item.content}
                                     </p>
                                 )}
@@ -432,20 +437,20 @@ export function OnThisDayTile() {
                                 )}
                             </div>
                         ) : item.type === 'journal' ? (
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                                 {item.title && (
                                     <h4 className="font-bold text-heading-dark text-base line-clamp-1">
                                         {item.title}
                                     </h4>
                                 )}
                                 {item.content && (
-                                    <p className="text-body-soft text-sm line-clamp-2">
+                                    <p className="text-body-soft text-base line-clamp-2">
                                         {item.content}
                                     </p>
                                 )}
                             </div>
                         ) : item.type === 'challenge' ? (
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                                 {/* Challenge Title */}
                                 <h4 className="font-bold text-heading-dark text-base line-clamp-2">
                                     {item.title || item.activity_question || 'Challenge'}
@@ -455,26 +460,26 @@ export function OnThisDayTile() {
                                 {hasAnswers ? (
                                     <div className="space-y-1">
                                         {myAnswer && (
-                                            <p className="text-body-soft text-sm line-clamp-1 italic">
+                                            <p className="text-body-soft text-base line-clamp-1 italic">
                                                 You: "{myAnswer}"
                                             </p>
                                         )}
                                         {partnerAnswerText && (
-                                            <p className="text-body-soft text-sm line-clamp-1 italic">
+                                            <p className="text-body-soft text-base line-clamp-1 italic">
                                                 {partner?.first_name || 'Partner'}: "{partnerAnswerText}"
                                             </p>
                                         )}
                                     </div>
                                 ) : (
-                                    <p className="text-xs text-green-600 font-medium">Challenge Completed ✓</p>
+                                    <p className="text-sm text-green-600 font-medium">Challenge Completed ✓</p>
                                 )}
                             </div>
                         ) : item.type === 'position' ? (
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                                 <div className="flex items-center gap-3">
                                     {position && <PositionSVG position={position} size="sm" />}
                                     <div>
-                                        <h4 className="font-bold text-heading-dark text-lg line-clamp-1">
+                                        <h4 className="font-bold text-heading-dark text-base line-clamp-1">
                                             {item.title}
                                         </h4>
                                         {item.category && (
@@ -486,11 +491,11 @@ export function OnThisDayTile() {
                             </div>
                         ) : item.type === 'fantasy' ? (
                             // Completed fantasy style - amber to match fantasy pill
-                            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
-                                <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-medium text-sm">
+                            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 space-y-1">
+                                <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-bold text-base">
                                     {item.title}
                                 </p>
-                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                <p className="text-[10px] text-gray-400">
                                     Suggested by {getAuthorLabel(item.requester_id)}
                                 </p>
                             </div>
@@ -505,7 +510,7 @@ export function OnThisDayTile() {
                                 </div>
                                 {/* Main Body */}
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pt-5 px-4">
-                                    <h3 className="text-sm leading-tight text-[#FF1744] text-center line-clamp-1" style={{ fontFamily: "'Shrikhand', cursive" }}>
+                                    <h3 className="text-base leading-tight text-[#FF1744] text-center line-clamp-1" style={{ fontFamily: "'Shrikhand', cursive" }}>
                                         {item.title || "COUPON"}
                                     </h3>
                                     <p className="text-[8px] text-[#FF1744] font-bold uppercase tracking-wide line-clamp-1 mt-1">
@@ -525,7 +530,7 @@ export function OnThisDayTile() {
                                     Note from {getAuthorLabel(item.uploader_id)}
                                 </p>
                                 <div className="bg-[#FEF9C3] p-3 rounded-lg shadow-sm border border-yellow-200/50 transform rotate-1 transition-transform group-hover:rotate-0">
-                                    <p className="text-yellow-900 font-handwriting text-lg leading-snug line-clamp-3">
+                                    <p className="text-yellow-900 font-handwriting text-base leading-snug line-clamp-3">
                                         "{item.content}"
                                     </p>
                                 </div>
@@ -533,7 +538,7 @@ export function OnThisDayTile() {
                         ) : item.type === 'event' ? (
                             // Event tile style from CalendarView - uses dynamic event_color
                             <div
-                                className="flex items-start gap-2 p-1.5 rounded-xl"
+                                className="flex items-start gap-2 px-1.5 py-2.5 rounded-xl self-center min-w-[240px] w-fit"
                                 style={{ backgroundColor: `${item.event_color || '#e11d48'}26` }}
                             >
                                 <div
@@ -564,14 +569,14 @@ export function OnThisDayTile() {
                             </div>
                         ) : (
                             // Default/fallback for unknown types
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                                 {item.title && (
                                     <h4 className="font-bold text-heading-dark text-base line-clamp-1">
                                         {item.title}
                                     </h4>
                                 )}
                                 {item.content && (
-                                    <p className="text-body-soft text-sm line-clamp-2">
+                                    <p className="text-body-soft text-base line-clamp-2">
                                         {item.content}
                                     </p>
                                 )}
@@ -616,7 +621,7 @@ export function OnThisDayTile() {
                                                 </h3>
                                                 {getCategoryBadge()}
                                             </div>
-                                            <p className="text-xs text-body-soft">
+                                            <p className="text-xs text-body-soft -mt-0.5">
                                                 {formatDate(item.created_at)}
                                             </p>
                                         </div>

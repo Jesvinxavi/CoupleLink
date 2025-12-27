@@ -13,32 +13,40 @@ export function ChallengeSummaryTile() {
     const { userAnswer, partnerAnswer } = useDailyChallenge(couple?.id ?? null);
 
     // Challenges Status
-    const { dailyStatus, weeklyStatus, monthlyStatus } = useChallenges();
+
+    // Timers
+    const { dailyTimeLeft, weeklyTimeLeft, monthlyTimeLeft, dailyStatus, weeklyStatus, monthlyStatus } = useChallenges();
+
+    // Local timer for Today's Q (same as daily deadline - Midnight UTC)
+    // We can just reuse dailyTimeLeft since they share the same deadline (Midnight)
+    // But for completeness/independence involving formats, let's just use dailyTimeLeft for now as they are synced.
 
     // Helper to determine status color and label
-    const getStatus = (type: 'todays_question' | 'daily' | 'weekly' | 'monthly') => {
-        let isCompleted = false;
-        let isWaiting = false;
+    const getStatusStyle = (type: 'todays_question' | 'daily' | 'weekly' | 'monthly') => {
+        let status: 'completed' | 'waiting' | 'skipped' | 'incomplete' = 'incomplete';
 
         if (type === 'todays_question') {
             const hasUserAnswered = !!userAnswer;
             const hasPartnerAnswered = !!partnerAnswer;
 
-            if (hasUserAnswered && hasPartnerAnswered) isCompleted = true;
-            else if (hasUserAnswered && !hasPartnerAnswered) isWaiting = true;
-            // else incomplete (red)
+            if (hasUserAnswered && hasPartnerAnswered) status = 'completed';
+            else if (hasUserAnswered && !hasPartnerAnswered) status = 'waiting';
+            // else incomplete
         } else {
-            // mapping from useChallenges status
-            const status = type === 'daily' ? dailyStatus :
+            const challengeStatus = type === 'daily' ? dailyStatus :
                 type === 'weekly' ? weeklyStatus : monthlyStatus;
 
-            if (status === 'completed' || status === 'skipped') isCompleted = true; // Treating skipped as "done" for summary? User said "green for complete". Skipped usually implies done for now.
-            else if (status === 'waiting_for_partner' || status === 'pending_agreement') isWaiting = true;
+            if (challengeStatus === 'completed') status = 'completed';
+            else if (challengeStatus === 'skipped') status = 'skipped';
+            else if (challengeStatus === 'waiting_for_partner' || challengeStatus === 'pending_agreement') status = 'waiting';
         }
 
-        if (isCompleted) return 'bg-green-100 text-green-700 border-green-200';
-        if (isWaiting) return 'bg-amber-100 text-amber-700 border-amber-200';
-        return 'bg-red-50 text-red-700 border-red-200'; // Default/Incomplete
+        switch (status) {
+            case 'completed': return 'bg-green-100 text-green-700 border-green-200';
+            case 'waiting': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'skipped': return 'bg-gray-50 text-gray-400 border-gray-100';
+            default: return 'bg-red-50 text-red-700 border-red-200';
+        }
     };
 
     const StatusBox = ({ title, type }: { title: string, type: 'todays_question' | 'daily' | 'weekly' | 'monthly' }) => {
@@ -54,12 +62,29 @@ export function ChallengeSummaryTile() {
             }
         };
 
+        const style = getStatusStyle(type);
+        const isCompletedOrSkipped = style.includes('bg-green') || style.includes('bg-gray');
+
+        let timer = null;
+        if (!isCompletedOrSkipped) {
+            if (type === 'todays_question' || type === 'daily') timer = dailyTimeLeft;
+            else if (type === 'weekly') timer = weeklyTimeLeft;
+            else if (type === 'monthly') timer = monthlyTimeLeft;
+        }
+
         return (
             <div
                 onClick={handleClick}
-                className={`flex flex-col items-center justify-center p-2 rounded-lg border ${getStatus(type)} w-full h-full transition-all cursor-pointer hover:opacity-80`}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border ${style} w-full h-full transition-all cursor-pointer hover:opacity-80 relative`}
             >
-                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center">{title}</span>
+                <div className="flex flex-col items-center justify-center h-full gap-0.5">
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center leading-none">{title}</span>
+                    {timer && (
+                        <span className="text-[10px] font-medium opacity-80 leading-none tabular-nums">
+                            {timer}
+                        </span>
+                    )}
+                </div>
             </div>
         );
     };
@@ -80,7 +105,7 @@ export function ChallengeSummaryTile() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 h-[120px]">
-                <StatusBox title="Today's Q" type="todays_question" />
+                <StatusBox title="Today's Question" type="todays_question" />
                 <StatusBox title="Daily" type="daily" />
                 <StatusBox title="Weekly" type="weekly" />
                 <StatusBox title="Monthly" type="monthly" />

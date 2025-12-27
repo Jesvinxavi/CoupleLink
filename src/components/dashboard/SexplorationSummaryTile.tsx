@@ -26,9 +26,9 @@ export function SexplorationSummaryTile() {
                 {/* Vouchers Section - 1/3 */}
                 <button
                     onClick={openWallet}
-                    className="w-1/3 flex flex-col justify-between pr-3 border-r border-gray-100 dark:border-gray-700 text-left hover:bg-pink-50/50 dark:hover:bg-pink-900/10 rounded-l-2xl transition-colors cursor-pointer"
+                    className="flex-1 px-2 flex flex-col items-center border-r border-gray-100 dark:border-gray-700 hover:bg-pink-50/50 dark:hover:bg-pink-900/10 rounded-l-2xl transition-colors cursor-pointer text-center"
                 >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center gap-1.5 w-full pt-1">
                         <span className="text-pink-500 bg-pink-100 dark:bg-pink-900/30 p-1.5 rounded-lg">
                             <Ticket className="w-3.5 h-3.5" />
                         </span>
@@ -37,7 +37,7 @@ export function SexplorationSummaryTile() {
                         </span>
                     </div>
 
-                    <div className="flex flex-col items-center justify-center py-2">
+                    <div className="flex-1 flex flex-col items-center justify-center w-full pb-1">
                         {availableVouchers > 0 ? (
                             <>
                                 <div className="relative">
@@ -45,7 +45,7 @@ export function SexplorationSummaryTile() {
                                         {availableVouchers}
                                     </span>
                                 </div>
-                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
                                     Available
                                 </p>
                             </>
@@ -54,7 +54,7 @@ export function SexplorationSummaryTile() {
                                 <span className="text-2xl font-bold text-gray-300 dark:text-gray-600">
                                     0
                                 </span>
-                                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
                                     Available
                                 </p>
                             </>
@@ -65,9 +65,9 @@ export function SexplorationSummaryTile() {
                 {/* Fantasy Count - 1/3 */}
                 <button
                     onClick={openFantasies}
-                    className="w-1/3 flex flex-col justify-between px-3 border-r border-gray-100 dark:border-gray-700 text-left hover:bg-pink-50/50 dark:hover:bg-pink-900/10 transition-colors cursor-pointer"
+                    className="flex-1 px-2 flex flex-col items-center border-r border-gray-100 dark:border-gray-700 hover:bg-pink-50/50 dark:hover:bg-pink-900/10 transition-colors cursor-pointer text-center"
                 >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center gap-1.5 w-full pt-1">
                         <span className="material-symbols-outlined text-pink-500 bg-pink-100 dark:bg-pink-900/30 p-1.5 rounded-lg text-xs">
                             auto_awesome
                         </span>
@@ -76,7 +76,7 @@ export function SexplorationSummaryTile() {
                         </span>
                     </div>
 
-                    <div className="flex flex-col items-center justify-center py-2">
+                    <div className="flex-1 flex flex-col items-center justify-center w-full pb-1">
                         {pendingCount > 0 ? (
                             <>
                                 <div className="relative">
@@ -85,7 +85,7 @@ export function SexplorationSummaryTile() {
                                     </span>
                                     <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
                                 </div>
-                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
                                     Pending
                                 </p>
                             </>
@@ -97,7 +97,7 @@ export function SexplorationSummaryTile() {
                                     </span>
                                     <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                                 </div>
-                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
                                     Approved
                                 </p>
                             </>
@@ -106,7 +106,7 @@ export function SexplorationSummaryTile() {
                                 <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                                     {completedCount}
                                 </span>
-                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
                                     Completed
                                 </p>
                             </>
@@ -126,9 +126,9 @@ export function SexplorationSummaryTile() {
                 {/* Position of the Week - 1/3 */}
                 <button
                     onClick={openPositions}
-                    className="w-1/3 flex flex-col justify-between pl-3 text-left hover:bg-pink-50/50 dark:hover:bg-pink-900/10 rounded-r-2xl transition-colors cursor-pointer"
+                    className="flex-1 px-2 flex flex-col items-center hover:bg-pink-50/50 dark:hover:bg-pink-900/10 rounded-r-2xl transition-colors cursor-pointer text-center"
                 >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center gap-1.5 w-full pt-1">
                         <span className="material-symbols-outlined text-pink-500 bg-pink-100 dark:bg-pink-900/30 p-1.5 rounded-lg text-xs">
                             explore
                         </span>
@@ -137,9 +137,9 @@ export function SexplorationSummaryTile() {
                         </span>
                     </div>
 
-                    <div className="flex flex-col items-center justify-center py-2">
-                        <PositionSVG position={positionOfTheWeek} size="sm" />
-                        <p className="font-bold text-gray-900 dark:text-white text-[10px] mt-1 text-center line-clamp-1">
+                    <div className="flex-1 flex flex-col items-center justify-center w-full pb-1">
+                        <PositionSVG position={positionOfTheWeek} size="xs" className="mt-1" />
+                        <p className="font-bold text-gray-900 dark:text-white text-[10px] mt-0.5 text-center line-clamp-1">
                             {positionOfTheWeek.name}
                         </p>
                     </div>
