@@ -26,7 +26,7 @@ export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucke
     return (
         <motion.div
             onClick={openFantasies}
-            className="bg-white dark:bg-gray-800 rounded-3xl px-5 py-4 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all h-full flex flex-col justify-between"
+            className="bg-white dark:bg-gray-800 rounded-3xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all h-full flex flex-col justify-between"
             whileHover={{ scale: 1.01 }}
         >
             {/* Header */}

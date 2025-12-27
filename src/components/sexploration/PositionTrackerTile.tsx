@@ -33,7 +33,7 @@ export function PositionTrackerTile({ initialOpenModal = false }: PositionTracke
     return (
         <motion.div
             onClick={openPositions}
-            className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all"
+            className="bg-white dark:bg-gray-800 rounded-3xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all"
             whileHover={{ scale: 1.01 }}
         >
             {/* Header */}

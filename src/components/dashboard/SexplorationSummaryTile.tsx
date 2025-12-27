@@ -11,15 +11,15 @@ export function SexplorationSummaryTile() {
     const { coupons } = useCoupons();
     const { openWallet, openPositions, openFantasies } = useSexplorationModals();
     const positionOfTheWeek = getPositionOfTheWeek();
-    
+
     // Count active (available) coupons
-    const availableVouchers = coupons.filter(c => 
+    const availableVouchers = coupons.filter(c =>
         (c.status === 'active' || !c.status) && !c.redeemed_at
     ).length;
 
     return (
         <motion.div
-            className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 h-full hover:shadow-md transition-all relative overflow-hidden"
+            className="bg-white dark:bg-gray-800 rounded-3xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 h-full hover:shadow-md transition-all relative overflow-hidden"
             whileHover={{ scale: 1.01 }}
         >
             <div className="flex h-full">
