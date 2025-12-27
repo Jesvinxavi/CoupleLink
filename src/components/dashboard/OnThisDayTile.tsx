@@ -1,22 +1,32 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCoupleData } from '@/hooks/useCoupleData';
-import { Loader2, Calendar, Quote, Image as ImageIcon, HelpCircle, X, MapPin, Heart, Sparkles, Ticket, StickyNote } from 'lucide-react';
+import { Loader2, Calendar, CalendarDays, Quote, Image as ImageIcon, HelpCircle, X, MapPin, Heart, Sparkles, Ticket, StickyNote } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { positions } from '@/data/positionsData';
 import { PositionSVG } from '../sexploration/PositionSVG';
 
 interface MemoryItem {
     id: string;
-    type: 'journal' | 'photo' | 'challenge' | 'position' | 'fantasy' | 'voucher' | 'sticky_note';
-    content: string | null; // caption for journal/photo, answer for challenge
-    title?: string | null; // title for journal
-    media_urls?: string[] | null; // Changed to array for multiple photos
+    type: 'journal' | 'photo' | 'challenge' | 'position' | 'fantasy' | 'voucher' | 'sticky_note' | 'event';
+    content: string | null;
+    title?: string | null;
+    media_urls?: string[] | null;
     location?: string | null;
     created_at: string;
-    activity_question?: string; // for challenges
-    partner_answer?: string | null; // for challenges
-    category?: string; // for positions
+    activity_question?: string;
+    category?: string;
+    // Attribution fields
+    uploader_id?: string | null;      // For journals, photos, sticky_notes
+    requester_id?: string | null;     // For fantasies
+    assigned_to?: string | null;      // For vouchers (redeemer)
+    // Challenge answers stored by user position (not viewer-relative)
+    user_one_id?: string | null;
+    user_one_answer?: string | null;
+    user_two_id?: string | null;
+    user_two_answer?: string | null;
+    // Event color from calendar
+    event_color?: string | null;
 }
 
 export function OnThisDayTile() {
@@ -58,28 +68,32 @@ export function OnThisDayTile() {
 
                 if (ansError) console.error('Error fetching answers:', ansError);
 
-                // Process answers to group by activity/date
+                // Process answers to group by activity/date - user-agnostic storage
                 const processedAnswers: MemoryItem[] = [];
                 const processedActivityIds = new Set<string>();
 
                 (answers || []).forEach((a: any) => {
-                    // Skip if we already processed this activity for this approximate time
-                    // (Simple deduplication by activity_id for now, assuming one per day)
                     if (processedActivityIds.has(a.activity_id)) return;
-
-                    const myAnswer = answers?.find((ans: any) => ans.activity_id === a.activity_id && ans.user_id === currentUser.id);
-                    const partnerAnswer = answers?.find((ans: any) => ans.activity_id === a.activity_id && ans.user_id !== currentUser.id);
-
-                    // Only include if at least one person answered (which is true since we're iterating answers)
                     processedActivityIds.add(a.activity_id);
+
+                    // Store answers by couple position, not viewer-relative
+                    const userOneAnswer = answers?.find((ans: any) =>
+                        ans.activity_id === a.activity_id && ans.user_id === couple?.user_one_id
+                    );
+                    const userTwoAnswer = answers?.find((ans: any) =>
+                        ans.activity_id === a.activity_id && ans.user_id === couple?.user_two_id
+                    );
 
                     processedAnswers.push({
                         id: a.id,
                         type: 'challenge',
-                        content: myAnswer?.answer_text || null,
-                        partner_answer: partnerAnswer?.answer_text || null,
+                        content: null,
                         created_at: a.created_at,
-                        activity_question: a.activity?.content?.question || 'Daily Challenge'
+                        activity_question: a.activity?.content?.question || 'Daily Challenge',
+                        user_one_id: couple?.user_one_id,
+                        user_one_answer: userOneAnswer?.answer_text || null,
+                        user_two_id: couple?.user_two_id,
+                        user_two_answer: userTwoAnswer?.answer_text || null,
                     });
                 });
 
@@ -122,13 +136,14 @@ export function OnThisDayTile() {
                     if (fantError) console.error('Error fetching fantasies:', fantError);
 
                     fantasyItems = (fantasiesData || [])
-                        .filter((f: any) => f.completed_at) // Only include items with a date
+                        .filter((f: any) => f.completed_at)
                         .map((f: any) => ({
                             id: f.id,
                             type: 'fantasy' as const,
                             content: null,
                             title: f.fantasy_text,
-                            created_at: f.completed_at
+                            created_at: f.completed_at,
+                            requester_id: f.requester_id, // For attribution
                         }));
                 } catch (e) {
                     console.error('Error processing fantasies:', e);
@@ -146,16 +161,45 @@ export function OnThisDayTile() {
                     if (vouchError) console.error('Error fetching vouchers:', vouchError);
 
                     voucherItems = (vouchersData || [])
-                        .filter((v: any) => v.redeemed_at) // Only include items with a date
+                        .filter((v: any) => v.redeemed_at)
                         .map((v: any) => ({
                             id: v.id,
                             type: 'voucher' as const,
                             content: v.description,
                             title: v.title,
-                            created_at: v.redeemed_at
+                            created_at: v.redeemed_at,
+                            assigned_to: v.assigned_to, // For attribution
                         }));
                 } catch (e) {
                     console.error('Error processing vouchers:', e);
+                }
+
+                // 6. Fetch past calendar events
+                let eventItems: MemoryItem[] = [];
+                try {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const { data: eventsData, error: eventError } = await supabase
+                        .from('calendar_events')
+                        .select('*')
+                        .eq('couple_id', couple.id)
+                        .lt('event_date', todayStr);
+
+                    if (eventError) console.error('Error fetching events:', eventError);
+
+                    eventItems = (eventsData || [])
+                        .filter((e: any) => e.event_date)
+                        .map((e: any) => ({
+                            id: e.id,
+                            type: 'event' as const,
+                            content: e.description,
+                            title: e.title,
+                            location: e.location,
+                            created_at: e.event_date,
+                            category: e.category,
+                            event_color: e.color || '#e11d48', // Calendar event color
+                        }));
+                } catch (e) {
+                    console.error('Error processing events:', e);
                 }
 
                 // Normalize data - filter out items without valid dates
@@ -166,11 +210,12 @@ export function OnThisDayTile() {
                             return {
                                 id: m.id,
                                 type: 'challenge' as const,
-                                content: m.caption, // Description or notes
-                                title: m.title, // Challenge name
-                                activity_question: m.caption || m.title, // Use caption as question
+                                content: m.caption,
+                                title: m.title,
+                                activity_question: m.caption || m.title,
                                 media_urls: m.media_urls || (m.media_url ? [m.media_url] : []),
-                                created_at: m.created_at
+                                created_at: m.created_at,
+                                uploader_id: m.uploader_id,
                             };
                         }
                         return {
@@ -180,13 +225,15 @@ export function OnThisDayTile() {
                             title: m.title,
                             media_urls: m.media_urls || (m.media_url ? [m.media_url] : []),
                             location: m.location,
-                            created_at: m.created_at
+                            created_at: m.created_at,
+                            uploader_id: m.uploader_id, // For attribution
                         };
                     }),
                     ...processedAnswers,
                     ...positionItems,
                     ...fantasyItems,
-                    ...voucherItems
+                    ...voucherItems,
+                    ...eventItems,
                 ].filter(item => item.created_at); // Only include items with valid dates
 
                 // Filter for "On This Day" (same month/day, different year)
@@ -276,6 +323,7 @@ export function OnThisDayTile() {
             case 'fantasy': return <Sparkles className="w-5 h-5 text-amber-500" />;
             case 'voucher': return <Ticket className="w-5 h-5 text-pink-500" />;
             case 'sticky_note': return <StickyNote className="w-5 h-5 text-yellow-600" />;
+            case 'event': return <CalendarDays className="w-5 h-5 text-indigo-500" />;
             default: return <Calendar className="w-5 h-5 text-rose-500" />;
         }
     };
@@ -292,6 +340,8 @@ export function OnThisDayTile() {
                 return <span className={`${baseClasses} bg-purple-100 text-purple-600`}>Challenge</span>;
             case 'sticky_note':
                 return <span className={`${baseClasses} bg-yellow-100 text-yellow-600`}>Note</span>;
+            case 'event':
+                return <span className={`${baseClasses} bg-indigo-100 text-indigo-600`}>Past Event</span>;
             case 'position':
             case 'fantasy':
             case 'voucher':
@@ -308,6 +358,15 @@ export function OnThisDayTile() {
         if (isThrowback) return "Throwback";
         return "On This Day";
     };
+
+    // Helper for dynamic attribution labels
+    const getAuthorLabel = (userId: string | null | undefined) =>
+        userId === currentUser?.id ? 'You' : (partner?.first_name || 'Partner');
+
+    // Compute challenge answers based on viewer
+    const myAnswer = item.user_one_id === currentUser?.id ? item.user_one_answer : item.user_two_answer;
+    const partnerAnswerText = item.user_one_id === currentUser?.id ? item.user_two_answer : item.user_one_answer;
+    const hasAnswers = myAnswer || partnerAnswerText;
 
     const hasMedia = item.media_urls && item.media_urls.length > 0;
     const coverImage = hasMedia ? item.media_urls![0] : null;
@@ -388,25 +447,18 @@ export function OnThisDayTile() {
                                     {item.title || item.activity_question || 'Challenge'}
                                 </h4>
 
-                                {/* Description or Answers */}
-                                {item.partner_answer || (item.content && item.content !== item.title) ? (
+                                {/* Answers using new user-agnostic fields */}
+                                {hasAnswers ? (
                                     <div className="space-y-1">
-                                        {item.content && item.content !== item.title && !item.partner_answer && (
-                                            <p className="text-body-soft text-sm line-clamp-2">
-                                                {item.content}
+                                        {myAnswer && (
+                                            <p className="text-body-soft text-sm line-clamp-1 italic">
+                                                You: "{myAnswer}"
                                             </p>
                                         )}
-                                        {item.partner_answer && (
-                                            <>
-                                                {item.content && (
-                                                    <p className="text-body-soft text-sm line-clamp-1 italic">
-                                                        You: "{item.content}"
-                                                    </p>
-                                                )}
-                                                <p className="text-body-soft text-sm line-clamp-1 italic">
-                                                    {partner?.first_name || 'Partner'}: "{item.partner_answer}"
-                                                </p>
-                                            </>
+                                        {partnerAnswerText && (
+                                            <p className="text-body-soft text-sm line-clamp-1 italic">
+                                                {partner?.first_name || 'Partner'}: "{partnerAnswerText}"
+                                            </p>
                                         )}
                                     </div>
                                 ) : (
@@ -429,30 +481,81 @@ export function OnThisDayTile() {
                                 <p className="text-xs text-green-600 font-medium">Position Completed</p>
                             </div>
                         ) : item.type === 'fantasy' ? (
-                            <div className="space-y-2">
-                                <h4 className="font-bold text-heading-dark text-lg line-clamp-2">
+                            // Completed fantasy style - amber to match fantasy pill
+                            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                                <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-medium">
                                     {item.title}
-                                </h4>
-                                <p className="text-xs text-amber-600 font-medium">Fantasy Fulfilled ✨</p>
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Suggested by {getAuthorLabel(item.requester_id)}
+                                </p>
                             </div>
                         ) : item.type === 'voucher' ? (
-                            <div className="space-y-2">
-                                <h4 className="font-bold text-heading-dark text-lg line-clamp-1">
-                                    {item.title}
-                                </h4>
-                                {item.content && (
-                                    <p className="text-body-soft text-sm line-clamp-2">
-                                        {item.content}
+                            // Pleasure coupon style from Coupon.tsx
+                            <div className="relative w-full h-[90px] bg-pink-200 rounded-sm overflow-hidden">
+                                {/* Header Banner */}
+                                <div className="absolute top-1 left-4 right-4 h-[18px] bg-pink-100 border-b border-red-600">
+                                    <div className="w-full py-0.5 text-center font-normal tracking-[0.15em] uppercase text-[8px] text-[#FF1744]">
+                                        Pleasure Coupon
+                                    </div>
+                                </div>
+                                {/* Main Body */}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pt-5 px-4">
+                                    <h3 className="text-sm leading-tight text-[#FF1744] text-center line-clamp-1" style={{ fontFamily: "'Shrikhand', cursive" }}>
+                                        {item.title || "COUPON"}
+                                    </h3>
+                                    <p className="text-[8px] text-[#FF1744] font-bold uppercase tracking-wide line-clamp-1 mt-1">
+                                        {item.content || "Valid for one special request"}
                                     </p>
-                                )}
-                                <p className="text-xs text-pink-600 font-medium">Voucher Redeemed 🎟️</p>
+                                </div>
+                                {/* Redeemed Badge */}
+                                <div className="absolute bottom-1 left-4 right-4 text-center">
+                                    <span className="text-[8px] text-gray-500 font-medium">
+                                        Redeemed by {getAuthorLabel(item.assigned_to)}
+                                    </span>
+                                </div>
                             </div>
                         ) : item.type === 'sticky_note' ? (
                             <div className="space-y-2">
+                                <p className="text-xs text-yellow-700 font-medium mb-1">
+                                    Note from {getAuthorLabel(item.uploader_id)}
+                                </p>
                                 <div className="bg-[#FEF9C3] p-4 rounded-lg shadow-sm border border-yellow-200/50 transform rotate-1 transition-transform group-hover:rotate-0">
                                     <p className="text-yellow-900 font-handwriting text-lg leading-snug line-clamp-3">
                                         "{item.content}"
                                     </p>
+                                </div>
+                            </div>
+                        ) : item.type === 'event' ? (
+                            // Event tile style from CalendarView - uses dynamic event_color
+                            <div
+                                className="flex items-start gap-2 p-2 rounded-xl"
+                                style={{ backgroundColor: `${item.event_color || '#e11d48'}26` }}
+                            >
+                                <div
+                                    className="w-1 self-stretch rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: item.event_color || '#e11d48' }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-bold text-gray-900 dark:text-white truncate">
+                                            {item.title}
+                                        </h4>
+                                        {item.category && (
+                                            <span
+                                                className="text-[8px] px-2 py-0.5 rounded-full text-white font-medium flex-shrink-0"
+                                                style={{ backgroundColor: item.event_color || '#e11d48' }}
+                                            >
+                                                {item.category}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {item.location && (
+                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            <MapPin className="w-3 h-3" />
+                                            <span className="truncate">{item.location}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ) : (
@@ -540,38 +643,27 @@ export function OnThisDayTile() {
                                     <div className="px-6 py-3 space-y-6">
                                         {item.type === 'challenge' ? (
                                             <>
-
-
-
                                                 <h3 className="text-xl font-bold text-heading-dark">
                                                     {item.title || item.activity_question || 'Challenge'}
                                                 </h3>
 
-                                                {/* Show description if it's different from title */}
-                                                {item.content && item.content !== item.title && !item.partner_answer && (
-                                                    <p className="text-body-soft leading-relaxed">
-                                                        {item.content}
-                                                    </p>
-                                                )}
-
-                                                {/* Show answers if this is a question-type challenge */}
-                                                {item.partner_answer && (
+                                                {/* Show answers using computed values */}
+                                                {hasAnswers ? (
                                                     <div className="space-y-4">
-                                                        {item.content && (
+                                                        {myAnswer && (
                                                             <div className="bg-gray-50 p-4 rounded-xl">
                                                                 <p className="text-xs font-bold text-body-soft uppercase mb-2">You Answered</p>
-                                                                <p className="text-heading-dark italic text-lg">"{item.content}"</p>
+                                                                <p className="text-heading-dark italic text-lg">"{myAnswer}"</p>
                                                             </div>
                                                         )}
-                                                        <div className="bg-rose-50 p-4 rounded-xl">
-                                                            <p className="text-xs font-bold text-rose-500 uppercase mb-2">{partner?.first_name || 'Partner'} Answered</p>
-                                                            <p className="text-heading-dark italic text-lg">"{item.partner_answer}"</p>
-                                                        </div>
+                                                        {partnerAnswerText && (
+                                                            <div className="bg-rose-50 p-4 rounded-xl">
+                                                                <p className="text-xs font-bold text-rose-500 uppercase mb-2">{partner?.first_name || 'Partner'} Answered</p>
+                                                                <p className="text-heading-dark italic text-lg">"{partnerAnswerText}"</p>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-
-                                                {/* Show completion badge if no content */}
-                                                {!item.content && !item.partner_answer && (
+                                                ) : (
                                                     <div className="bg-green-50 p-4 rounded-xl flex items-center gap-3">
                                                         <span className="text-green-500 text-2xl">✓</span>
                                                         <p className="text-green-700 font-medium">You completed this challenge!</p>
@@ -599,41 +691,61 @@ export function OnThisDayTile() {
                                             </>
                                         ) : item.type === 'fantasy' ? (
                                             <>
-                                                <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-xl text-center">
-                                                    <Sparkles className="w-10 h-10 text-amber-500 mx-auto mb-4" />
-                                                    <h3 className="text-xl font-bold text-heading-dark mb-2">
-                                                        Fantasy Fulfilled
-                                                    </h3>
-                                                    <p className="text-lg text-gray-700 dark:text-gray-300">
-                                                        "{item.title}"
+                                                {/* Completed fantasy style - amber to match fantasy pill */}
+                                                <div className="p-6 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                                                    <div className="flex items-center gap-2 mb-4">
+                                                        <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
+                                                            ✓
+                                                        </span>
+                                                        <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">Completed Fantasy</span>
+                                                    </div>
+                                                    <p className="text-xl font-medium text-gray-800 dark:text-gray-200 mb-4">
+                                                        {item.title}
+                                                    </p>
+                                                    <p className="text-sm text-gray-400">
+                                                        Suggested by {getAuthorLabel(item.requester_id)}
                                                     </p>
                                                 </div>
                                             </>
                                         ) : item.type === 'voucher' ? (
                                             <>
-                                                <div className="bg-pink-50 dark:bg-pink-900/20 p-6 rounded-xl">
-                                                    <div className="flex items-center gap-3 mb-4">
-                                                        <Ticket className="w-8 h-8 text-pink-500" />
-                                                        <h3 className="text-xl font-bold text-heading-dark">
-                                                            {item.title}
-                                                        </h3>
+                                                {/* Pleasure coupon style from Coupon.tsx */}
+                                                <div className="relative w-full h-[180px] bg-pink-200" style={{
+                                                    WebkitMaskImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 180' preserveAspectRatio='none'%3E%3Cpath fill='white' fill-rule='evenodd' d='M0,0 L300,0 L300,180 L0,180 Z M0,30 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,58 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,108 a18,18 0 0,0 0,-36 a18,18 0 0,0 0,36 M0,136 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,164 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M300,30 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,58 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,108 a18,18 0 0,1 0,-36 a18,18 0 0,1 0,36 M300,136 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,164 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16'/%3E%3C/svg%3E")`,
+                                                    maskImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 180' preserveAspectRatio='none'%3E%3Cpath fill='white' fill-rule='evenodd' d='M0,0 L300,0 L300,180 L0,180 Z M0,30 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,58 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,108 a18,18 0 0,0 0,-36 a18,18 0 0,0 0,36 M0,136 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,164 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M300,30 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,58 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,108 a18,18 0 0,1 0,-36 a18,18 0 0,1 0,36 M300,136 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,164 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16'/%3E%3C/svg%3E")`,
+                                                    maskSize: '100% 100%',
+                                                    WebkitMaskSize: '100% 100%',
+                                                    borderRadius: '0px'
+                                                }}>
+                                                    {/* Header Banner */}
+                                                    <div className="absolute top-3 left-7 right-7 h-[30px] bg-pink-100 border-b border-red-600">
+                                                        <div className="w-full py-1.5 text-center font-normal tracking-[0.25em] uppercase text-base text-[#FF1744]">
+                                                            Pleasure Coupon
+                                                        </div>
                                                     </div>
-                                                    {item.content && (
-                                                        <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                                                            {item.content}
-                                                            ```
-                                                        </p>
-                                                    )}
-                                                    <p className="text-sm text-pink-600 font-medium mt-4">
-                                                        Voucher was redeemed on this day
-                                                    </p>
+                                                    {/* Inner Red Box Outline */}
+                                                    <div className="absolute top-3 bottom-3 left-7 right-7 border border-red-600 opacity-50" />
+                                                    {/* Main Body */}
+                                                    <div className="absolute top-3 bottom-3 left-7 right-7 flex flex-col overflow-hidden text-center pt-[30px]">
+                                                        <div className="flex-1 px-3 pt-3 flex flex-col items-center justify-start gap-3">
+                                                            <h3 className="text-[1.6rem] leading-tight text-[#FF1744]" style={{ fontFamily: "'Shrikhand', cursive" }}>
+                                                                {item.title || "COUPON"}
+                                                            </h3>
+                                                            <p className="text-[10px] leading-relaxed font-bold uppercase tracking-wide line-clamp-2 px-2 text-[#FF1744]">
+                                                                {item.content || "Valid for one special request"}
+                                                            </p>
+                                                        </div>
+                                                        <div className="p-2 w-full border-t border-gray-400 flex items-center justify-center gap-1 text-gray-400 text-xs font-bold uppercase">
+                                                            <span>Redeemed by {getAuthorLabel(item.assigned_to)}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </>
                                         ) : item.type === 'sticky_note' ? (
                                             <>
                                                 <div className="bg-[#FEF9C3] p-6 rounded-sm shadow-md border-t-8 border-yellow-200/50 transform -rotate-1 mt-0">
                                                     <h3 className="font-handwriting text-2xl text-yellow-900/50 mb-2">
-                                                        Note from {partner?.first_name || 'Partner'}
+                                                        Note from {getAuthorLabel(item.uploader_id)}
                                                     </h3>
                                                     <p className="text-yellow-900 font-handwriting text-2xl leading-relaxed whitespace-pre-wrap">
                                                         {item.content}
@@ -706,6 +818,45 @@ export function OnThisDayTile() {
                                                         ))}
                                                     </div>
                                                 )}
+                                            </>
+                                        ) : item.type === 'event' ? (
+                                            <>
+                                                {/* Event tile style - matches card view exactly with dynamic color */}
+                                                <div
+                                                    className="flex items-start gap-3 p-4 rounded-xl"
+                                                    style={{ backgroundColor: `${item.event_color || '#e11d48'}26` }}
+                                                >
+                                                    <div
+                                                        className="w-1.5 self-stretch rounded-full flex-shrink-0"
+                                                        style={{ backgroundColor: item.event_color || '#e11d48' }}
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                                                {item.title}
+                                                            </h3>
+                                                            {item.category && (
+                                                                <span
+                                                                    className="text-xs px-3 py-1 rounded-full text-white font-medium flex-shrink-0 capitalize"
+                                                                    style={{ backgroundColor: item.event_color || '#e11d48' }}
+                                                                >
+                                                                    {item.category}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {item.location && (
+                                                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                                                                <MapPin className="w-4 h-4" />
+                                                                <span>{item.location}</span>
+                                                            </div>
+                                                        )}
+                                                        {item.content && (
+                                                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                                                                {item.content}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </>
                                         ) : (
                                             // Default fallback
