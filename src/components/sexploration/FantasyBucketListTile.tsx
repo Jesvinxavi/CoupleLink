@@ -42,28 +42,28 @@ export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucke
             {/* Stats with filled circle counters - compressed */}
             <div className="flex gap-3 items-center justify-center mb-2 px-2">
                 <div className="flex items-center gap-1">
-                    <span className="w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-green-500 text-white text-[12px] font-bold flex items-center justify-center">
                         {loading ? '—' : approvedCount}
                     </span>
-                    <span className="text-[9px] text-gray-400 uppercase tracking-wider">
+                    <span className="text-[11px] text-gray-400 uppercase tracking-wider">
                         Approved
                     </span>
                 </div>
                 <div className="w-px h-4 bg-gray-200 dark:bg-gray-700" />
                 <div className="flex items-center gap-1">
-                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-[12px] font-bold flex items-center justify-center">
                         {loading ? '—' : pendingCount}
                     </span>
-                    <span className="text-[9px] text-gray-400 uppercase tracking-wider">
+                    <span className="text-[11px] text-gray-400 uppercase tracking-wider">
                         Pending
                     </span>
                 </div>
                 <div className="w-px h-4 bg-gray-200 dark:bg-gray-700" />
                 <div className="flex items-center gap-1">
-                    <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-[12px] font-bold flex items-center justify-center">
                         {loading ? '—' : completedCount}
                     </span>
-                    <span className="text-[9px] text-gray-400 uppercase tracking-wider">
+                    <span className="text-[11px] text-gray-400 uppercase tracking-wider">
                         Completed
                     </span>
                 </div>
