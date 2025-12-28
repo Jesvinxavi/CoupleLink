@@ -277,8 +277,9 @@ export function OnThisDayTile() {
             <motion.div
                 layoutId={`memory-${item.id}`}
                 onClick={() => setIsExpanded(true)}
-                className="group relative overflow-hidden rounded-2xl bg-white shadow-sm border border-gray-100 transition-all hover:shadow-md cursor-pointer flex flex-col"
+                className="group relative overflow-hidden rounded-2xl bg-white shadow-sm border border-gray-100 transition-all md:hover:shadow-md active:shadow-md cursor-pointer flex flex-col"
                 whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
                 {/* Background Image for Photos */}
@@ -287,7 +288,7 @@ export function OnThisDayTile() {
                         <img
                             src={coverImage}
                             alt="Memory"
-                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            className="h-full w-full object-cover transition-transform duration-700 md:group-hover:scale-105 group-active:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     </div>
@@ -312,7 +313,7 @@ export function OnThisDayTile() {
                                 </p>
                             </div>
                         </div>
-                        <span className={`material-symbols-outlined transition-colors ${item.type === 'photo' ? 'text-white/60 group-hover:text-white' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                        <span className={`material-symbols-outlined transition-colors ${item.type === 'photo' ? 'text-white/60 md:group-hover:text-white group-active:text-white' : 'text-gray-400 md:group-hover:text-gray-600 group-active:text-gray-600'}`}>
                             arrow_forward
                         </span>
                     </div>
@@ -469,7 +470,7 @@ export function OnThisDayTile() {
                             </div>
                         ) : item.type === 'sticky_note' ? (
 
-                            <div className="bg-[#FEF9C3] p-3 rounded-lg shadow-sm border border-yellow-200/50 transform rotate-1 transition-transform group-hover:rotate-0 space-y-1 w-fit min-w-[75%] mx-auto">
+                            <div className="bg-[#FEF9C3] p-3 rounded-lg shadow-sm border border-yellow-200/50 transform rotate-1 transition-transform md:group-hover:rotate-0 group-active:rotate-0 space-y-1 w-fit min-w-[75%] mx-auto">
                                 <p className="text-xs text-yellow-900/50 font-handwriting mb-0.5">
                                     Note from {getAuthorLabel(item.uploader_id)}
                                 </p>

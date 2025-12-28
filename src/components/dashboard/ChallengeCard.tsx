@@ -109,7 +109,7 @@ export function ChallengeCard({
                     {/* My Answer Section */}
                     <div className="flex flex-col">
                         <h3 className="text-[10px] md:text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">My Answer</h3>
-                        <div className="flex-1 bg-gray-50 dark:bg-gray-900 rounded-xl p-3 min-h-[80px] relative transition-all hover:shadow-md">
+                        <div className="flex-1 bg-gray-50 dark:bg-gray-900 rounded-xl p-3 min-h-[80px] relative transition-all md:hover:shadow-md">
                             {hasUserAnswered ? (
                                 <p className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed font-medium break-words">
                                     {userAnswer.answer_text}
@@ -127,7 +127,7 @@ export function ChallengeCard({
                                         <Button
                                             type="submit"
                                             size="sm"
-                                            className="bg-rose-500 hover:bg-rose-600 text-white rounded-full px-3 h-7 text-[10px] font-bold"
+                                            className="bg-rose-500 md:hover:bg-rose-600 text-white rounded-full px-3 h-7 text-[10px] font-bold"
                                             disabled={submitting || !answer.trim()}
                                         >
                                             {submitting ? '...' : 'Send'}
@@ -148,7 +148,7 @@ export function ChallengeCard({
                                 </span>
                             )}
                         </div>
-                        <div className={`flex-1 rounded-xl p-3 min-h-[80px] flex items-center justify-center text-center relative transition-all hover:shadow-md ${isNewAnswer ? 'bg-rose-50 dark:bg-rose-900/20 ring-1 ring-rose-200 dark:ring-rose-800' : 'bg-gray-50 dark:bg-gray-900'
+                        <div className={`flex-1 rounded-xl p-3 min-h-[80px] flex items-center justify-center text-center relative transition-all md:hover:shadow-md ${isNewAnswer ? 'bg-rose-50 dark:bg-rose-900/20 ring-1 ring-rose-200 dark:ring-rose-800' : 'bg-gray-50 dark:bg-gray-900'
                             }`}>
                             {isRevealed ? (
                                 <p className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed font-medium text-left w-full self-start break-words">

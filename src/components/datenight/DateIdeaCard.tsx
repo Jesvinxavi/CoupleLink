@@ -36,12 +36,12 @@ export function DateIdeaCard({
     };
 
     return (
-        <Card className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all group h-full flex flex-col">
+        <Card className="overflow-hidden border-none shadow-sm md:hover:shadow-md transition-all group h-full flex flex-col">
             <div className="relative h-48 overflow-hidden shrink-0">
                 <img
                     src={imageUrl}
                     alt={title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-105"
                 />
                 <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-bold text-gray-800 uppercase tracking-wide">
                     {category}
@@ -64,7 +64,7 @@ export function DateIdeaCard({
                 </div>
 
                 <Button
-                    className="w-full bg-rose-500 hover:bg-rose-600 text-white gap-2"
+                    className="w-full bg-rose-500 md:hover:bg-rose-600 text-white gap-2"
                     onClick={handleStart}
                 >
                     {buttonText}

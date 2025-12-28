@@ -104,7 +104,7 @@ export default function Sidebar() {
                         to={item.path}
                         className={`flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-colors ${isActive
                             ? "bg-[#EA2831]/10 text-[#EA2831]"
-                            : "text-heading-dark hover:bg-gray-100"
+                            : "text-heading-dark md:hover:bg-gray-100"
                             }`}
                         onClick={() => setOpen(false)}
                     >
@@ -159,7 +159,7 @@ export default function Sidebar() {
                                                     setOpen(false);
                                                     handleTriggerRestore();
                                                 }}
-                                                className="flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 mt-2"
+                                                className="flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-colors bg-purple-50 text-purple-600 md:hover:bg-purple-100 border border-purple-200 mt-2"
                                             >
                                                 <span className="material-symbols-outlined">history</span>
                                                 <div className="flex flex-col items-start leading-tight">
@@ -173,7 +173,7 @@ export default function Sidebar() {
                                 <div className="flex flex-col gap-1">
                                     <Link
                                         to="/settings"
-                                        className="flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-heading-dark hover:bg-gray-100"
+                                        className="flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-heading-dark md:hover:bg-gray-100"
                                         onClick={() => setOpen(false)}
                                     >
                                         <span className="material-symbols-outlined">settings</span>
@@ -181,7 +181,7 @@ export default function Sidebar() {
                                     </Link>
                                     <button
                                         onClick={() => setShowLogoutModal(true)}
-                                        className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-heading-dark hover:bg-gray-100"
+                                        className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-heading-dark md:hover:bg-gray-100"
                                     >
                                         <span className="material-symbols-outlined">logout</span>
                                         <p>Log Out</p>
@@ -215,7 +215,7 @@ export default function Sidebar() {
                         {canRestore && (
                             <button
                                 onClick={handleTriggerRestore}
-                                className="flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 mt-2"
+                                className="flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-colors bg-purple-50 text-purple-600 md:hover:bg-purple-100 border border-purple-200 mt-2"
                             >
                                 <span className="material-symbols-outlined">history</span>
                                 <div className="flex flex-col items-start leading-tight">
@@ -242,14 +242,14 @@ export default function Sidebar() {
                     )}
                     <Link
                         to="/settings"
-                        className="flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-heading-dark hover:bg-gray-100"
+                        className="flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-heading-dark md:hover:bg-gray-100"
                     >
                         <span className="material-symbols-outlined">settings</span>
                         <p>Settings</p>
                     </Link>
                     <button
                         onClick={() => setShowLogoutModal(true)}
-                        className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-heading-dark hover:bg-gray-100"
+                        className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-heading-dark md:hover:bg-gray-100"
                     >
                         <span className="material-symbols-outlined">logout</span>
                         <p>Log Out</p>

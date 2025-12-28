@@ -63,7 +63,7 @@ export const PartnerNoteTile = memo(function PartnerNoteTile({ partner }: Partne
     if (!partner || !partnerLastNote || !isVisible) return null
 
     return (
-        <div className="rounded-2xl bg-[#FEF9C3] p-6 shadow-sm border border-yellow-200/50 relative overflow-hidden transition-all hover:shadow-md">
+        <div className="rounded-2xl bg-[#FEF9C3] p-6 shadow-sm border border-yellow-200/50 relative overflow-hidden transition-all md:hover:shadow-md">
             {/* Header */}
             <div className="flex justify-between items-start mb-3">
                 <h3 className="font-bold text-yellow-900 text-lg"> {/* Increased font size */}
