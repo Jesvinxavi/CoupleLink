@@ -40,7 +40,7 @@ export function PaywallModal({ isOpen, onClose, onUpgradeSuccess }: PaywallModal
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="w-[90%] sm:max-w-md rounded-xl bg-gradient-to-br from-indigo-900 to-purple-900 border-none text-white p-0 overflow-hidden gap-0">
+            <DialogContent className="sm:max-w-md rounded-xl bg-gradient-to-br from-indigo-900 to-purple-900 border-none text-white p-0 overflow-hidden gap-0">
                 <div className="p-6 pb-0">
                     <DialogHeader className="space-y-4 items-center">
                         <div className="bg-white/10 p-4 rounded-full w-fit mb-2 animate-pulse">

@@ -92,7 +92,7 @@ export function FantasyDetailModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="w-[85vw] max-w-md rounded-3xl overflow-hidden bg-rose-50 dark:bg-gray-900 border-none shadow-2xl p-0" hideClose={true}>
+            <DialogContent className="max-w-md rounded-3xl overflow-hidden bg-rose-50 dark:bg-gray-900 border-none shadow-2xl p-0" hideClose={true}>
                 <DialogHeader className="p-6 pb-2">
                     <div className="flex items-center gap-2">
                         <button

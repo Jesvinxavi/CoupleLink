@@ -136,7 +136,7 @@ export const GiftVoucherModal: React.FC<GiftVoucherModalProps> = ({
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
             <DialogContent
                 onOpenAutoFocus={(e) => e.preventDefault()}
-                className="w-[85vw] max-w-md rounded-3xl overflow-hidden flex flex-col max-h-[85vh] p-0 gap-0 bg-rose-50 dark:bg-gray-900 border-none"
+                className="max-w-md rounded-3xl overflow-hidden flex flex-col max-h-[85vh] p-0 gap-0 bg-rose-50 dark:bg-gray-900 border-none"
             >
 
                 {/* Header */}

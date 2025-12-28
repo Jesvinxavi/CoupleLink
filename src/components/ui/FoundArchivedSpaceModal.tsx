@@ -27,7 +27,7 @@ export function FoundArchivedSpaceModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onDismiss()}>
-            <DialogContent className="w-[90%] sm:max-w-[425px] rounded-xl">
+            <DialogContent className="sm:max-w-[425px] rounded-xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <History className="w-5 h-5 text-purple-500" />

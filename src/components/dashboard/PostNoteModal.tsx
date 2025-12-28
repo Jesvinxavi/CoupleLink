@@ -33,7 +33,7 @@ export function PostNoteModal({ isOpen, onClose }: PostNoteModalProps) {
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[85vw] max-w-md bg-[#FEF9C3] border-none border-t-8 border-yellow-200/50 shadow-xl p-0 overflow-hidden rounded-sm">
+            <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="max-w-md bg-[#FEF9C3] border-none border-t-8 border-yellow-200/50 shadow-xl p-0 overflow-hidden rounded-sm">
                 <div className="p-6">
                     <DialogHeader className="mb-4">
                         <DialogTitle className="text-yellow-900 font-handwriting text-2xl">Leave a Note</DialogTitle>

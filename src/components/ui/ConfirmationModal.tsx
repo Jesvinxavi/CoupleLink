@@ -33,7 +33,7 @@ export function ConfirmationModal({
 }: ConfirmationModalProps) {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="w-[90vw] max-w-[425px] rounded-xl sm:rounded-lg">
+            <DialogContent className="max-w-[425px] rounded-xl sm:rounded-lg">
                 <DialogHeader className="text-left">
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{description}</DialogDescription>

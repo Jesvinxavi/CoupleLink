@@ -98,7 +98,7 @@ export function SpicyDiceModal({ isOpen, onClose }: SpicyDiceModalProps) {
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent
                 hideClose={true}
-                className="w-[90vw] max-w-md rounded-3xl border-0 p-0 overflow-hidden shadow-2xl"
+                className="max-w-md rounded-3xl border-0 p-0 overflow-hidden shadow-2xl"
                 style={{
                     background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%)'
                 }}

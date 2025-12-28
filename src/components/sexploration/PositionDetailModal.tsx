@@ -27,7 +27,7 @@ export function PositionDetailModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="w-[85vw] max-w-md rounded-xl overflow-hidden bg-rose-50 dark:bg-gray-900 border-none [&>button]:hidden">
+            <DialogContent className="max-w-md rounded-xl overflow-hidden bg-rose-50 dark:bg-gray-900 border-none [&>button]:hidden">
                 <DialogHeader>
                     <div className="flex items-center gap-2">
                         <button

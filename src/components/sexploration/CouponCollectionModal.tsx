@@ -75,7 +75,7 @@ export const CouponCollectionModal: React.FC<CouponCollectionModalProps> = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="w-[85vw] max-w-md rounded-3xl overflow-hidden flex flex-col max-h-[85vh] p-0 gap-0 bg-rose-50 dark:bg-gray-900 border-none">
+            <DialogContent className="max-w-md rounded-3xl overflow-hidden flex flex-col max-h-[85vh] p-0 gap-0 bg-rose-50 dark:bg-gray-900 border-none">
 
                 {/* Header */}
                 <DialogHeader className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">

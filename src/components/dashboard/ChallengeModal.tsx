@@ -51,7 +51,7 @@ export function ChallengeModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="w-[90%] sm:max-w-[425px] rounded-xl">
+            <DialogContent className="sm:max-w-[425px] rounded-xl">
                 <DialogHeader className="text-left">
                     <div className="flex items-center justify-between">
                         <DialogTitle className="text-xl font-bold text-heading-dark">{challenge.title}</DialogTitle>
