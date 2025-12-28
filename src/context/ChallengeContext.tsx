@@ -1,0 +1,827 @@
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import type { ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import { useCoupleData } from '../hooks/useCoupleData';
+import type { Challenge } from '../types/challenge';
+import { formatTime, getWeekNumber, getDateRange } from '../utils/dateUtils';
+
+export type ChallengeStatus = 'locked' | 'active' | 'completed' | 'skipped' | 'waiting_for_partner' | 'pending_agreement';
+
+export interface ChallengeState {
+    daily: Challenge | null;
+    weekly: Challenge | null;
+    monthly: Challenge | null;
+    dailyTimeLeft: string;
+    weeklyTimeLeft: string;
+    monthlyTimeLeft: string;
+    dailyTimeUrgent: boolean;
+    weeklyTimeUrgent: boolean;
+    monthlyTimeUrgent: boolean;
+
+    // Derived Statuses
+    dailyStatus: ChallengeStatus;
+    weeklyStatus: ChallengeStatus;
+    monthlyStatus: ChallengeStatus;
+
+    // Raw Data (exposed for specific UI needs if any)
+    myDailyMemory: any;
+    myWeeklyMemory: any;
+    myMonthlyMemory: any;
+    partnerDailyMemory: any;
+    partnerWeeklyMemory: any;
+    partnerMonthlyMemory: any;
+
+    history: Array<{ id: string; title: string; date: string; type: 'daily' | 'weekly' | 'monthly'; metadata?: any }>;
+    completeChallenge: (type: 'daily' | 'weekly' | 'monthly', file?: File | null, winnerSelection?: 'me' | 'partner' | 'tie') => Promise<void>;
+    undoChallenge: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
+    skipChallenge: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
+    loadingPartner: boolean;
+    winnerAgreement: {
+        daily: 'agreed' | 'disagreed' | 'pending' | 'none';
+        weekly: 'agreed' | 'disagreed' | 'pending' | 'none';
+        monthly: 'agreed' | 'disagreed' | 'pending' | 'none';
+    };
+    markChallengeConfettiSeen: (memoryId: string) => Promise<void>;
+    couple: any;
+    refreshCoupleData: () => Promise<void>;
+    loadingChallenges: boolean;
+
+    // Operation states
+    isCompleting: boolean;
+    isUndoing: boolean;
+}
+
+const ChallengeContext = createContext<ChallengeState | null>(null);
+
+export const useChallengeContext = () => {
+    const context = useContext(ChallengeContext);
+    if (!context) {
+        throw new Error('useChallengeContext must be used within a ChallengeProvider');
+    }
+    return context;
+};
+
+interface ChallengeProviderProps {
+    children: ReactNode;
+}
+
+export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
+    // Raw State
+    const [myMemories, setMyMemories] = useState<any[]>([]);
+    const [partnerMemories, setPartnerMemories] = useState<any[]>([]);
+    const [history, setHistory] = useState<Array<{ id: string; title: string; date: string; type: 'daily' | 'weekly' | 'monthly'; metadata?: any }>>([]);
+    const [loadingPartner, setLoadingPartner] = useState(true);
+    const [loadingChallenges, setLoadingChallenges] = useState(true);
+    const [isCompleting, setIsCompleting] = useState(false);
+    const [isUndoing, setIsUndoing] = useState(false);
+
+    const [winnerAgreement, setWinnerAgreement] = useState<{
+        daily: 'agreed' | 'disagreed' | 'pending' | 'none';
+        weekly: 'agreed' | 'disagreed' | 'pending' | 'none';
+        monthly: 'agreed' | 'disagreed' | 'pending' | 'none';
+    }>({ daily: 'none', weekly: 'none', monthly: 'none' });
+
+    const [timeLeft, setTimeLeft] = useState({
+        daily: '',
+        weekly: '',
+        monthly: '',
+        dailyUrgent: false,
+        weeklyUrgent: false,
+        monthlyUrgent: false
+    });
+
+    // State for active challenges
+    const [daily, setDaily] = useState<Challenge | null>(null);
+    const [weekly, setWeekly] = useState<Challenge | null>(null);
+    const [monthly, setMonthly] = useState<Challenge | null>(null);
+
+    // Context Hooks
+    const { couple, currentUser, userProfile, refreshCoupleData } = useCoupleData();
+
+    // Refs for Robustness
+    // Track recently deleted IDs to prevent "zombie" state from replication lag
+    const recentlyDeletedIds = useRef<Set<string>>(new Set());
+
+    // Cleanup deleted IDs after 5 seconds
+    const addToRecentlyDeleted = useCallback((id: string) => {
+        recentlyDeletedIds.current.add(id);
+        setTimeout(() => {
+            recentlyDeletedIds.current.delete(id);
+        }, 5000);
+    }, []);
+
+    // Load History from LocalStorage (Optimistic/Offline support)
+    useEffect(() => {
+        const h = localStorage.getItem('challenge_history');
+        if (h) {
+            const parsedHistory = JSON.parse(h);
+            setHistory(parsedHistory);
+
+            const rehydratedMemories = parsedHistory.map((h: any) => ({
+                id: h.id,
+                title: h.title,
+                created_at: h.date,
+                type: 'challenge',
+                metadata: h.metadata || {}
+            }));
+            setMyMemories(rehydratedMemories);
+        }
+    }, []);
+
+    // Fetch Active Challenges from DB
+    useEffect(() => {
+        if (!couple || !currentUser) return;
+
+        const fetchChallenges = async () => {
+            try {
+                // Parallel fetch for active challenges
+                const [dailyRes, weeklyRes, monthlyRes] = await Promise.all([
+                    supabase.rpc('get_active_challenge' as any, { couple_id_input: couple.id, frequency_input: 'daily' }) as any,
+                    supabase.rpc('get_active_challenge' as any, { couple_id_input: couple.id, frequency_input: 'weekly' }) as any,
+                    supabase.rpc('get_active_challenge' as any, { couple_id_input: couple.id, frequency_input: 'monthly' }) as any
+                ]);
+
+                if (dailyRes.data && dailyRes.data.success) {
+                    setDaily({
+                        id: dailyRes.data.data.id,
+                        type: 'daily',
+                        title: dailyRes.data.data.title,
+                        description: dailyRes.data.data.description,
+                        durationMinutes: dailyRes.data.data.durationMinutes,
+                        category: dailyRes.data.data.category,
+                        isCompetition: dailyRes.data.data.isCompetition
+                    });
+                }
+
+                if (weeklyRes.data && weeklyRes.data.success) {
+                    setWeekly({
+                        id: weeklyRes.data.data.id,
+                        type: 'weekly',
+                        title: weeklyRes.data.data.title,
+                        description: weeklyRes.data.data.description,
+                        durationMinutes: weeklyRes.data.data.durationMinutes,
+                        category: weeklyRes.data.data.category,
+                        isCompetition: weeklyRes.data.data.isCompetition
+                    });
+                }
+
+                if (monthlyRes.data && monthlyRes.data.success) {
+                    setMonthly({
+                        id: monthlyRes.data.data.id,
+                        type: 'monthly',
+                        title: monthlyRes.data.data.title,
+                        description: monthlyRes.data.data.description,
+                        durationMinutes: monthlyRes.data.data.durationMinutes,
+                        category: monthlyRes.data.data.category,
+                        isCompetition: monthlyRes.data.data.isCompetition
+                    });
+                }
+
+            } catch (error) {
+                console.error('Error fetching active challenges:', error);
+            } finally {
+                setLoadingChallenges(false);
+            }
+        };
+
+        fetchChallenges();
+    }, [couple, currentUser]);
+
+    // Seen Count Logic
+    const seenUpdateRef = useRef<{ daily: string | null, weekly: string | null, monthly: string | null }>({ daily: null, weekly: null, monthly: null });
+
+    useEffect(() => {
+        if (!couple || !couple.challenge_stats) return;
+
+        const updateSeen = async () => {
+            const stats = (couple.challenge_stats as any) || {};
+            const updates: any = {};
+            let needsUpdate = false;
+
+            const checkType = (type: 'daily' | 'weekly' | 'monthly', currentChallenge: Challenge | null, seedDateStr: string) => {
+                if (!currentChallenge) return;
+
+                if (seenUpdateRef.current[type] === seedDateStr) return;
+
+                const typeStats = stats[type] || { count: 0, last_seen: null };
+
+                const lastSeen = typeStats.last_seen ? new Date(typeStats.last_seen) : null;
+                const now = new Date();
+
+                let isNew = false;
+                if (!lastSeen) isNew = true;
+                else {
+                    if (type === 'daily') {
+                        isNew = lastSeen.toDateString() !== now.toDateString();
+                    } else if (type === 'weekly') {
+                        const lastWeek = getWeekNumber(lastSeen);
+                        const currentWeek = getWeekNumber(now);
+                        isNew = lastWeek !== currentWeek || lastSeen.getFullYear() !== now.getFullYear();
+                    } else {
+                        isNew = lastSeen.getMonth() !== now.getMonth() || lastSeen.getFullYear() !== now.getFullYear();
+                    }
+                }
+
+                if (isNew) {
+                    updates[type] = {
+                        count: (typeStats.count || 0) + 1,
+                        last_seen: now.toISOString()
+                    };
+                    needsUpdate = true;
+                    seenUpdateRef.current[type] = seedDateStr;
+                }
+            };
+
+            checkType('daily', daily, new Date().toDateString());
+            checkType('weekly', weekly, `W${getWeekNumber(new Date())} `);
+            checkType('monthly', monthly, `M${new Date().getMonth()} `);
+
+            if (needsUpdate) {
+                const newStats = { ...stats, ...updates };
+                await supabase.from('couples').update({ challenge_stats: newStats }).eq('id', couple.id);
+            }
+        };
+
+        updateSeen();
+    }, [couple, daily, weekly, monthly]);
+
+
+    // Helper to find relevant memory
+    const findMemory = (memories: any[], challenge: Challenge | null, type: 'daily' | 'weekly' | 'monthly') => {
+        if (!challenge) return null;
+        const { start, end } = getDateRange(type);
+        return memories.find((m: any) =>
+            m.title === challenge.title &&
+            m.created_at >= start &&
+            m.created_at <= end
+        ) || null;
+    };
+
+    // Derived Memories
+    const myDailyMemory = findMemory(myMemories, daily, 'daily');
+    const myWeeklyMemory = findMemory(myMemories, weekly, 'weekly');
+    const myMonthlyMemory = findMemory(myMemories, monthly, 'monthly');
+
+    const partnerDailyMemory = findMemory(partnerMemories, daily, 'daily');
+    const partnerWeeklyMemory = findMemory(partnerMemories, weekly, 'weekly');
+    const partnerMonthlyMemory = findMemory(partnerMemories, monthly, 'monthly');
+
+    // Status Derivation Helper
+    const deriveStatus = (myMem: any, partnerMem: any, challenge: Challenge | null, agreement: 'agreed' | 'disagreed' | 'pending' | 'none'): ChallengeStatus => {
+        const mySkipped = myMem?.metadata?.skipped;
+        const partnerSkipped = partnerMem?.metadata?.skipped;
+
+        if (mySkipped || partnerSkipped) return 'skipped';
+
+        // If I completed it...
+        if (myMem) {
+            // ...and partner didn't -> Waiting for partner
+            if (!partnerMem) return 'waiting_for_partner';
+
+            // ...and partner did:
+            // If it's a competition and we haven't agreed -> Pending/Waiting
+            if (challenge?.isCompetition && agreement !== 'agreed') {
+                return 'pending_agreement';
+            }
+
+            // Otherwise, we're both done and agreed (or non-comp)
+            return 'completed';
+        }
+
+        // I haven't completed it, so it's active
+        return 'active';
+    };
+
+    const dailyStatus = deriveStatus(myDailyMemory, partnerDailyMemory, daily, winnerAgreement.daily);
+    const weeklyStatus = deriveStatus(myWeeklyMemory, partnerWeeklyMemory, weekly, winnerAgreement.weekly);
+    const monthlyStatus = deriveStatus(myMonthlyMemory, partnerMonthlyMemory, monthly, winnerAgreement.monthly);
+
+    // Check Partner Completion & Sync My Memories
+    const checkPartnerCompletion = useCallback(async () => {
+        if (!couple || !currentUser) return;
+
+        let partnerId: string | null = couple.user_one_id === currentUser.id ? couple.user_two_id : couple.user_one_id;
+        if (partnerId === currentUser.id) partnerId = null;
+
+        try {
+            const partnerQuery = partnerId
+                ? supabase
+                    .from('memories')
+                    .select('title, created_at, metadata')
+                    .eq('couple_id', couple.id)
+                    .eq('uploader_id', partnerId)
+                    .eq('type', 'challenge')
+                : Promise.resolve({ data: [], error: null });
+
+            const myQuery = supabase
+                .from('memories')
+                .select('id, title, created_at, metadata')
+                .eq('couple_id', couple.id)
+                .eq('uploader_id', currentUser.id)
+                .eq('type', 'challenge');
+
+            // Parallel Execution
+            const [{ data: pMemories, error: pError }, { data: mMemories, error: mError }] = await Promise.all([partnerQuery, myQuery]);
+
+            if (pError) throw pError;
+            if (mError) throw mError;
+
+            // Set Partner Memories
+            setPartnerMemories(pMemories || []);
+
+            // Set My Memories with Zombie Protection
+            setMyMemories(prev => {
+                const newMemories = mMemories || [];
+
+                // Filter out zombies (items we know we just deleted but DB still returned)
+                const safeNewMemories = newMemories.filter(m => !recentlyDeletedIds.current.has(m.id));
+
+                // Preserve optimistic updates (temp ids) if not yet present in fetched data
+                const optimisticMemories = prev.filter(m => m.id.toString().startsWith('temp-'));
+                const combined = [...safeNewMemories];
+
+                optimisticMemories.forEach(opt => {
+                    const exists = safeNewMemories.some(real =>
+                        real.title === opt.title &&
+                        (real.metadata as any)?.challenge_type === opt.metadata?.challenge_type
+                    );
+                    if (!exists) {
+                        combined.push(opt);
+                    }
+                });
+
+                return combined;
+            });
+
+            if (mMemories) {
+                // Authoritative Sync: Rebuild history from DB to ensure consistency (handles deletions/desyncs)
+                // Also filter zombies here
+                const safeHistoryMemories = mMemories.filter(m => !recentlyDeletedIds.current.has(m.id));
+
+                const dbHistory = safeHistoryMemories.map((mem: any) => ({
+                    id: mem.id,
+                    title: mem.title,
+                    date: mem.created_at,
+                    type: mem.metadata?.challenge_type || 'daily',
+                    metadata: mem.metadata
+                }));
+
+                // Sort by date descending
+                dbHistory.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                setHistory(dbHistory);
+                localStorage.setItem('challenge_history', JSON.stringify(dbHistory));
+            }
+
+        } catch (err) {
+            console.error('Error checking partner completion:', err);
+        } finally {
+            setLoadingPartner(false);
+        }
+    }, [couple, currentUser]);
+
+    // Channel Ref to allow sending broadcasts
+    const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+    useEffect(() => {
+        if (!couple) return;
+
+        // Fetch immediately
+        checkPartnerCompletion();
+
+        // Setup Channel
+        const channelName = `partner-challenges-${couple.id}`;
+        const channel = supabase.channel(channelName);
+        channelRef.current = channel;
+
+        let debounceTimer: ReturnType<typeof setTimeout>;
+
+        channel
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'memories',
+                    filter: `couple_id=eq.${couple.id}`
+                },
+                (payload) => {
+                    // Replication Lag Protection:
+                    // If we receive a DELETE event for my own memory, track it!
+                    // Though usually we initiate the delete, sometimes it might come from another device
+                    if (payload.eventType === 'DELETE' && payload.old && (payload.old as any).uploader_id === currentUser?.id) {
+                        addToRecentlyDeleted((payload.old as any).id);
+                    }
+
+                    // Debounce the refresh to prevent "flash" from double events
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        checkPartnerCompletion();
+                    }, 500);
+                }
+            )
+            .on('broadcast', { event: 'challenge_update' }, () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    checkPartnerCompletion();
+                }, 500);
+            })
+            .subscribe(() => {
+                //
+            });
+
+        // 30s polling fallback for reliability
+        const pollingId: ReturnType<typeof setInterval> = setInterval(() => {
+            checkPartnerCompletion();
+        }, 30000);
+
+        return () => {
+            supabase.removeChannel(channel);
+            clearInterval(pollingId);
+            clearTimeout(debounceTimer);
+            channelRef.current = null;
+        };
+
+    }, [couple, checkPartnerCompletion, currentUser, addToRecentlyDeleted]);
+
+    // Agreement Logic
+    useEffect(() => {
+        const calculateAgreement = (challenge: Challenge | null, myMem: any, partnerMem: any) => {
+            if (!challenge || !challenge.isCompetition) return 'none';
+            if (!myMem && !partnerMem) return 'none';
+            if (myMem && !partnerMem) {
+                return 'pending';
+            }
+            if (!myMem || !partnerMem) return 'pending';
+
+            const mySelection = myMem.metadata?.winner_selection;
+            const partnerSelection = partnerMem.metadata?.winner_selection;
+
+            if (!mySelection && !partnerSelection) return 'agreed';
+            if (!mySelection || !partnerSelection) return 'pending';
+
+            if (mySelection === 'tie' && partnerSelection === 'tie') return 'agreed';
+            if (mySelection === 'me' && partnerSelection === 'partner') return 'agreed';
+            if (mySelection === 'partner' && partnerSelection === 'me') return 'agreed';
+
+            return 'disagreed';
+        };
+
+        setWinnerAgreement({
+            daily: calculateAgreement(daily, myDailyMemory, partnerDailyMemory),
+            weekly: calculateAgreement(weekly, myWeeklyMemory, partnerWeeklyMemory),
+            monthly: calculateAgreement(monthly, myMonthlyMemory, partnerMonthlyMemory)
+        });
+
+    }, [
+        daily, weekly, monthly,
+        myDailyMemory, myWeeklyMemory, myMonthlyMemory,
+        partnerDailyMemory, partnerWeeklyMemory, partnerMonthlyMemory
+    ]);
+
+
+    const markChallengeConfettiSeen = useCallback(async (challengeId: string) => {
+        if (!couple?.id || !userProfile?.id) return;
+
+        try {
+            const { data: latestCouple } = await supabase
+                .from('couples')
+                .select('challenge_stats')
+                .eq('id', couple.id)
+                .single();
+
+            if (!latestCouple) return;
+
+            const stats = (latestCouple.challenge_stats as any) || {};
+            const celebrated = stats.celebrated_history || {};
+            const challengedCelebratedUsers = celebrated[challengeId] || [];
+
+            if (challengedCelebratedUsers.includes(userProfile.id)) return;
+
+            const newCelebratedUsers = [...challengedCelebratedUsers, userProfile.id];
+            const newStats = {
+                ...stats,
+                celebrated_history: {
+                    ...celebrated,
+                    [challengeId]: newCelebratedUsers
+                }
+            };
+
+            await supabase
+                .from('couples')
+                .update({ challenge_stats: newStats })
+                .eq('id', couple.id);
+
+        } catch (e) {
+            console.error('Error marking confetti seen:', e);
+        }
+    }, [couple?.id, userProfile?.id]);
+
+    const completeChallenge = async (type: 'daily' | 'weekly' | 'monthly', file?: File | null, winnerSelection?: 'me' | 'partner' | 'tie') => {
+        if (isCompleting) return;
+        setIsCompleting(true);
+
+        const challenge = type === 'daily' ? daily : type === 'weekly' ? weekly : monthly;
+        if (!challenge) {
+            setIsCompleting(false);
+            return;
+        }
+
+        const existingMemory = findMemory(myMemories, challenge, type);
+
+        try {
+            if (existingMemory) {
+                // UPDATE existing memory
+                const updatedMetadata = {
+                    ...existingMemory.metadata,
+                    ...(winnerSelection ? { winner_selection: winnerSelection } : {}),
+                    is_competition: !!challenge.isCompetition
+                };
+
+                // Optimistic update
+                const updatedMemories = myMemories.map(m => m.id === existingMemory.id ? { ...m, metadata: updatedMetadata } : m);
+                setMyMemories(updatedMemories);
+
+                // Update History
+                const updatedHistory = history.map(h => h.id === existingMemory.id ? { ...h, metadata: updatedMetadata } : h);
+                setHistory(updatedHistory);
+                localStorage.setItem('challenge_history', JSON.stringify(updatedHistory));
+
+                if (couple && currentUser) {
+                    const { error } = await supabase.from('memories')
+                        .update({ metadata: updatedMetadata })
+                        .eq('id', existingMemory.id);
+                    if (error) throw error;
+                }
+            } else {
+                // INSERT new memory - Optimistic
+                const tempId = 'temp-' + Date.now();
+                const newEntry = {
+                    id: tempId,
+                    title: challenge.title,
+                    date: new Date().toISOString(),
+                    type,
+                    metadata: { winner_selection: winnerSelection }
+                };
+
+                const updatedHistory = [newEntry, ...history];
+                setHistory(updatedHistory);
+                localStorage.setItem('challenge_history', JSON.stringify(updatedHistory));
+
+                setMyMemories(prev => [...prev, { ...newEntry, created_at: newEntry.date }]);
+
+                if (couple && currentUser) {
+                    let mediaUrl: string | null = null;
+                    let uploadedFilePath: string | null = null;
+
+                    if (file) {
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${couple.id}/challenges/${Date.now()}.${fileExt}`;
+                        uploadedFilePath = fileName; // Track for cleanup on failure
+
+                        const { error: uploadError } = await supabase.storage.from('memories').upload(fileName, file);
+                        if (uploadError) throw uploadError;
+
+                        const { data: { publicUrl } } = supabase.storage.from('memories').getPublicUrl(fileName);
+                        mediaUrl = publicUrl;
+                    }
+
+                    const partnerMem = type === 'daily' ? partnerDailyMemory : type === 'weekly' ? partnerWeeklyMemory : partnerMonthlyMemory;
+                    const isPartnerDone = !!partnerMem;
+
+                    const metadata = {
+                        ...(winnerSelection ? { winner_selection: winnerSelection } : {}),
+                        ...(isPartnerDone ? { confetti_shown: true } : {}),
+                        challenge_type: type,
+                        is_competition: !!challenge.isCompetition
+                    };
+
+                    const { error: dbError } = await supabase.from('memories').insert({
+                        couple_id: couple.id,
+                        uploader_id: currentUser.id,
+                        type: 'challenge',
+                        title: challenge.title,
+                        challenge_id: challenge.id,
+                        caption: challenge.description,
+                        media_url: mediaUrl,
+                        created_at: new Date().toISOString(),
+                        metadata
+                    }).select();
+
+                    if (dbError) {
+                        // Rollback upload if DB failed
+                        if (uploadedFilePath) {
+                            await supabase.storage.from('memories').remove([uploadedFilePath]);
+                        }
+                        throw dbError;
+                    }
+
+                    // Broadcast update to partner
+                    if (channelRef.current) {
+                        await channelRef.current.send({
+                            type: 'broadcast',
+                            event: 'challenge_update',
+                            payload: { type: type, action: 'complete', timestamp: Date.now() }
+                        });
+                    }
+
+                    // Immediately check partner status in case we missed an event
+                    checkPartnerCompletion();
+                }
+            }
+        } catch (error) {
+            console.error('Error saving challenge:', error);
+            // Rollback optimistic update
+            // Ideally we'd remove the temp memory here if it was a new insert
+            checkPartnerCompletion(); // Force re-sync
+        } finally {
+            setIsCompleting(false);
+        }
+    };
+
+    const undoChallenge = async (type: 'daily' | 'weekly' | 'monthly') => {
+        if (isUndoing) return;
+        setIsUndoing(true);
+
+        const challenge = type === 'daily' ? daily : type === 'weekly' ? weekly : monthly;
+        if (!challenge) {
+            setIsUndoing(false);
+            return;
+        }
+
+        const { start, end } = getDateRange(type);
+
+        // Find memories to delete to track them
+        const memoriesToDelete = myMemories.filter(m =>
+            m.title === challenge.title &&
+            m.created_at >= start &&
+            m.created_at <= end
+        );
+
+        // ZOMBIE PROTECTION: Add to recently deleted immediately
+        memoriesToDelete.forEach(m => addToRecentlyDeleted(m.id));
+
+        // Optimistic UI Update - Remove immediately
+        const updatedHistory = history.filter(h => !(h.title === challenge.title && h.type === type));
+        setHistory(updatedHistory);
+        localStorage.setItem('challenge_history', JSON.stringify(updatedHistory));
+
+        setMyMemories(prev => prev.filter(m => !(
+            m.title === challenge.title &&
+            m.created_at >= start &&
+            m.created_at <= end
+        )));
+
+        if (couple && currentUser) {
+            try {
+                const myMem = type === 'daily' ? myDailyMemory : type === 'weekly' ? myWeeklyMemory : myMonthlyMemory;
+                const partnerMem = type === 'daily' ? partnerDailyMemory : type === 'weekly' ? partnerWeeklyMemory : partnerMonthlyMemory;
+
+                const isSkipped = myMem?.metadata?.skipped || partnerMem?.metadata?.skipped;
+
+                if (isSkipped) {
+                    window.dispatchEvent(new CustomEvent('couplelink:expect-refund'));
+
+                    await supabase.rpc('unskip_challenge' as any, {
+                        p_couple_id: couple.id,
+                        p_title: challenge.title,
+                        p_type: type,
+                        p_start_date: start,
+                        p_end_date: end
+                    });
+                } else {
+                    const { data: memories } = await supabase.from('memories').select('id, media_url').eq('couple_id', couple.id).eq('uploader_id', currentUser.id).eq('type', 'challenge').eq('title', challenge.title).gte('created_at', start).lte('created_at', end);
+
+                    if (memories?.length) {
+                        for (const m of memories) {
+                            if (m.media_url) {
+                                const path = m.media_url.split('/memories/')[1];
+                                if (path) await supabase.storage.from('memories').remove([path]);
+                            }
+                        }
+                        await supabase.from('memories').delete().in('id', memories.map(m => m.id));
+                    }
+                }
+
+                if (channelRef.current) {
+                    await channelRef.current.send({
+                        type: 'broadcast',
+                        event: 'challenge_update',
+                        payload: { type: type, action: 'undo', timestamp: Date.now() }
+                    });
+
+                    await channelRef.current.send({
+                        type: 'broadcast',
+                        event: 'token_refund',
+                        payload: { timestamp: Date.now() }
+                    });
+                }
+
+                // Allow some time for propagation before verifying
+                setTimeout(checkPartnerCompletion, 500);
+
+            } catch (error) {
+                console.error('Error undoing challenge:', error);
+                // On error, we should probably re-fetch to restore state if it failed
+                checkPartnerCompletion();
+            } finally {
+                setIsUndoing(false);
+            }
+        } else {
+            setIsUndoing(false);
+        }
+    };
+
+    const skipChallenge = async (type: 'daily' | 'weekly' | 'monthly') => {
+        if (!couple || !currentUser) return;
+        const challenge = type === 'daily' ? daily : type === 'weekly' ? weekly : monthly;
+        if (!challenge) return;
+
+        try {
+            const { data: success } = await supabase.rpc('use_rain_check_token' as any, { p_couple_id: couple.id });
+            if (!success) return;
+
+            const newEntry = {
+                id: 'skipped-' + Date.now(),
+                title: challenge.title,
+                date: new Date().toISOString(),
+                type,
+                metadata: { skipped: true }
+            };
+            const updatedHistory = [newEntry, ...history];
+            setHistory(updatedHistory);
+            localStorage.setItem('challenge_history', JSON.stringify(updatedHistory));
+
+            setMyMemories(prev => [...prev, { ...newEntry, created_at: newEntry.date }]);
+
+            await supabase.from('memories').insert({
+                couple_id: couple.id,
+                uploader_id: currentUser.id,
+                type: 'challenge',
+                title: challenge.title,
+                caption: 'Skipped with Rain Check Token',
+                created_at: new Date().toISOString(),
+                metadata: { skipped: true, challenge_type: type }
+            });
+
+        } catch (error) {
+            console.error('Error skipping:', error);
+            checkPartnerCompletion();
+        }
+    };
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const now = new Date();
+            const endOfDay = new Date(now); endOfDay.setUTCHours(23, 59, 59, 999);
+            const diffDaily = endOfDay.getTime() - now.getTime();
+
+            const endOfWeek = new Date(now);
+            const day = endOfWeek.getUTCDay();
+            const diffToSunday = day === 0 ? 0 : 7 - day;
+            endOfWeek.setUTCDate(now.getUTCDate() + diffToSunday);
+            endOfWeek.setUTCHours(23, 59, 59, 999);
+            const diffWeekly = endOfWeek.getTime() - now.getTime();
+
+            const endOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+            const diffMonthly = endOfMonth.getTime() - now.getTime();
+
+            setTimeLeft({
+                daily: formatTime(diffDaily),
+                weekly: formatTime(diffWeekly),
+                monthly: formatTime(diffMonthly),
+                dailyUrgent: diffDaily < 3600000,
+                weeklyUrgent: diffWeekly < 86400000,
+                monthlyUrgent: diffMonthly < 172800000
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const value = {
+        daily,
+        weekly,
+        monthly,
+        dailyTimeLeft: timeLeft.daily, weeklyTimeLeft: timeLeft.weekly, monthlyTimeLeft: timeLeft.monthly,
+        dailyTimeUrgent: timeLeft.dailyUrgent, weeklyTimeUrgent: timeLeft.weeklyUrgent, monthlyTimeUrgent: timeLeft.monthlyUrgent,
+
+        dailyStatus, weeklyStatus, monthlyStatus,
+
+        myDailyMemory, myWeeklyMemory, myMonthlyMemory,
+        partnerDailyMemory, partnerWeeklyMemory, partnerMonthlyMemory,
+
+        history,
+        completeChallenge, undoChallenge, skipChallenge,
+        loadingPartner, winnerAgreement,
+        markChallengeConfettiSeen,
+        couple, refreshCoupleData,
+        loadingChallenges,
+        isCompleting, isUndoing
+    };
+
+    return (
+        <ChallengeContext.Provider value={value}>
+            {children}
+        </ChallengeContext.Provider>
+    );
+};

@@ -3,6 +3,7 @@ import { AuthProvider } from "@/context/AuthContext"
 import { CoupleProvider } from "@/context/CoupleContext"
 import { SexplorationModalProvider } from "@/context/SexplorationModalContext"
 import { ChallengeModalProvider } from "@/context/ChallengeModalContext"
+import { ChallengeProvider } from "@/context/ChallengeContext"
 import { GameSessionProvider } from "@/context/GameSessionContext"
 import { FantasyBucketListProvider } from "@/context/FantasyBucketListContext"
 import { CouponsProvider } from "@/context/CouponsContext"
@@ -31,11 +32,13 @@ function App() {
                         <GlobalModalQueueProvider>
                           <SexplorationModalProvider>
                             <JournalModalProvider>
-                              <ChallengeModalProvider>
-                                <NotificationListener />
-                                <GlobalCouponListener />
-                                <AnimatedRoutes />
-                              </ChallengeModalProvider>
+                              <ChallengeProvider>
+                                <ChallengeModalProvider>
+                                  <NotificationListener />
+                                  <GlobalCouponListener />
+                                  <AnimatedRoutes />
+                                </ChallengeModalProvider>
+                              </ChallengeProvider>
                             </JournalModalProvider>
                           </SexplorationModalProvider>
                         </GlobalModalQueueProvider>

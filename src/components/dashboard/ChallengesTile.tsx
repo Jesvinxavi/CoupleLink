@@ -251,7 +251,7 @@ export function ChallengesTile({
                 {/* Content */}
                 {isDisagreed ? (
                     <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                        <div className="h-8 w-8 rounded-full bg-red-200 flex items-center justify-center mb-1">
+                        <div className="h-8 w-8 rounded-full bg-red-200 flex items-center justify-center">
                             <span className="material-symbols-outlined text-red-700 text-lg">warning</span>
                         </div>
                         <span className="text-xs font-medium text-red-700">Disagreement! Tap to resolve.</span>
@@ -265,21 +265,21 @@ export function ChallengesTile({
                     </div>
                 ) : isCompleted ? (
                     <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                        <div className="h-8 w-8 rounded-full bg-green-200 flex items-center justify-center mb-1">
+                        <div className="h-8 w-8 rounded-full bg-green-200 flex items-center justify-center">
                             <span className="material-symbols-outlined text-green-700 text-lg">check</span>
                         </div>
                         <span className="text-xs font-medium text-green-700">Completed</span>
                     </div>
                 ) : isSkipped ? (
                     <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                        <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center mb-1">
+                        <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
                             <span className="material-symbols-outlined text-gray-600 text-lg">remove_done</span>
                         </div>
                         <span className="text-xs font-medium text-gray-600">{skipText}</span>
                     </div>
                 ) : isWaiting ? (
                     <div className="flex flex-col h-full justify-center items-center text-center">
-                        <span className="material-symbols-outlined text-amber-500 text-2xl mb-2">hourglass_empty</span>
+                        <span className="material-symbols-outlined text-amber-500 text-2xl">hourglass_empty</span>
                         <p className="text-xs font-medium text-amber-700">Waiting for partner...</p>
                     </div>
                 ) : (
