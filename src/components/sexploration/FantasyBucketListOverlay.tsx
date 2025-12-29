@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,15 +41,46 @@ export function FantasyBucketListOverlay({
     const [selectedFantasy, setSelectedFantasy] = useState<Fantasy | null>(null);
     const [isSending, setIsSending] = useState(false);
     const [activeTab, setActiveTab] = useState<'approved' | 'pending' | 'completed'>('approved');
-    const [slideDirection, setSlideDirection] = useState(1); // 1 = right, -1 = left
+    const [slideDirection, setSlideDirection] = useState(1);
+    const [isFocused, setIsFocused] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Tab order: approved (0), pending (1), completed (2)
+    // Mobile Viewport Logic
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+
+            const handleResize = () => {
+                if (window.visualViewport) {
+                    setViewportStyle({
+                        height: window.visualViewport.height,
+                        top: window.visualViewport.offsetTop
+                    });
+                }
+            };
+
+            window.visualViewport?.addEventListener('resize', handleResize);
+            window.visualViewport?.addEventListener('scroll', handleResize);
+            handleResize();
+
+            return () => {
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                document.body.style.width = '';
+                window.visualViewport?.removeEventListener('resize', handleResize);
+                window.visualViewport?.removeEventListener('scroll', handleResize);
+            };
+        }
+    }, [isOpen]);
+
     const tabOrder = { approved: 0, pending: 1, completed: 2 };
 
     const handleTabChange = (newTab: 'approved' | 'pending' | 'completed') => {
         if (newTab === activeTab) return;
-        // Set direction based on tab order
         setSlideDirection(tabOrder[newTab] > tabOrder[activeTab] ? 1 : -1);
         setActiveTab(newTab);
     };
@@ -59,12 +90,19 @@ export function FantasyBucketListOverlay({
         if (!inputText.trim() || isSending) return;
 
         setIsSending(true);
-        setSlideDirection(1); // Moving to pending (right)
+        setSlideDirection(1);
         setActiveTab('pending');
         await addFantasy(inputText.trim());
         setInputText('');
         setIsSending(false);
         inputRef.current?.focus();
+    };
+
+    const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+        setIsFocused(true);
+        setTimeout(() => {
+            e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }, 300);
     };
 
     const filteredFantasies = fantasies.filter(f => f.status === activeTab);
@@ -79,23 +117,26 @@ export function FantasyBucketListOverlay({
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                            className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${isFocused ? 'z-[60]' : 'z-40'}`}
                             onClick={onClose}
                         />
 
                         {/* Slide-up Panel */}
                         <motion.div
-                            layout
                             initial={{ y: '100%' }}
                             animate={{ y: 0 }}
                             exit={{ y: '100%' }}
-                            transition={{ type: 'tween', duration: 0.5, ease: 'easeInOut' }}
-                            className="fixed inset-x-0 bottom-0 z-50 bg-rose-50 dark:bg-gray-900 rounded-t-3xl shadow-2xl max-h-[calc(100dvh-70px)] flex flex-col"
+                            transition={{ type: 'spring', damping: 25, stiffness: 150 }}
+                            style={isFocused && viewportStyle ? {
+                                height: `${viewportStyle.height}px`,
+                                top: `${viewportStyle.top}px`
+                            } : { height: 'auto', maxHeight: 'calc(100dvh - 70px)' }}
+                            className={`fixed inset-x-0 z-[61] bg-rose-50 dark:bg-gray-900 rounded-t-[32px] shadow-2xl ring-1 ring-black/5 flex flex-col overflow-hidden ${isFocused && viewportStyle ? '' : 'bottom-0'}`}
                         >
                             {/* Header */}
-                            <div className="shrink-0 z-10">
-                                {/* Title Section - White */}
-                                <div className="bg-white dark:bg-gray-800 px-6 py-4 rounded-t-3xl">
+                            <div className="shrink-0 z-10 overflow-hidden">
+                                {/* Title Section - Pink Match */}
+                                <div className="bg-rose-50 dark:bg-gray-900 px-6 py-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
@@ -246,14 +287,16 @@ export function FantasyBucketListOverlay({
                                 </motion.div>
                             </div>
 
-                            {/* Floating Footer Input */}
-                            <div className="p-4 pt-0 pb-8 bg-transparent shrink-0 safe-area-bottom">
+                            {/* Floating Footer Input - Sticky when focused */}
+                            <div className={`p-4 bg-transparent shrink-0 safe-area-bottom ${isFocused ? 'pb-2' : 'pb-8'}`}>
                                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-lg border border-gray-100 dark:border-gray-700">
                                     <form onSubmit={handleSubmit} className="flex gap-2">
                                         <Input
                                             ref={inputRef}
                                             value={inputText}
                                             onChange={(e) => setInputText(e.target.value)}
+                                            onFocus={handleInputFocus}
+                                            onBlur={() => setIsFocused(false)}
                                             placeholder="Describe your fantasy..."
                                             className="flex-1 bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700 focus:border-rose-400 focus:ring-rose-400"
                                         />
