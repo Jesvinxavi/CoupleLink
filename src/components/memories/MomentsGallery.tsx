@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 import { Plus, Image as ImageIcon, Loader2, Folder, FolderPlus, ChevronLeft, X, UploadCloud, Trash2, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -41,7 +42,6 @@ export function MomentsGallery() {
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [caption, setCaption] = useState('');
     const [newFolderName, setNewFolderName] = useState('');
-    const [isInputFocused, setIsInputFocused] = useState(false);
 
     // Expansion & Management State
     const [selectedMoment, setSelectedMoment] = useState<Moment | null>(null);
@@ -333,7 +333,6 @@ export function MomentsGallery() {
         setPreviewUrls([]);
         setCaption('');
         setNewFolderName('');
-        setIsInputFocused(false);
     };
 
     return (
@@ -392,7 +391,7 @@ export function MomentsGallery() {
                             </DialogTrigger>
                             <DialogContent
                                 onOpenAutoFocus={(e) => e.preventDefault()}
-                                className={`w-[90%] sm:max-w-[425px] rounded-xl ${isInputFocused ? '!top-auto !bottom-24 !translate-y-0 sm:!top-[50%] sm:!bottom-auto sm:!translate-y-[-50%]' : ''}`}
+                                className="w-[90%] sm:max-w-[425px] rounded-xl"
                             >
                                 <DialogHeader>
                                     <DialogTitle>Create New Folder</DialogTitle>
@@ -404,8 +403,6 @@ export function MomentsGallery() {
                                             id="folderName"
                                             value={newFolderName}
                                             onChange={(e) => setNewFolderName(e.target.value)}
-                                            onFocus={() => setIsInputFocused(true)}
-                                            onBlur={() => setIsInputFocused(false)}
                                             placeholder="e.g. Summer Vacation 2024"
                                         />
                                     </div>
@@ -456,12 +453,12 @@ export function MomentsGallery() {
                                 className="bg-rose-500 hover:bg-rose-600 text-white gap-2 border border-transparent"
                             >
                                 <Plus className="w-4 h-4" />
-                                {!currentFolder && <span className="hidden sm:inline">Add Photo</span>}
+                                <span className="hidden sm:inline">Add Photo</span>
                             </Button>
                         </DialogTrigger>
                         <DialogContent
                             onOpenAutoFocus={(e) => e.preventDefault()}
-                            className={`w-[90%] sm:max-w-[425px] rounded-xl ${isInputFocused ? '!top-auto !bottom-4 !translate-y-0 sm:!top-[50%] sm:!bottom-auto sm:!translate-y-[-50%]' : ''}`}
+                            className="w-[90%] sm:max-w-[425px] rounded-xl"
                         >
                             <DialogHeader>
                                 <DialogTitle>Upload Photo</DialogTitle>
@@ -506,8 +503,6 @@ export function MomentsGallery() {
                                         id="caption"
                                         value={caption}
                                         onChange={(e) => setCaption(e.target.value)}
-                                        onFocus={() => setIsInputFocused(true)}
-                                        onBlur={() => setIsInputFocused(false)}
                                         placeholder="What's happening?"
                                     />
                                 </div>
@@ -662,15 +657,18 @@ export function MomentsGallery() {
 
             {/* Edit Caption Dialog */}
             <Dialog open={isEditCaptionOpen} onOpenChange={setIsEditCaptionOpen}>
-                <DialogContent className="max-w-sm rounded-xl">
+                <DialogContent
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                    className="max-w-sm rounded-xl">
                     <DialogHeader>
                         <DialogTitle>Edit Caption</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-4">
-                        <Input
+                        <Textarea
                             value={editingCaption}
                             onChange={(e) => setEditingCaption(e.target.value)}
                             placeholder="Add a caption..."
+                            className="min-h-[100px] resize-none"
                         />
                         <DialogFooter>
                             <Button onClick={handleUpdateMoment} className="bg-rose-500 hover:bg-rose-600 text-white">
@@ -694,7 +692,9 @@ export function MomentsGallery() {
 
             {/* Edit Folder Name Dialog */}
             <Dialog open={isEditFolderOpen} onOpenChange={setIsEditFolderOpen}>
-                <DialogContent className="max-w-sm rounded-xl">
+                <DialogContent
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                    className="max-w-sm rounded-xl">
                     <DialogHeader>
                         <DialogTitle>Rename Folder</DialogTitle>
                     </DialogHeader>
