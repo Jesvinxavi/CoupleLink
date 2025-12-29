@@ -231,7 +231,7 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
                             disabled={isLocked}
                             className={`w-full p-5 rounded-xl text-left transition-all relative overflow-hidden ${isSelected
                                 ? 'bg-rose-500 text-white border-2 border-rose-500'
-                                : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-rose-300'
+                                : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 md:hover:border-rose-300 active:bg-gray-50 dark:active:bg-gray-700/50'
                                 } ${isLocked && !isSelected ? 'opacity-50' : ''}`}
                         >
                             <div className="flex items-center justify-between">

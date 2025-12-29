@@ -339,7 +339,7 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleSelectAnswer('yes')}
-                        className="p-6 rounded-xl text-center bg-green-500 hover:bg-green-600 text-white transition-all"
+                        className="p-6 rounded-xl text-center bg-green-500 md:hover:bg-green-600 active:bg-green-600 text-white transition-all"
                     >
                         <Check className="w-10 h-10 mx-auto mb-2" />
                         <span className="font-bold text-lg">Yes</span>
@@ -349,7 +349,7 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleSelectAnswer('no')}
-                        className="p-6 rounded-xl text-center bg-red-500 hover:bg-red-600 text-white transition-all"
+                        className="p-6 rounded-xl text-center bg-red-500 md:hover:bg-red-600 active:bg-red-600 text-white transition-all"
                     >
                         <X className="w-10 h-10 mx-auto mb-2" />
                         <span className="font-bold text-lg">No</span>

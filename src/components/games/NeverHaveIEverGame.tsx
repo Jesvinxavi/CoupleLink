@@ -254,7 +254,7 @@ export function NeverHaveIEverGame({ session }: NeverHaveIEverGameProps) {
                     disabled={myAnswer !== undefined}
                     className={`p-6 rounded-xl text-center transition-all ${myAnswer === true
                         ? 'bg-green-500 text-white'
-                        : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-green-300'
+                        : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 md:hover:border-green-300 active:bg-gray-50 dark:active:bg-gray-700/50'
                         } ${myAnswer !== undefined && myAnswer !== true ? 'opacity-50' : ''}`}
                 >
                     <ThumbsUp className={`w-10 h-10 mx-auto mb-2 ${myAnswer === true ? 'text-white' : 'text-green-500'
@@ -275,7 +275,7 @@ export function NeverHaveIEverGame({ session }: NeverHaveIEverGameProps) {
                     disabled={myAnswer !== undefined}
                     className={`p-6 rounded-xl text-center transition-all ${myAnswer === false
                         ? 'bg-red-500 text-white'
-                        : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-red-300'
+                        : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 md:hover:border-red-300 active:bg-gray-50 dark:active:bg-gray-700/50'
                         } ${myAnswer !== undefined && myAnswer !== false ? 'opacity-50' : ''}`}
                 >
                     <ThumbsDown className={`w-10 h-10 mx-auto mb-2 ${myAnswer === false ? 'text-white' : 'text-red-500'

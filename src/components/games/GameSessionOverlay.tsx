@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Users, Clock, Trophy } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -23,6 +23,96 @@ export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOver
 
     // Track when we're starting a new game to prevent flash of complete screen
     const [isStartingNewGame, setIsStartingNewGame] = useState(false);
+
+    // Mobile Overlay Logic
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const [isFocused, setIsFocused] = useState(false);
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
+
+    // Generic Focus Handler (Measure-Lock-Animate)
+    const handleOverlayFocus = (e: React.FocusEvent) => {
+        // Filter out non-text inputs (like buttons in other games) which shouldn't trigger keyboard mode
+        const target = e.target as HTMLElement;
+        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+        if (!isTextInput) return;
+
+        // If already focused, just ensure viewport style is tracking
+        if (isFocused) return;
+
+        if (overlayRef.current && window.visualViewport) {
+            // 1. Measure current 'sheet' position
+            const rect = overlayRef.current.getBoundingClientRect();
+
+            // 2. Lock it immediately
+            setViewportStyle({
+                height: rect.height,
+                top: rect.top
+            });
+
+            // 3. Set focused state
+            setIsFocused(true);
+
+            // 4. Animate to target visual viewport in next frame
+            requestAnimationFrame(() => {
+                if (window.visualViewport) {
+                    setViewportStyle({
+                        height: window.visualViewport.height,
+                        top: window.visualViewport.offsetTop
+                    });
+                }
+            });
+        }
+    };
+
+    const handleOverlayBlur = (e: React.FocusEvent) => {
+        // Only blur if focus is leaving the overlay entirely
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            setIsFocused(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isOpen) {
+            // Robust Body Lock
+            const scrollY = window.scrollY;
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollY}px`;
+            document.body.style.width = '100%';
+            document.body.style.overflow = 'hidden';
+
+            // Handle Visual Viewport for mobile keyboard
+            const handleResize = () => {
+                if (window.visualViewport && isFocused) {
+                    setViewportStyle({
+                        height: window.visualViewport.height,
+                        top: window.visualViewport.offsetTop
+                    });
+                }
+            };
+
+            window.visualViewport?.addEventListener('resize', handleResize);
+            window.visualViewport?.addEventListener('scroll', handleResize);
+
+            return () => {
+                const scrollY = document.body.style.top;
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.width = '';
+
+                // Restore scroll position
+                window.scrollTo(0, parseInt(scrollY || '0') * -1);
+
+                window.visualViewport?.removeEventListener('resize', handleResize);
+                window.visualViewport?.removeEventListener('scroll', handleResize);
+            };
+        }
+    }, [isOpen, isFocused]);
+
+    // Reset focus state when round changes (e.g. going from guessing to drawing) to prevents sticky header
+    useEffect(() => {
+        setIsFocused(false);
+    }, [session.current_round]);
 
     // Check if game is complete (current_round > total_rounds)
     const isGameComplete = session.current_round > session.total_rounds && !isStartingNewGame;
@@ -80,85 +170,103 @@ export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOver
 
                     {/* Slide-up Panel */}
                     <motion.div
+                        ref={overlayRef}
                         initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
+                        animate={{
+                            y: 0,
+                            height: isFocused && viewportStyle ? viewportStyle.height : 'auto',
+                            top: isFocused && viewportStyle ? viewportStyle.top : 'auto'
+                        }}
                         exit={{ y: '100%' }}
-                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                        className="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl max-h-[calc(100vh-4rem)] md:max-h-[95vh] overflow-hidden flex flex-col"
+                        transition={{ type: 'spring', damping: 40, stiffness: 300 }}
+                        onFocus={handleOverlayFocus}
+                        onBlur={handleOverlayBlur}
+                        className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl shadow-2xl overflow-hidden flex flex-col outline-none"
                     >
-                        {/* Header */}
-                        <div className={`bg-gradient-to-r ${getGameColor(session.game_type)} px-6 py-3`}>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">
-                                        {getGameLabel(session.game_type)}
-                                    </h2>
-                                    <div className="flex items-center gap-4 mt-1 text-white/80 text-sm">
-                                        <span className="flex items-center gap-1">
-                                            <Users className="w-4 h-4" />
-                                            {partnerInSession ? `Playing with ${partner?.first_name || 'Partner'}` : 'Waiting for partner...'}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Trophy className="w-4 h-4" />
-                                            <span className="text-sm text-white/90">Round {Math.min(session.current_round, session.total_rounds)} of {session.total_rounds}</span>
-                                        </span>
+                        {/* The Skirt - synced background extension matching footer (or sticky input) */}
+                        <div className={`absolute top-full inset-x-0 h-[100vh] ${isFocused ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50'}`} />
+
+                        {/* Inner Content Container */}
+                        <div
+                            className={`flex flex-col w-full bg-white dark:bg-gray-900 ${isFocused ? 'h-full' : ''}`}
+                            style={{
+                                maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                            }}
+                        >
+                            {/* Header */}
+                            <div className={`bg-gradient-to-r ${getGameColor(session.game_type)} px-6 py-3`}>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-white">
+                                            {getGameLabel(session.game_type)}
+                                        </h2>
+                                        <div className="flex items-center gap-4 mt-1 text-white/80 text-sm">
+                                            <span className="flex items-center gap-1">
+                                                <Users className="w-4 h-4" />
+                                                {partnerInSession ? `Playing with ${partner?.first_name || 'Partner'}` : 'Waiting for partner...'}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <Trophy className="w-4 h-4" />
+                                                <span className="text-sm text-white/90">Round {Math.min(session.current_round, session.total_rounds)} of {session.total_rounds}</span>
+                                            </span>
+                                        </div>
                                     </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={handleLeave}
+                                        className="text-white hover:bg-white/20 rounded-full"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </Button>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={handleLeave}
-                                    className="text-white hover:bg-white/20 rounded-full"
-                                >
-                                    <X className="w-5 h-5" />
-                                </Button>
                             </div>
-                        </div>
 
-                        {/* Game Content */}
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {isStartingNewGame || (!partnerInSession && session.status === 'waiting') ? (
-                                <WaitingForPartner
-                                    gameLabel={getGameLabel(session.game_type)}
-                                    partnerName={partner?.first_name || 'Partner'}
-                                />
-                            ) : (
-                                renderGame()
-                            )}
-                        </div>
+                            {/* Game Content */}
+                            <div className="flex-1 overflow-y-auto p-4">
+                                {isStartingNewGame || (!partnerInSession && session.status === 'waiting') ? (
+                                    <WaitingForPartner
+                                        gameLabel={getGameLabel(session.game_type)}
+                                        partnerName={partner?.first_name || 'Partner'}
+                                    />
+                                ) : (
+                                    renderGame()
+                                )}
+                            </div>
 
-                        {/* Footer Actions */}
-                        <div className="border-t border-gray-200 dark:border-gray-800 px-6 py-4 bg-gray-50 dark:bg-gray-800/50">
-                            {isGameComplete ? (
-                                <div className="flex gap-3">
+                            {/* Footer Actions */}
+                            <div className="border-t border-gray-200 dark:border-gray-800 px-6 py-4 bg-gray-50 dark:bg-gray-800/50">
+                                {isGameComplete ? (
+                                    <div className="flex gap-3">
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleLeave}
+                                            className="flex-1"
+                                        >
+                                            Leave Game
+                                        </Button>
+                                        <Button
+                                            onClick={handlePlayAgain}
+                                            className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
+                                        >
+                                            Play Again
+                                        </Button>
+                                    </div>
+                                ) : (
                                     <Button
                                         variant="outline"
                                         onClick={handleLeave}
-                                        className="flex-1"
+                                        className="w-full"
                                     >
                                         Leave Game
                                     </Button>
-                                    <Button
-                                        onClick={handlePlayAgain}
-                                        className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
-                                    >
-                                        Play Again
-                                    </Button>
-                                </div>
-                            ) : (
-                                <Button
-                                    variant="outline"
-                                    onClick={handleLeave}
-                                    className="w-full"
-                                >
-                                    Leave Game
-                                </Button>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </motion.div>
                 </>
             )}
-        </AnimatePresence>
+        </AnimatePresence >
     );
 }
 

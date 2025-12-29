@@ -27,6 +27,7 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
     const [showAnswer, setShowAnswer] = useState(false);
     const [isCorrect, setIsCorrect] = useState(false);
     const [hasGuessed, setHasGuessed] = useState(false);
+    const [isInputFocused, setIsInputFocused] = useState(false);
 
     // Get current prompt ID from session state
     const questionIds = session.game_state?.question_ids || [];
@@ -70,6 +71,7 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
         setGuess('');
         setIsCorrect(false);
         setHasGuessed(false);
+        setIsInputFocused(false);
         if (canvasRef.current) {
             canvasRef.current.clear();
         }
@@ -391,17 +393,25 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
 
             {/* Guess Input (only for guesser) */}
             {!isDrawer && !showAnswer && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm mb-4">
+                <div
+                    className={` ${isInputFocused
+                        ? 'fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.1)]'
+                        : 'bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm mb-4'
+                        }`}
+                >
                     <div className="flex gap-3">
                         <input
                             type="text"
                             value={guess}
                             onChange={(e) => setGuess(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSubmitGuess()}
+                            onFocus={() => setIsInputFocused(true)}
+                            onBlur={() => setIsInputFocused(false)}
                             placeholder="Type your guess..."
                             className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         />
                         <Button
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={handleSubmitGuess}
                             disabled={!guess.trim()}
                             className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 h-auto"
