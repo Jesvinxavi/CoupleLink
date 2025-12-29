@@ -94,13 +94,12 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                            className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${isSearchFocused ? 'z-[60]' : 'z-40'}`}
                             onClick={handleClose}
                         />
 
                         {/* Slide-up Panel */}
                         <motion.div
-                            layout
                             initial={{ y: '100%' }}
                             animate={{ y: 0 }}
                             exit={{ y: '100%' }}
@@ -111,12 +110,12 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                                 height: `${viewportStyle.height}px`,
                                 top: `${viewportStyle.top}px`
                             } : { height: 'auto', maxHeight: 'calc(100dvh - 70px)' }}
-                            className={`fixed inset-x-0 z-50 bg-rose-50 dark:bg-gray-900 rounded-t-3xl shadow-2xl flex flex-col ${isSearchFocused && viewportStyle ? '' : 'bottom-0'}`}
+                            className={`fixed inset-x-0 z-[61] bg-rose-50 dark:bg-gray-900 rounded-t-[32px] shadow-2xl ring-1 ring-black/5 flex flex-col overflow-hidden ${isSearchFocused && viewportStyle ? '' : 'bottom-0'}`}
                         >
                             {/* Header */}
-                            <div className="shrink-0 z-10">
-                                {/* Title Section - White */}
-                                <div className="bg-white dark:bg-gray-800 px-6 py-4 rounded-t-3xl">
+                            <div className="shrink-0 z-10 overflow-hidden">
+                                {/* Title Section - Rose */}
+                                <div className="bg-rose-50 dark:bg-gray-900 px-6 py-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg shadow-pink-500/20">
