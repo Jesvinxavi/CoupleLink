@@ -104,10 +104,14 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
 
     useEffect(() => {
         if (isOpen) {
+            // Store current scroll position
+            const scrollY = window.scrollY;
+
             // Lock body scroll
             document.body.style.overflow = 'hidden';
             document.body.style.position = 'fixed'; // Required for iOS
             document.body.style.width = '100%';
+            document.body.style.top = `-${scrollY}px`; // Prevent scroll jump
 
             // Handle Visual Viewport for mobile keyboard
             const handleResize = () => {
@@ -129,6 +133,9 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                 document.body.style.overflow = '';
                 document.body.style.position = '';
                 document.body.style.width = '';
+                document.body.style.top = '';
+                window.scrollTo(0, scrollY); // Restore scroll position
+
                 window.visualViewport?.removeEventListener('resize', handleResize);
                 window.visualViewport?.removeEventListener('scroll', handleResize);
             };
