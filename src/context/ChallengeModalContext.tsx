@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { ChallengeModal } from '../components/dashboard/ChallengeModal';
 import { useChallenges } from '../hooks/useChallenges';
 import { useStreak } from '../hooks/useStreak';
@@ -26,8 +25,6 @@ interface ChallengeModalProviderProps {
 }
 
 export function ChallengeModalProvider({ children }: ChallengeModalProviderProps) {
-    const navigate = useNavigate();
-    const location = useLocation();
     const { couple } = useCoupleData();
 
     // Modal states
@@ -37,20 +34,10 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
     const challenges = useChallenges();
     const { addPoints, checkStreakUpdate } = useStreak({ enableTokenCheck: false });
 
-    // Open modal and navigate to challenges
-    const openWithNavigation = (type: 'daily' | 'weekly' | 'monthly') => {
-        setSelectedChallenge({ type });
-        // Navigate after modal opens (while backdrop is blurring)
-        setTimeout(() => {
-            if (location.pathname !== '/challenges') {
-                navigate('/challenges', { replace: true });
-            }
-        }, 100);
-    };
-
-    const openDaily = () => openWithNavigation('daily');
-    const openWeekly = () => openWithNavigation('weekly');
-    const openMonthly = () => openWithNavigation('monthly');
+    // Open modal directly (no navigation)
+    const openDaily = () => setSelectedChallenge({ type: 'daily' });
+    const openWeekly = () => setSelectedChallenge({ type: 'weekly' });
+    const openMonthly = () => setSelectedChallenge({ type: 'monthly' });
 
     const handleClose = () => setSelectedChallenge(null);
 
