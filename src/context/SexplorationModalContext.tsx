@@ -10,6 +10,9 @@ interface SexplorationModalContextType {
     openWallet: () => void;
     openPositions: () => void;
     openFantasies: () => void;
+    isFantasyOpen: boolean;
+    isFantasyFocused: boolean;
+    setFantasyFocused: (focused: boolean) => void;
 }
 
 const SexplorationModalContext = createContext<SexplorationModalContextType | null>(null);
@@ -34,6 +37,7 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
     const [showWallet, setShowWallet] = useState(false);
     const [showPositions, setShowPositions] = useState(false);
     const [showFantasies, setShowFantasies] = useState(false);
+    const [isFantasyFocused, setFantasyFocused] = useState(false);
 
     // Data for modals
     const { isPositionCompleted, togglePositionComplete } = useSexploration();
@@ -71,7 +75,14 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
     const handleFantasiesClose = () => setShowFantasies(false);
 
     return (
-        <SexplorationModalContext.Provider value={{ openWallet, openPositions, openFantasies }}>
+        <SexplorationModalContext.Provider value={{
+            openWallet,
+            openPositions,
+            openFantasies,
+            isFantasyOpen: showFantasies,
+            isFantasyFocused,
+            setFantasyFocused
+        }}>
             {children}
 
             {/* Global Modals - persist across page navigation */}
@@ -101,18 +112,8 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
                 deleteFantasy={deleteFantasy}
                 completeFantasy={completeFantasy}
                 isRequester={isRequester}
+                onFocusChange={setFantasyFocused}
             />
         </SexplorationModalContext.Provider>
     );
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -16,6 +16,7 @@ import { NotificationListener } from "@/components/NotificationListener"
 import { GlobalCouponListener } from "@/components/GlobalCouponListener"
 import { GlobalModalQueueProvider } from "@/context/GlobalModalQueueContext"
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary"
+import { ConsoleLogger } from "@/components/debug/ConsoleLogger"
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
                             <JournalModalProvider>
                               <ChallengeProvider>
                                 <ChallengeModalProvider>
+                                  <ConsoleLogger />
                                   <NotificationListener />
                                   <GlobalCouponListener />
                                   <AnimatedRoutes />

@@ -6,6 +6,10 @@ import type { Fantasy } from '../../hooks/useFantasyBucketList';
 import { FantasyDetailModal } from './FantasyDetailModal';
 import { X, Loader2 } from 'lucide-react';
 
+
+
+
+
 interface FantasyBucketListOverlayProps {
     isOpen: boolean;
     onClose: () => void;
@@ -20,6 +24,7 @@ interface FantasyBucketListOverlayProps {
     deleteFantasy: (id: string) => Promise<void>;
     completeFantasy: (id: string) => Promise<void>;
     isRequester: (fantasy: Fantasy) => boolean;
+    onFocusChange?: (isFocused: boolean) => void;
 }
 
 export function FantasyBucketListOverlay({
@@ -35,7 +40,8 @@ export function FantasyBucketListOverlay({
     vetoFantasy,
     deleteFantasy,
     completeFantasy,
-    isRequester
+    isRequester,
+    onFocusChange
 }: FantasyBucketListOverlayProps) {
     const [inputText, setInputText] = useState('');
     const [selectedFantasy, setSelectedFantasy] = useState<Fantasy | null>(null);
@@ -44,22 +50,27 @@ export function FantasyBucketListOverlay({
     const [slideDirection, setSlideDirection] = useState(1);
     const [isFocused, setIsFocused] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
-
+    const overlayRef = useRef<HTMLDivElement>(null);
     // Mobile Viewport Logic
     const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
 
     useEffect(() => {
         if (isOpen) {
-            document.body.style.overflow = 'hidden';
+            // Robust Body Lock
+            const scrollY = window.scrollY;
             document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollY}px`;
             document.body.style.width = '100%';
+            document.body.style.overflow = 'hidden';
 
             const handleResize = () => {
+                // Only update if our input is actually focused
+                if (document.activeElement !== inputRef.current) return;
+
                 if (window.visualViewport) {
-                    setViewportStyle({
-                        height: window.visualViewport.height,
-                        top: window.visualViewport.offsetTop
-                    });
+                    const height = window.visualViewport.height;
+                    const offsetTop = window.visualViewport.offsetTop;
+                    setViewportStyle({ height, top: offsetTop });
                 }
             };
 
@@ -68,9 +79,15 @@ export function FantasyBucketListOverlay({
             handleResize();
 
             return () => {
+                const scrollY = document.body.style.top;
                 document.body.style.overflow = '';
                 document.body.style.position = '';
+                document.body.style.top = '';
                 document.body.style.width = '';
+
+                // Restore scroll position
+                window.scrollTo(0, parseInt(scrollY || '0') * -1);
+
                 window.visualViewport?.removeEventListener('resize', handleResize);
                 window.visualViewport?.removeEventListener('scroll', handleResize);
             };
@@ -95,14 +112,42 @@ export function FantasyBucketListOverlay({
         await addFantasy(inputText.trim());
         setInputText('');
         setIsSending(false);
-        inputRef.current?.focus();
+        inputRef.current?.blur();
     };
 
-    const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-        setIsFocused(true);
-        setTimeout(() => {
-            e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }, 300);
+    const handleInputFocus = () => {
+        if (overlayRef.current && window.visualViewport) {
+            // 1. Measure current 'unfocused' position
+            const rect = overlayRef.current.getBoundingClientRect();
+
+            // 2. Lock it immediately to this position (prevent jump)
+            setViewportStyle({
+                height: rect.height,
+                top: rect.top
+            });
+
+            // 3. Set focused state (render will use the locked px values)
+            setIsFocused(true);
+            if (onFocusChange) onFocusChange(true);
+
+            // 4. Animate to target visual viewport in next frame
+            requestAnimationFrame(() => {
+                setViewportStyle({
+                    height: window.visualViewport!.height,
+                    top: window.visualViewport!.offsetTop
+                });
+            });
+        } else {
+            // Fallback if measurement fails
+            setIsFocused(true);
+            if (onFocusChange) onFocusChange(true);
+        }
+    };
+
+    const handleInputBlur = () => {
+        setIsFocused(false);
+        if (onFocusChange) onFocusChange(false);
+        setViewportStyle(undefined); // Optional: clear viewport style on blur to force reset?
     };
 
     const filteredFantasies = fantasies.filter(f => f.status === activeTab);
@@ -119,202 +164,217 @@ export function FantasyBucketListOverlay({
                             exit={{ opacity: 0 }}
                             className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${isFocused ? 'z-[60]' : 'z-40'}`}
                             onClick={onClose}
+                            style={{ touchAction: 'none' }}
                         />
 
-                        {/* Slide-up Panel */}
+                        {/* Mover (Position & Height) */}
                         <motion.div
+                            ref={overlayRef}
                             initial={{ y: '100%' }}
-                            animate={{ y: 0 }}
+                            animate={{
+                                y: 0,
+                                height: isFocused && viewportStyle ? viewportStyle.height : 'auto',
+                                top: isFocused && viewportStyle ? viewportStyle.top : 'auto'
+                            }}
                             exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 150 }}
-                            style={isFocused && viewportStyle ? {
-                                height: `${viewportStyle.height}px`,
-                                top: `${viewportStyle.top}px`
-                            } : { height: 'auto', maxHeight: 'calc(100dvh - 70px)' }}
-                            className={`fixed inset-x-0 z-[61] bg-rose-50 dark:bg-gray-900 rounded-t-[32px] shadow-2xl ring-1 ring-black/5 flex flex-col overflow-hidden ${isFocused && viewportStyle ? '' : 'bottom-0'}`}
+                            transition={{ type: 'spring', damping: 40, stiffness: 300 }}
+                            style={{
+                                maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                            }}
+                            className={`fixed inset-x-0 bottom-0 z-[61] outline-none ${isFocused && viewportStyle ? '' : ''}`}
                         >
-                            {/* Header */}
-                            <div className="shrink-0 z-10 overflow-hidden">
-                                {/* Title Section - Pink Match */}
-                                <div className="bg-rose-50 dark:bg-gray-900 px-6 py-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                                                <span className="material-symbols-outlined text-white">auto_awesome</span>
+                            {/* The Skirt - synced background extension */}
+                            <div className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900" />
+
+                            {/* Inner Card - Appearance & Clipping */}
+                            <div
+                                className={`flex flex-col w-full overflow-hidden bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] ${isFocused ? 'h-full' : ''}`}
+                                style={{
+                                    maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                                }}
+                            >
+                                {/* Header */}
+                                <div className="shrink-0 z-10 overflow-hidden">
+                                    {/* Title Section - Pink Match */}
+                                    <div className="bg-rose-50 dark:bg-gray-900 px-6 py-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                                                    <span className="material-symbols-outlined text-white">auto_awesome</span>
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Fantasy Bucket List</h2>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">Dream together, achieve together</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Fantasy Bucket List</h2>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">Dream together, achieve together</p>
-                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={onClose}
+                                                className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            >
+                                                <X className="w-5 h-5 text-gray-500" />
+                                            </Button>
                                         </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={onClose}
-                                            className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                                        >
-                                            <X className="w-5 h-5 text-gray-500" />
-                                        </Button>
+                                    </div>
+
+                                    {/* Tabs Section - Pink (matches body) */}
+                                    <div className="px-6 pt-6 pb-2 bg-rose-50 dark:bg-gray-900 flex justify-center">
+                                        <div className="relative flex bg-gray-100 dark:bg-gray-700 rounded-full p-1 w-fit min-w-[280px]">
+                                            {/* Sliding background */}
+                                            <motion.div
+                                                className="absolute inset-y-1 w-[calc(33.33%-4px)] rounded-full bg-white dark:bg-gray-600 shadow-sm"
+                                                initial={false}
+                                                animate={{
+                                                    x: activeTab === 'approved'
+                                                        ? 4
+                                                        : activeTab === 'pending'
+                                                            ? 'calc(100% + 4px)'
+                                                            : 'calc(200% + 4px)',
+                                                }}
+                                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                            />
+                                            <button
+                                                onClick={() => handleTabChange('approved')}
+                                                className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${activeTab === 'approved'
+                                                    ? 'text-green-600 dark:text-green-400'
+                                                    : 'text-gray-500 dark:text-gray-400'
+                                                    }`}
+                                            >
+                                                <span className="w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                                    {approvedCount}
+                                                </span>
+                                                <span>Approved</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleTabChange('pending')}
+                                                className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${activeTab === 'pending'
+                                                    ? 'text-amber-600 dark:text-amber-400'
+                                                    : 'text-gray-500 dark:text-gray-400'
+                                                    }`}
+                                            >
+                                                <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                                    {pendingCount}
+                                                </span>
+                                                <span>Pending</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleTabChange('completed')}
+                                                className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${activeTab === 'completed'
+                                                    ? 'text-blue-600 dark:text-blue-400'
+                                                    : 'text-gray-500 dark:text-gray-400'
+                                                    }`}
+                                            >
+                                                <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                                    {completedCount}
+                                                </span>
+                                                <span>Completed</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Tabs Section - Pink (matches body) */}
-                                <div className="px-6 pt-6 pb-2 bg-rose-50 dark:bg-gray-900 flex justify-center">
-                                    <div className="relative flex bg-gray-100 dark:bg-gray-700 rounded-full p-1 w-fit min-w-[280px]">
-                                        {/* Sliding background */}
-                                        <motion.div
-                                            className="absolute inset-y-1 w-[calc(33.33%-4px)] rounded-full bg-white dark:bg-gray-600 shadow-sm"
-                                            initial={false}
-                                            animate={{
-                                                x: activeTab === 'approved'
-                                                    ? 4
-                                                    : activeTab === 'pending'
-                                                        ? 'calc(100% + 4px)'
-                                                        : 'calc(200% + 4px)',
-                                            }}
-                                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                        />
-                                        <button
-                                            onClick={() => handleTabChange('approved')}
-                                            className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${activeTab === 'approved'
-                                                ? 'text-green-600 dark:text-green-400'
-                                                : 'text-gray-500 dark:text-gray-400'
-                                                }`}
-                                        >
-                                            <span className="w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center">
-                                                {approvedCount}
-                                            </span>
-                                            <span>Approved</span>
-                                        </button>
-                                        <button
-                                            onClick={() => handleTabChange('pending')}
-                                            className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${activeTab === 'pending'
-                                                ? 'text-amber-600 dark:text-amber-400'
-                                                : 'text-gray-500 dark:text-gray-400'
-                                                }`}
-                                        >
-                                            <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
-                                                {pendingCount}
-                                            </span>
-                                            <span>Pending</span>
-                                        </button>
-                                        <button
-                                            onClick={() => handleTabChange('completed')}
-                                            className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${activeTab === 'completed'
-                                                ? 'text-blue-600 dark:text-blue-400'
-                                                : 'text-gray-500 dark:text-gray-400'
-                                                }`}
-                                        >
-                                            <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
-                                                {completedCount}
-                                            </span>
-                                            <span>Completed</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Scrollable Content */}
-                            <div className="flex-1 overflow-y-auto min-h-0 bg-rose-50 dark:bg-gray-900">
-                                {/* Inner wrapper for layout animation */}
-                                <motion.div
-                                    layout
-                                    transition={{ duration: 0.5, ease: 'easeInOut' }}
-                                    className="p-6 pb-20" // Extra padding at bottom for content
-                                >
-                                    <AnimatePresence mode="popLayout" initial={false} custom={slideDirection}>
-                                        <motion.div
-                                            key={activeTab}
-                                            custom={slideDirection}
-                                            initial={{ opacity: 0, x: -slideDirection * 100 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: slideDirection * 100 }}
-                                            transition={{ type: 'tween', ease: 'easeOut', duration: 0.3 }}
-                                            className="space-y-3"
-                                        >
-                                            {loading ? (
-                                                <div className="flex items-center justify-center py-12">
-                                                    <Loader2 className="w-8 h-8 text-rose-400 animate-spin" />
-                                                </div>
-                                            ) : filteredFantasies.length === 0 ? (
-                                                <div className="flex flex-col items-center justify-center py-12 text-center">
-                                                    <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">
-                                                        {activeTab === 'pending' ? 'lightbulb' : activeTab === 'approved' ? 'check_circle' : 'task_alt'}
-                                                    </span>
-                                                    <p className="text-gray-500">
-                                                        {activeTab === 'pending'
-                                                            ? 'No pending fantasies'
-                                                            : activeTab === 'approved'
-                                                                ? 'No approved fantasies yet'
-                                                                : 'No completed fantasies yet'}
-                                                    </p>
-                                                    {activeTab === 'pending' && (
-                                                        <p className="text-gray-400 text-sm">Request one below!</p>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                filteredFantasies.map((fantasy, index) => (
-                                                    <motion.button
-                                                        key={fantasy.id}
-                                                        initial={index === 0 && fantasy.id.startsWith('temp-') ? { opacity: 0, y: -20 } : false}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        onClick={() => setSelectedFantasy(fantasy)}
-                                                        className={`w-full text-left p-4 rounded-2xl transition-all shadow-sm ${fantasy.status === 'approved'
-                                                            ? 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800'
-                                                            : fantasy.status === 'completed'
-                                                                ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800'
-                                                                : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800'
-                                                            }`}
-                                                    >
-                                                        <div className="flex items-start justify-between gap-2">
-                                                            <div className="flex-1">
-                                                                <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-medium">
-                                                                    {fantasy.fantasy_text}
-                                                                </p>
-                                                                <p className="text-xs text-gray-400 mt-1">
-                                                                    {fantasy.status === 'approved' || fantasy.status === 'completed' ? 'Suggested by' : 'Requested by'} {fantasy.requester_name}
-                                                                </p>
+                                {/* Scrollable Content */}
+                                <div className="flex-1 overflow-y-auto min-h-0 bg-rose-50 dark:bg-gray-900">
+                                    {/* Inner wrapper for layout animation */}
+                                    <motion.div
+                                        className="p-6 pb-20" // Extra padding at bottom for content
+                                    >
+                                        <AnimatePresence mode="popLayout" initial={false} custom={slideDirection}>
+                                            <motion.div
+                                                key={activeTab}
+                                                custom={slideDirection}
+                                                initial={{ opacity: 0, x: -slideDirection * 100 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: slideDirection * 100 }}
+                                                transition={{ type: 'tween', ease: 'easeOut', duration: 0.3 }}
+                                                className="space-y-3"
+                                            >
+                                                {loading ? (
+                                                    <div className="flex items-center justify-center py-12">
+                                                        <Loader2 className="w-8 h-8 text-rose-400 animate-spin" />
+                                                    </div>
+                                                ) : filteredFantasies.length === 0 ? (
+                                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                                        <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">
+                                                            {activeTab === 'pending' ? 'lightbulb' : activeTab === 'approved' ? 'check_circle' : 'task_alt'}
+                                                        </span>
+                                                        <p className="text-gray-500">
+                                                            {activeTab === 'pending'
+                                                                ? 'No pending fantasies'
+                                                                : activeTab === 'approved'
+                                                                    ? 'No approved fantasies yet'
+                                                                    : 'No completed fantasies yet'}
+                                                        </p>
+                                                        {activeTab === 'pending' && (
+                                                            <p className="text-gray-400 text-sm">Request one below!</p>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    filteredFantasies.map((fantasy, index) => (
+                                                        <motion.button
+                                                            key={fantasy.id}
+                                                            initial={index === 0 && fantasy.id.startsWith('temp-') ? { opacity: 0, y: -20 } : false}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            onClick={() => setSelectedFantasy(fantasy)}
+                                                            className={`w-full text-left p-4 rounded-2xl transition-all shadow-sm ${fantasy.status === 'approved'
+                                                                ? 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800'
+                                                                : fantasy.status === 'completed'
+                                                                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800'
+                                                                    : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800'
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <div className="flex-1">
+                                                                    <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-medium">
+                                                                        {fantasy.fantasy_text}
+                                                                    </p>
+                                                                    <p className="text-xs text-gray-400 mt-1">
+                                                                        {fantasy.status === 'approved' || fantasy.status === 'completed' ? 'Suggested by' : 'Requested by'} {fantasy.requester_name}
+                                                                    </p>
+                                                                </div>
+                                                                <span className="material-symbols-outlined text-lg text-gray-300">
+                                                                    arrow_forward_ios
+                                                                </span>
                                                             </div>
-                                                            <span className="material-symbols-outlined text-lg text-gray-300">
-                                                                arrow_forward_ios
-                                                            </span>
-                                                        </div>
-                                                    </motion.button>
-                                                ))
-                                            )}
-                                        </motion.div>
-                                    </AnimatePresence>
-                                </motion.div>
-                            </div>
+                                                        </motion.button>
+                                                    ))
+                                                )}
+                                            </motion.div>
+                                        </AnimatePresence>
+                                    </motion.div>
+                                </div>
 
-                            {/* Floating Footer Input - Sticky when focused */}
-                            <div className={`p-4 bg-transparent shrink-0 safe-area-bottom ${isFocused ? 'pb-2' : 'pb-8'}`}>
-                                <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-lg border border-gray-100 dark:border-gray-700">
-                                    <form onSubmit={handleSubmit} className="flex gap-2">
-                                        <Input
-                                            ref={inputRef}
-                                            value={inputText}
-                                            onChange={(e) => setInputText(e.target.value)}
-                                            onFocus={handleInputFocus}
-                                            onBlur={() => setIsFocused(false)}
-                                            placeholder="Describe your fantasy..."
-                                            className="flex-1 bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700 focus:border-rose-400 focus:ring-rose-400"
-                                        />
-                                        <Button
-                                            type="submit"
-                                            disabled={!inputText.trim() || isSending}
-                                            className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 whitespace-nowrap shadow-md shadow-rose-500/20"
-                                        >
-                                            {isSending ? (
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <span className="material-symbols-outlined text-lg mr-1">send</span>
-                                                    Request
-                                                </>
-                                            )}
-                                        </Button>
-                                    </form>
+                                {/* Floating Footer Input - Sticky when focused */}
+                                <div className={`p-4 bg-transparent shrink-0 safe-area-bottom ${isFocused ? 'pb-2' : 'pb-8'}`}>
+                                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-lg border border-gray-100 dark:border-gray-700">
+                                        <form onSubmit={handleSubmit} className="flex gap-2">
+                                            <Input
+                                                ref={inputRef}
+                                                value={inputText}
+                                                onChange={(e) => setInputText(e.target.value)}
+                                                onFocus={handleInputFocus}
+                                                onBlur={handleInputBlur}
+                                                placeholder="Describe your fantasy..."
+                                                className="flex-1 bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700 focus:border-rose-400 focus:ring-rose-400"
+                                            />
+                                            <Button
+                                                type="submit"
+                                                onMouseDown={(e) => e.preventDefault()} // Prevent button click from causing input blur
+                                                disabled={!inputText.trim() || isSending}
+                                                className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 whitespace-nowrap shadow-md shadow-rose-500/20"
+                                            >
+                                                {isSending ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <span className="material-symbols-outlined text-lg mr-1">send</span>
+                                                        Request
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
