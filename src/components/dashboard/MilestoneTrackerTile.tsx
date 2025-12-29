@@ -156,7 +156,7 @@ export function MilestoneTrackerTile() {
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-1 text-center">
-                        <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-3">
+                        <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-1">
                             <CalendarIcon className="w-6 h-6 text-rose-500" />
                         </div>
                         <p className="text-sm text-body-soft mb-4">No upcoming events recorded</p>
