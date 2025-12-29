@@ -6,7 +6,10 @@ import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Plus, Image as ImageIcon, Loader2, Folder, ChevronLeft, X, UploadCloud } from 'lucide-react';
+import { Plus, Image as ImageIcon, Loader2, Folder, FolderPlus, ChevronLeft, X, UploadCloud, Trash2, Pencil } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 interface Moment {
     id: string;
@@ -39,6 +42,17 @@ export function MomentsGallery() {
     const [caption, setCaption] = useState('');
     const [newFolderName, setNewFolderName] = useState('');
     const [isInputFocused, setIsInputFocused] = useState(false);
+
+    // Expansion & Management State
+    const [selectedMoment, setSelectedMoment] = useState<Moment | null>(null);
+    const [isEditCaptionOpen, setIsEditCaptionOpen] = useState(false);
+    const [editingCaption, setEditingCaption] = useState('');
+    const [isDeleteMomentOpen, setIsDeleteMomentOpen] = useState(false);
+
+    // Folder Management State
+    const [isEditFolderOpen, setIsEditFolderOpen] = useState(false);
+    const [editingFolderName, setEditingFolderName] = useState('');
+    const [isDeleteFolderOpen, setIsDeleteFolderOpen] = useState(false);
 
     const fetchData = async () => {
         if (!couple) return;
@@ -200,6 +214,120 @@ export function MomentsGallery() {
         }
     };
 
+    const handleUpdateMoment = async () => {
+        if (!selectedMoment) return;
+        try {
+            const { error } = await supabase
+                .from('memories')
+                .update({ caption: editingCaption })
+                .eq('id', selectedMoment.id);
+
+            if (error) throw error;
+
+            setMoments(prev => prev.map(m =>
+                m.id === selectedMoment.id ? { ...m, caption: editingCaption } : m
+            ));
+            setSelectedMoment(prev => prev ? { ...prev, caption: editingCaption } : null);
+            setIsEditCaptionOpen(false);
+        } catch (error) {
+            console.error('Error updating caption:', error);
+        }
+    };
+
+    const handleDeleteMoment = async () => {
+        if (!selectedMoment) return;
+        try {
+            // 1. Delete file from storage if url exists
+            if (selectedMoment.media_url) {
+                const path = selectedMoment.media_url.split('/memories/')[1];
+                if (path) {
+                    await supabase.storage
+                        .from('memories')
+                        .remove([path]); // Remove uses array of paths
+                }
+            }
+
+            // 2. Delete record
+            const { error } = await supabase
+                .from('memories')
+                .delete()
+                .eq('id', selectedMoment.id);
+
+            if (error) throw error;
+
+            setMoments(prev => prev.filter(m => m.id !== selectedMoment.id));
+            setSelectedMoment(null);
+            setIsDeleteMomentOpen(false);
+        } catch (error) {
+            console.error('Error deleting moment:', error);
+        }
+    };
+
+    const handleUpdateFolder = async () => {
+        if (!currentFolder || !editingFolderName.trim()) return;
+        try {
+            const { error } = await supabase
+                .from('folders')
+                .update({ name: editingFolderName })
+                .eq('id', currentFolder.id);
+
+            if (error) throw error;
+
+            setCurrentFolder({ ...currentFolder, name: editingFolderName });
+            setIsEditFolderOpen(false);
+        } catch (error) {
+            console.error('Error updating folder:', error);
+        }
+    };
+
+    const handleDeleteFolder = async () => {
+        if (!currentFolder) return;
+        try {
+            // 1. Get all memories in folder to delete their files
+            const { data: folderMoments } = await supabase
+                .from('memories')
+                .select('media_url')
+                .eq('folder_id', currentFolder.id);
+
+            if (folderMoments && folderMoments.length > 0) {
+                const pathsToRemove = folderMoments
+                    .map(m => {
+                        if (m.media_url) {
+                            return m.media_url.split('/memories/')[1];
+                        }
+                        return null;
+                    })
+                    .filter((p): p is string => p !== null);
+
+                if (pathsToRemove.length > 0) {
+                    await supabase.storage
+                        .from('memories')
+                        .remove(pathsToRemove);
+                }
+            }
+
+            // 2. Delete Folder (Cascade should handle memories rows if set up, but let's be safe and delete memories rows first)
+            await supabase
+                .from('memories')
+                .delete()
+                .eq('folder_id', currentFolder.id);
+
+            // 3. Delete Folder
+            const { error } = await supabase
+                .from('folders')
+                .delete()
+                .eq('id', currentFolder.id);
+
+            if (error) throw error;
+
+            setCurrentFolder(null); // Go back to root
+            fetchData(); // Refresh root list
+        } catch (error) {
+            console.error('Error deleting folder:', error);
+        }
+    };
+
+
     const resetUploadForm = () => {
         setSelectedFiles([]);
         setPreviewUrls([]);
@@ -223,20 +351,42 @@ export function MomentsGallery() {
                             <ChevronLeft className="w-5 h-5" />
                         </Button>
                     )}
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white truncate max-w-[200px] sm:max-w-md">
                         {currentFolder ? currentFolder.name : 'Gallery'}
                     </h2>
                 </div>
 
                 <div className="flex gap-2">
-                    {!currentFolder && (
+                    {currentFolder ? (
+                        <>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="bg-white dark:bg-gray-800"
+                                onClick={() => {
+                                    setEditingFolderName(currentFolder.name);
+                                    setIsEditFolderOpen(true);
+                                }}
+                            >
+                                <Pencil className="w-4 h-4 text-gray-500" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="bg-white dark:bg-gray-800"
+                                onClick={() => setIsDeleteFolderOpen(true)}
+                            >
+                                <Trash2 className="w-4 h-4 text-gray-500 hover:text-red-500" />
+                            </Button>
+                        </>
+                    ) : (
                         <Dialog open={isFolderDialogOpen} onOpenChange={(open) => {
                             setIsFolderDialogOpen(open);
                             if (!open) resetUploadForm();
                         }}>
                             <DialogTrigger asChild>
                                 <Button variant="outline" className="gap-2">
-                                    <Folder className="w-4 h-4" />
+                                    <FolderPlus className="w-4 h-4" />
                                     <span className="hidden sm:inline">New Folder</span>
                                 </Button>
                             </DialogTrigger>
@@ -301,9 +451,12 @@ export function MomentsGallery() {
                         if (!open) resetUploadForm();
                     }}>
                         <DialogTrigger asChild>
-                            <Button className="bg-rose-500 hover:bg-rose-600 text-white gap-2">
+                            <Button
+                                size={currentFolder ? 'icon' : 'default'}
+                                className="bg-rose-500 hover:bg-rose-600 text-white gap-2 border border-transparent"
+                            >
                                 <Plus className="w-4 h-4" />
-                                <span className="hidden sm:inline">Add Photo</span>
+                                {!currentFolder && <span className="hidden sm:inline">Add Photo</span>}
                             </Button>
                         </DialogTrigger>
                         <DialogContent
@@ -394,18 +547,18 @@ export function MomentsGallery() {
 
                     {/* Moments */}
                     {moments.map((moment) => (
-                        <div key={moment.id} className="group relative aspect-square overflow-hidden rounded-xl bg-gray-100">
+                        <motion.div
+                            layoutId={`moment-${moment.id}`}
+                            key={moment.id}
+                            onClick={() => setSelectedMoment(moment)}
+                            className="group relative aspect-square overflow-hidden rounded-xl bg-gray-100 cursor-pointer"
+                        >
                             <img
                                 src={moment.media_url || ''}
                                 alt={moment.caption || 'Moment'}
                                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                             />
-                            {moment.caption && (
-                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                    <p className="text-xs text-white truncate">{moment.caption}</p>
-                                </div>
-                            )}
-                        </div>
+                        </motion.div>
                     ))}
 
                     {/* Empty State */}
@@ -426,6 +579,140 @@ export function MomentsGallery() {
                     )}
                 </div>
             )}
-        </div>
+
+            {/* Expanded Moment View */}
+            <AnimatePresence>
+                {selectedMoment && (
+                    <>
+                        {createPortal(
+                            <div
+                                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+                                onClick={() => setSelectedMoment(null)}
+                            >
+                                <motion.div
+                                    layoutId={`moment-${selectedMoment.id}`}
+                                    className="relative w-full max-w-4xl max-h-[90vh] flex flex-col items-center justify-center gap-4"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {/* Top Control Bar - Actions */}
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.2 }}
+                                        className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-full px-3 py-1.5 shadow-lg flex items-center gap-2 border border-gray-200/50 dark:border-gray-700/50"
+                                    >
+                                        <button
+                                            onClick={() => {
+                                                setEditingCaption(selectedMoment.caption || '');
+                                                setIsEditCaptionOpen(true);
+                                            }}
+                                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-700 dark:text-gray-200"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </button>
+                                        <div className="h-3 w-px bg-gray-300 dark:bg-gray-600 shrink-0" />
+                                        <button
+                                            onClick={() => setIsDeleteMomentOpen(true)}
+                                            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors text-red-500"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </motion.div>
+
+                                    {/* Image */}
+                                    <img
+                                        src={selectedMoment.media_url || ''}
+                                        alt={selectedMoment.caption || 'Expanded Moment'}
+                                        className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl"
+                                    />
+
+                                    {/* Bottom Control Bar - Caption */}
+                                    {selectedMoment.caption && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.2 }}
+                                            className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl px-3 py-1.5 shadow-lg max-w-md w-auto text-center border border-gray-200/50 dark:border-gray-700/50"
+                                        >
+                                            <p className="text-xs text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words leading-relaxed font-medium">
+                                                {selectedMoment.caption}
+                                            </p>
+                                        </motion.div>
+                                    )}
+                                </motion.div>
+                            </div>,
+                            document.body
+                        )}
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Modals */}
+
+            {/* Delete Moment Confirmation */}
+            <ConfirmationModal
+                isOpen={isDeleteMomentOpen}
+                onClose={() => setIsDeleteMomentOpen(false)}
+                onConfirm={handleDeleteMoment}
+                title="Delete Photo"
+                description="Are you sure you want to delete this photo? This action cannot be undone."
+                variant="destructive"
+                confirmText="Delete"
+            />
+
+            {/* Edit Caption Dialog */}
+            <Dialog open={isEditCaptionOpen} onOpenChange={setIsEditCaptionOpen}>
+                <DialogContent className="max-w-sm rounded-xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Caption</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <Input
+                            value={editingCaption}
+                            onChange={(e) => setEditingCaption(e.target.value)}
+                            placeholder="Add a caption..."
+                        />
+                        <DialogFooter>
+                            <Button onClick={handleUpdateMoment} className="bg-rose-500 hover:bg-rose-600 text-white">
+                                Save
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Folder Confirmation */}
+            <ConfirmationModal
+                isOpen={isDeleteFolderOpen}
+                onClose={() => setIsDeleteFolderOpen(false)}
+                onConfirm={handleDeleteFolder}
+                title="Delete Folder"
+                description="Are you sure you want to delete this folder? All photos inside it will be permanently deleted. This action cannot be undone."
+                variant="destructive"
+                confirmText="Delete Folder"
+            />
+
+            {/* Edit Folder Name Dialog */}
+            <Dialog open={isEditFolderOpen} onOpenChange={setIsEditFolderOpen}>
+                <DialogContent className="max-w-sm rounded-xl">
+                    <DialogHeader>
+                        <DialogTitle>Rename Folder</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <Input
+                            value={editingFolderName}
+                            onChange={(e) => setEditingFolderName(e.target.value)}
+                            placeholder="Folder Name"
+                        />
+                        <DialogFooter>
+                            <Button onClick={handleUpdateFolder} disabled={!editingFolderName.trim()} className="bg-rose-500 hover:bg-rose-600 text-white">
+                                Save
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+        </div >
     );
 }
