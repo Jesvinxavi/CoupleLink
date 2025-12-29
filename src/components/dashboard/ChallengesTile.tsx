@@ -1,6 +1,6 @@
 
-import { useRef, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { motion, useAnimation } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { type ChallengeStatus } from '../../hooks/useChallenges';
 import { useStreak } from '../../hooks/useStreak';
@@ -21,6 +21,8 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
+type ChallengeFrequency = 'daily' | 'weekly' | 'monthly';
+
 interface ChallengesTileProps {
     daily: any; weekly: any; monthly: any;
     dailyTimeLeft: string; weeklyTimeLeft: string; monthlyTimeLeft: string;
@@ -33,6 +35,157 @@ interface ChallengesTileProps {
     markChallengeConfettiSeen: any;
     couple: any;
     userProfile: any;
+    /**
+     * When true, the internal grid will run its "hidden -> show" stagger animation.
+     * When false, the grid will stay in "hidden" state (useful when the page is still behind a spinner).
+     */
+    animateIn?: boolean;
+}
+
+function ChallengeFrequencyCard({
+    type,
+    title,
+    challenge,
+    timeLeft,
+    isUrgent,
+    status,
+    myMemory,
+    partnerMemory,
+    agreement,
+    onOpen
+}: {
+    type: ChallengeFrequency;
+    title: string;
+    challenge: any;
+    timeLeft: string;
+    isUrgent: boolean;
+    status: ChallengeStatus;
+    myMemory: any;
+    partnerMemory: any;
+    agreement: 'agreed' | 'disagreed' | 'pending' | 'none';
+    onOpen: (t: ChallengeFrequency) => void;
+}) {
+    const elRef = useRef<HTMLDivElement | null>(null);
+
+    const isPlaceholder = !challenge;
+
+    // Status-based rendering logic
+    const isDisagreed = !isPlaceholder && status === 'pending_agreement' && agreement === 'disagreed';
+    const isPendingAgreement = !isPlaceholder && status === 'pending_agreement' && agreement === 'pending';
+    const isSkipped = !isPlaceholder && status === 'skipped';
+    const isCompleted = !isPlaceholder && status === 'completed';
+    const isWaiting = !isPlaceholder && status === 'waiting_for_partner';
+
+    // Determine specific skip message
+    let skipText = '';
+    if (isSkipped) {
+        if (myMemory?.metadata?.skipped) skipText = 'Skipped by You';
+        else if (partnerMemory?.metadata?.skipped) skipText = 'Skipped by Partner';
+        else skipText = 'Skipped'; // Fallback
+    }
+
+    const baseClassName =
+        "flex flex-col p-4 rounded-xl transition-all duration-200 border relative overflow-hidden h-[8.75rem]";
+    const stateClassName = isPlaceholder
+        ? "bg-gray-50 border-gray-200 cursor-default"
+        : `cursor-pointer ${isDisagreed
+            ? "bg-red-50 border-red-200 hover:bg-red-100"
+            : isPendingAgreement
+                ? "bg-blue-50 border-blue-200 hover:bg-blue-100"
+                : isCompleted
+                    ? "bg-green-50 border-green-200 hover:bg-green-100"
+                    : isSkipped
+                        ? "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                        : isWaiting
+                            ? "bg-amber-50 border-amber-200 hover:bg-amber-100"
+                            : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm"
+        }`;
+
+    return (
+        <motion.div
+            ref={elRef}
+            variants={item}
+            // Prevent a late-mount from briefly painting "visible" before Framer applies initial styles.
+            // Still animates normally when parent transitions hidden -> show.
+            initial={false}
+            onClick={() => {
+                if (isPlaceholder) return;
+                onOpen(type);
+            }}
+            className={`${baseClassName} ${stateClassName}`}
+        >
+            {isPlaceholder ? (
+                <div className="flex flex-col h-full items-center justify-center text-center">
+                    <span className="text-xs font-bold uppercase tracking-wider mb-1 text-gray-400">{title}</span>
+                    <p className="text-xs text-gray-400">Loading...</p>
+                </div>
+            ) : (
+                <>
+                    {/* Header & Timer */}
+                    <div className="flex flex-col mb-3">
+                        <span className={`text-xs font-bold uppercase tracking-wider mb-1 ${isCompleted ? 'text-green-600' : 'text-red-600'}`}>
+                            {title}
+                        </span>
+                        {challenge?.isCompetition && !isCompleted && !isSkipped && !isDisagreed && (
+                            <span className="absolute top-4 right-4 text-lg" title="Competitive Challenge">🏆</span>
+                        )}
+                        {!isCompleted && !isSkipped && !isDisagreed && !isPendingAgreement && (
+                            <span className={`text-xs font-medium ${isUrgent ? 'text-[#EA2831]' : 'text-heading-dark'}`}>
+                                {timeLeft}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Content */}
+                    {isDisagreed ? (
+                        <div className="flex flex-col items-center justify-center py-2 h-full text-center">
+                            <div className="h-8 w-8 rounded-full bg-red-200 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-red-700 text-lg">warning</span>
+                            </div>
+                            <span className="text-xs font-medium text-red-700">Disagreement! Tap to resolve.</span>
+                        </div>
+                    ) : isPendingAgreement ? (
+                        <div className="flex flex-col items-center justify-center py-2 h-full text-center">
+                            <div className="h-8 w-8 rounded-full bg-blue-200 flex items-center justify-center mb-1">
+                                <span className="material-symbols-outlined text-blue-700 text-lg">handshake</span>
+                            </div>
+                            <span className="text-xs font-medium text-blue-700">Confirm Winner</span>
+                        </div>
+                    ) : isCompleted ? (
+                        <div className="flex flex-col items-center justify-center py-2 h-full text-center">
+                            <div className="h-8 w-8 rounded-full bg-green-200 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-green-700 text-lg">check</span>
+                            </div>
+                            <span className="text-xs font-medium text-green-700">Completed</span>
+                        </div>
+                    ) : isSkipped ? (
+                        <div className="flex flex-col items-center justify-center py-2 h-full text-center">
+                            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-gray-600 text-lg">remove_done</span>
+                            </div>
+                            <span className="text-xs font-medium text-gray-600">{skipText}</span>
+                        </div>
+                    ) : isWaiting ? (
+                        <div className="flex flex-col h-full justify-center items-center text-center">
+                            <span className="material-symbols-outlined text-amber-500 text-2xl">hourglass_empty</span>
+                            <p className="text-xs font-medium text-amber-700">Waiting for partner...</p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col h-full justify-between">
+                            <div>
+                                <h3 className="text-sm font-bold text-heading-dark line-clamp-1">
+                                    {challenge.title}
+                                </h3>
+                                <p className="text-xs text-body-soft line-clamp-2">
+                                    {challenge.description}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+        </motion.div >
+    );
 }
 
 export function ChallengesTile({
@@ -45,8 +198,35 @@ export function ChallengesTile({
     partnerDailyMemory, partnerWeeklyMemory, partnerMonthlyMemory,
     markChallengeConfettiSeen,
     couple,
-    userProfile
+    userProfile,
+    animateIn = true
 }: ChallengesTileProps) {
+
+    // Animation driver:
+    // Using AnimationControls lets us keep the grid in the initial "hidden" state without
+    // triggering an explicit animate="hidden" pass (which can race with the later "show"
+    // on slower mobile devices and look like a flash).
+    const controls = useAnimation();
+
+    useEffect(() => {
+        // Always ensure we're in the hidden state until we explicitly animate in.
+        if (!animateIn) {
+            controls.set("hidden");
+            return;
+        }
+
+        let cancelled = false;
+        const raf = requestAnimationFrame(() => {
+            if (cancelled) return;
+            controls.start("show");
+        });
+
+        return () => {
+            cancelled = true;
+            cancelAnimationFrame(raf);
+            controls.stop();
+        };
+    }, [controls, animateIn]);
 
 
 
@@ -105,9 +285,7 @@ export function ChallengesTile({
 
     const [selectedChallenge, setSelectedChallenge] = useState<{ type: 'daily' | 'weekly' | 'monthly', data: any } | null>(null);
 
-
-
-    const handleOpen = (type: 'daily' | 'weekly' | 'monthly') => {
+    const handleOpen = (type: ChallengeFrequency) => {
         if (type === 'daily') setSelectedChallenge({ type, data: daily });
         else if (type === 'weekly') setSelectedChallenge({ type, data: weekly });
         else setSelectedChallenge({ type, data: monthly });
@@ -178,138 +356,50 @@ export function ChallengesTile({
         }
     };
 
-    const renderSection = (
-        type: 'daily' | 'weekly' | 'monthly',
-        title: string,
-        challenge: any,
-        timeLeft: string,
-        isUrgent: boolean,
-        status: ChallengeStatus,
-        myMemory: any,
-        partnerMemory: any
-    ) => {
-        if (!challenge) {
-            return (
-                <div className="flex flex-col p-4 rounded-xl border bg-gray-50 border-gray-200 h-full items-center justify-center text-center">
-                    <span className="text-xs font-bold uppercase tracking-wider mb-1 text-gray-400">{title}</span>
-                    <p className="text-xs text-gray-400">Loading...</p>
-                </div>
-            );
-        }
-
-        // Status-based rendering logic
-        const agreement = winnerAgreement[type];
-        const isDisagreed = status === 'pending_agreement' && agreement === 'disagreed';
-        const isPendingAgreement = status === 'pending_agreement' && agreement === 'pending';
-        const isSkipped = status === 'skipped';
-        const isCompleted = status === 'completed';
-        const isWaiting = status === 'waiting_for_partner';
-
-        // Determine specific skip message
-        let skipText = '';
-        if (isSkipped) {
-            if (myMemory?.metadata?.skipped) skipText = 'Skipped by You';
-            else if (partnerMemory?.metadata?.skipped) skipText = 'Skipped by Partner';
-            else skipText = 'Skipped'; // Fallback
-        }
-
-        return (
-            <motion.div
-                variants={item}
-                onClick={() => handleOpen(type)}
-                className={`
-                    flex flex-col p-4 rounded-xl cursor-pointer transition-all duration-200 border relative overflow-hidden h-[8.75rem]
-                    ${isDisagreed
-                        ? 'bg-red-50 border-red-200 hover:bg-red-100'
-                        : isPendingAgreement
-                            ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
-                            : isCompleted
-                                ? 'bg-green-50 border-green-200 hover:bg-green-100'
-                                : isSkipped
-                                    ? 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                                    : isWaiting
-                                        ? 'bg-amber-50 border-amber-200 hover:bg-amber-100'
-                                        : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm'
-                    }
-                `}
-            >
-                {/* Header & Timer */}
-                <div className="flex flex-col mb-3">
-                    <span className={`text-xs font-bold uppercase tracking-wider mb-1 ${isCompleted ? 'text-green-600' : 'text-red-600'}`}>
-                        {title}
-                    </span>
-                    {challenge?.isCompetition && !isCompleted && !isSkipped && !isDisagreed && (
-                        <span className="absolute top-4 right-4 text-lg" title="Competitive Challenge">🏆</span>
-                    )}
-                    {!isCompleted && !isSkipped && !isDisagreed && !isPendingAgreement && (
-                        <span className={`text-xs font-medium ${isUrgent ? 'text-[#EA2831]' : 'text-heading-dark'}`}>
-                            {timeLeft}
-                        </span>
-                    )}
-                </div>
-
-                {/* Content */}
-                {isDisagreed ? (
-                    <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                        <div className="h-8 w-8 rounded-full bg-red-200 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-red-700 text-lg">warning</span>
-                        </div>
-                        <span className="text-xs font-medium text-red-700">Disagreement! Tap to resolve.</span>
-                    </div>
-                ) : isPendingAgreement ? (
-                    <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                        <div className="h-8 w-8 rounded-full bg-blue-200 flex items-center justify-center mb-1">
-                            <span className="material-symbols-outlined text-blue-700 text-lg">handshake</span>
-                        </div>
-                        <span className="text-xs font-medium text-blue-700">Confirm Winner</span>
-                    </div>
-                ) : isCompleted ? (
-                    <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                        <div className="h-8 w-8 rounded-full bg-green-200 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-green-700 text-lg">check</span>
-                        </div>
-                        <span className="text-xs font-medium text-green-700">Completed</span>
-                    </div>
-                ) : isSkipped ? (
-                    <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                        <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-gray-600 text-lg">remove_done</span>
-                        </div>
-                        <span className="text-xs font-medium text-gray-600">{skipText}</span>
-                    </div>
-                ) : isWaiting ? (
-                    <div className="flex flex-col h-full justify-center items-center text-center">
-                        <span className="material-symbols-outlined text-amber-500 text-2xl">hourglass_empty</span>
-                        <p className="text-xs font-medium text-amber-700">Waiting for partner...</p>
-                    </div>
-                ) : (
-                    <div className="flex flex-col h-full justify-between">
-                        <div>
-                            <h3 className="text-sm font-bold text-heading-dark line-clamp-1">
-                                {challenge.title}
-                            </h3>
-                            <p className="text-xs text-body-soft line-clamp-2">
-                                {challenge.description}
-                            </p>
-                        </div>
-                    </div>
-                )
-                }
-            </motion.div >
-        );
-    };
-
     return (
         <>
             <motion.div
                 variants={container}
                 initial="hidden"
-                animate="show"
+                animate={controls}
                 className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full"
             >
-                {renderSection('daily', 'Daily', daily, dailyTimeLeft, dailyTimeUrgent, dailyStatus, myDailyMemory, partnerDailyMemory)}
-                {renderSection('weekly', 'Weekly', weekly, weeklyTimeLeft, weeklyTimeUrgent, weeklyStatus, myWeeklyMemory, partnerWeeklyMemory)}
-                {renderSection('monthly', 'Monthly', monthly, monthlyTimeLeft, monthlyTimeUrgent, monthlyStatus, myMonthlyMemory, partnerMonthlyMemory)}
+                <ChallengeFrequencyCard
+                    type="daily"
+                    title="Daily"
+                    challenge={daily}
+                    timeLeft={dailyTimeLeft}
+                    isUrgent={dailyTimeUrgent}
+                    status={dailyStatus}
+                    myMemory={myDailyMemory}
+                    partnerMemory={partnerDailyMemory}
+                    agreement={winnerAgreement.daily}
+                    onOpen={handleOpen}
+                />
+                <ChallengeFrequencyCard
+                    type="weekly"
+                    title="Weekly"
+                    challenge={weekly}
+                    timeLeft={weeklyTimeLeft}
+                    isUrgent={weeklyTimeUrgent}
+                    status={weeklyStatus}
+                    myMemory={myWeeklyMemory}
+                    partnerMemory={partnerWeeklyMemory}
+                    agreement={winnerAgreement.weekly}
+                    onOpen={handleOpen}
+                />
+                <ChallengeFrequencyCard
+                    type="monthly"
+                    title="Monthly"
+                    challenge={monthly}
+                    timeLeft={monthlyTimeLeft}
+                    isUrgent={monthlyTimeUrgent}
+                    status={monthlyStatus}
+                    myMemory={myMonthlyMemory}
+                    partnerMemory={partnerMonthlyMemory}
+                    agreement={winnerAgreement.monthly}
+                    onOpen={handleOpen}
+                />
             </motion.div>
 
             {selectedChallenge && (

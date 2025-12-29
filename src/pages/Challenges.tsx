@@ -1,5 +1,5 @@
 import { motion } from "framer-motion"
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useCoupleData } from "../hooks/useCoupleData"
 import { useDailyChallenge } from "../hooks/useDailyChallenge"
@@ -72,6 +72,10 @@ export default function Challenges() {
         return () => clearTimeout(timer)
     }, [])
 
+    const spinnerActive = useMemo(() => {
+        return Boolean(loading || forceLoading || loadingChallenges)
+    }, [loading, forceLoading, loadingChallenges])
+
     return (
         <>
             <Sidebar />
@@ -94,16 +98,17 @@ export default function Challenges() {
                             </div>
                         </motion.header>
 
-                        {loading || forceLoading || loadingChallenges ? (
-                            <div className="flex items-center justify-center h-64">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
-                            </div>
-                        ) : (
+                        <div className="relative min-h-[400px]">
+                            {/* Keep ChallengesTile mounted - overlay spinner instead of conditional render */}
                             <motion.div
                                 variants={container}
                                 initial="hidden"
-                                animate="show"
+                                animate={spinnerActive ? "hidden" : "show"}
                                 className="flex flex-col gap-4"
+                                style={{ 
+                                    visibility: spinnerActive ? "hidden" : "visible",
+                                    pointerEvents: spinnerActive ? "none" : "auto"
+                                }}
                             >
                                 {/* Today's Question - Full Width */}
                                 <motion.div variants={item} className="w-full">
@@ -121,10 +126,23 @@ export default function Challenges() {
 
                                 {/* Challenges Grid/List */}
                                 <motion.div variants={item} className="w-full">
-                                    <ChallengesTile {...challengesData} userProfile={userProfile} couple={couple} />
+                                    <ChallengesTile
+                                        {...challengesData}
+                                        userProfile={userProfile}
+                                        couple={couple}
+                                        // Start the internal Daily/Weekly/Monthly stagger only once the page spinner is gone.
+                                        animateIn={!spinnerActive}
+                                    />
                                 </motion.div>
                             </motion.div>
-                        )}
+                            
+                            {/* Overlay spinner - doesn't cause unmount */}
+                            {spinnerActive && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </main>
             </div>

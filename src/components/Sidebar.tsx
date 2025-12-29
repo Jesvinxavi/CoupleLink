@@ -4,6 +4,9 @@ import {
     Sheet,
     SheetContent,
     SheetTrigger,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
 } from "./ui/sheet"
 import { Button } from "./ui/button"
 import { useAuth } from "@/context/AuthContext"
@@ -145,6 +148,11 @@ export default function Sidebar() {
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="w-[250px] p-0">
+                            {/* Accessibility: Radix Dialog (Sheet) requires a title + description */}
+                            <SheetHeader className="sr-only">
+                                <SheetTitle>Navigation menu</SheetTitle>
+                                <SheetDescription>Primary app navigation</SheetDescription>
+                            </SheetHeader>
                             <div className="flex h-full flex-col justify-between bg-white p-4">
                                 <div className="flex flex-col gap-8">
                                     <Link to="/dashboard" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 pt-2">
