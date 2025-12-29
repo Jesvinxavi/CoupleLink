@@ -141,7 +141,7 @@ export default function Challenges() {
                                 <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
                                 </div>
-                            )}
+                        )}
                         </div>
                     </div>
                 </main>

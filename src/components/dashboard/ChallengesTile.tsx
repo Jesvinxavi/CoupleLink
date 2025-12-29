@@ -65,8 +65,6 @@ function ChallengeFrequencyCard({
     agreement: 'agreed' | 'disagreed' | 'pending' | 'none';
     onOpen: (t: ChallengeFrequency) => void;
 }) {
-    const elRef = useRef<HTMLDivElement | null>(null);
-
     const isPlaceholder = !challenge;
 
     // Status-based rendering logic
@@ -103,7 +101,6 @@ function ChallengeFrequencyCard({
 
     return (
         <motion.div
-            ref={elRef}
             variants={item}
             // Prevent a late-mount from briefly painting "visible" before Framer applies initial styles.
             // Still animates normally when parent transitions hidden -> show.
