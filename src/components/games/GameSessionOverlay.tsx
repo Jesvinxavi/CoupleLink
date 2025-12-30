@@ -16,7 +16,7 @@ import type { GameType } from '../../data/gameQuestions';
 interface GameSessionOverlayProps {
     isOpen: boolean;
     onClose: () => void;
-    session: GameSession;
+    session: GameSession | null;
     onFocusChange?: (isFocused: boolean) => void;
 }
 
@@ -120,10 +120,10 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
     useEffect(() => {
         setIsFocused(false);
         if (onFocusChange) onFocusChange(false);
-    }, [session.current_round]);
+    }, [session?.current_round]);
 
     // Check if game is complete (current_round > total_rounds)
-    const isGameComplete = session.current_round > session.total_rounds && !isStartingNewGame;
+    const isGameComplete = session && session.current_round > session.total_rounds && !isStartingNewGame;
 
     const handleLeave = async () => {
         await leaveSession();
@@ -139,6 +139,7 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
     };
 
     const renderGame = () => {
+        if (!session) return null;
         switch (session.game_type) {
 
             case 'would_you_rather':
@@ -204,21 +205,23 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
                     }}
                 >
                     {/* Header */}
-                    <div className={`bg-gradient-to-r ${getGameColor(session.game_type)} px-6 py-3`}>
+                    <div className={`bg-gradient-to-r ${session ? getGameColor(session.game_type) : 'from-gray-500 to-gray-600'} px-6 py-3`}>
                         <div className="flex items-center justify-between">
                             <div>
                                 <h2 className="text-xl font-bold text-white">
-                                    {getGameLabel(session.game_type)}
+                                    {session ? getGameLabel(session.game_type) : 'Preparing Game...'}
                                 </h2>
                                 <div className="flex items-center gap-4 mt-1 text-white/80 text-sm">
                                     <span className="flex items-center gap-1">
                                         <Users className="w-4 h-4" />
-                                        {partnerInSession ? `Playing with ${partner?.first_name || 'Partner'}` : 'Waiting for partner...'}
+                                        {!session ? 'Starting session...' : partnerInSession ? `Playing with ${partner?.first_name || 'Partner'}` : 'Waiting for partner...'}
                                     </span>
-                                    <span className="flex items-center gap-1">
-                                        <Trophy className="w-4 h-4" />
-                                        <span className="text-sm text-white/90">Round {Math.min(session.current_round, session.total_rounds)} of {session.total_rounds}</span>
-                                    </span>
+                                    {session && (
+                                        <span className="flex items-center gap-1">
+                                            <Trophy className="w-4 h-4" />
+                                            <span className="text-sm text-white/90">Round {Math.min(session.current_round, session.total_rounds)} of {session.total_rounds}</span>
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <Button
@@ -233,8 +236,15 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
                     </div>
 
                     {/* Game Content */}
-                    <div className="flex-1 overflow-y-auto p-4">
-                        {isStartingNewGame || (!partnerInSession && session.status === 'waiting') ? (
+                    <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+                        {!session ? (
+                            <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+                                <div className="w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mb-4" />
+                                <p className="text-gray-500 dark:text-gray-400 animate-pulse">
+                                    Setting up your game session...
+                                </p>
+                            </div>
+                        ) : isStartingNewGame || (!partnerInSession && session.status === 'waiting') ? (
                             <WaitingForPartner
                                 gameLabel={getGameLabel(session.game_type)}
                                 partnerName={partner?.first_name || 'Partner'}

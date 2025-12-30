@@ -63,12 +63,11 @@ export default function GamesPage() {
         activeSession.player_one_id !== currentUser?.id;
 
     const handlePlayGame = async (gameType: GameType) => {
-        const session = await createSession(gameType);
-        if (session) {
-            // Wait for DB trigger/realtime? Or just start?
-            // createSession sets it active/waiting.
-            setShowGameOverlay(true); // Keep original functionality
-        }
+        // Show overlay immediately for instant feedback (optimistic UI)
+        setShowGameOverlay(true);
+        // Create session in background - overlay will show loading state until session is ready
+        // The realtime subscription will update activeSession once created
+        await createSession(gameType);
     };
 
 
@@ -243,9 +242,9 @@ export default function GamesPage() {
 
             {/* Game Session Overlay */}
             <AnimatePresence>
-                {activeSession && showGameOverlay && (
+                {showGameOverlay && (
                     <GameSessionOverlay
-                        key={`overlay-${activeSession.id}`}
+                        key={activeSession ? `overlay-${activeSession.id}` : 'overlay-loading'}
                         isOpen={showGameOverlay}
                         onClose={handleCloseOverlay}
                         session={activeSession}
