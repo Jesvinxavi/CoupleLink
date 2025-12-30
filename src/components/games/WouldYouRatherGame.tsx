@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Check, Clock, Trophy } from 'lucide-react';
 import type { GameSession } from '../../hooks/useGameSession';
@@ -15,7 +17,10 @@ interface WouldYouRatherGameProps {
 export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
     const { updateGameState, nextRound, isPlayerOne } = useGameSession();
     const { partner, currentUser } = useCoupleData();
+
+
     const [gameComplete, setGameComplete] = useState(false);
+
 
     // Determine player IDs from session
     const myId = currentUser?.id;

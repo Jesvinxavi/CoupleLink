@@ -68,11 +68,10 @@ export function useDailyChallenge(coupleId: string | null) {
                 if (rpcError) throw rpcError
 
                 if (!rpcData.success) {
-                    // Start polling for new question? Or just return?
-                    console.log("No daily question found:", rpcData.message)
                     if (mounted) setLoading(false)
                     return
                 }
+
 
                 const activityData = rpcData.data
                 if (mounted) setActivity(activityData)

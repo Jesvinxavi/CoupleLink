@@ -13,7 +13,11 @@ const JOURNAL_PROMPTS = [
     "your day today"
 ];
 
-export const QuickActionsTile = memo(function QuickActionsTile() {
+interface QuickActionsTileProps {
+    onFocusChange?: (isFocused: boolean) => void;
+}
+
+export const QuickActionsTile = memo(function QuickActionsTile({ onFocusChange }: QuickActionsTileProps) {
     // const navigate = useNavigate(); // Removed unused
     const { openNewPost } = useJournalModals();
     const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -74,6 +78,7 @@ export const QuickActionsTile = memo(function QuickActionsTile() {
             <PostNoteModal
                 isOpen={isNoteModalOpen}
                 onClose={() => setIsNoteModalOpen(false)}
+                onFocusChange={onFocusChange}
             />
         </>
     );

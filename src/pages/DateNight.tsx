@@ -54,6 +54,7 @@ export default function DateNightPage() {
     const [activeTab, setActiveTab] = useState("suggested");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isOverlayFocused, setIsOverlayFocused] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
     const [modalDescription, setModalDescription] = useState("");
     const [modalItems, setModalItems] = useState<DateIdeaItem[]>([]);
@@ -274,136 +275,138 @@ export default function DateNightPage() {
 
     return (
         <>
-            <Sidebar />
-            <div className="pt-14 md:ml-[250px] md:pt-0 min-h-screen dark:bg-gray-900">
-                <main className="p-4 md:p-8">
-                    <motion.div
-                        variants={container}
-                        initial="hidden"
-                        animate="show"
-                        className="max-w-7xl mx-auto"
-                    >
-                        <motion.header variants={item} className="pt-4 md:pt-8 mb-8">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-white text-2xl">local_activity</span>
-                                </div>
-                                <div>
-                                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Date Night</h1>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Curated experiences for quality time together</p>
-                                </div>
-                            </div>
-                        </motion.header>
-
-                        <motion.div variants={item}>
-                            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                <TabsList className="relative flex w-full bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-8 h-auto">
-                                    <motion.div
-                                        className="absolute left-1 inset-y-1 w-[calc(50%-4px)] bg-white dark:bg-gray-700 rounded-lg shadow-sm"
-                                        initial={false}
-                                        animate={{
-                                            x: activeTab === 'suggested' ? 0 : '100%'
-                                        }}
-                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                    />
-                                    <TabsTrigger
-                                        value="suggested"
-                                        className="relative z-10 w-1/2 py-2.5 font-medium rounded-lg transition-colors data-[state=active]:bg-transparent data-[state=active]:text-rose-500 data-[state=active]:shadow-none hover:bg-transparent"
-                                    >
-                                        Suggested Dates
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="user_created"
-                                        className="relative z-10 w-1/2 py-2.5 font-medium rounded-lg transition-colors data-[state=active]:bg-transparent data-[state=active]:text-rose-500 data-[state=active]:shadow-none hover:bg-transparent"
-                                    >
-                                        Your Dates
-                                    </TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="suggested" className="mt-0">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {dateIdeas.map((idea, index) => (
-                                            <DateIdeaCard
-                                                key={index}
-                                                {...idea}
-                                                category={idea.categories[0]} // Display primary category
-                                                onStart={() => handleStartDate(idea)}
-                                            />
-                                        ))}
+            <div style={{ display: isOverlayFocused ? 'none' : 'contents' }}>
+                <Sidebar />
+                <div className="pt-14 md:ml-[250px] md:pt-0 min-h-screen dark:bg-gray-900">
+                    <main className="p-4 md:p-8">
+                        <motion.div
+                            variants={container}
+                            initial="hidden"
+                            animate="show"
+                            className="max-w-7xl mx-auto"
+                        >
+                            <motion.header variants={item} className="pt-4 md:pt-8 mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-white text-2xl">local_activity</span>
                                     </div>
-                                </TabsContent>
+                                    <div>
+                                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Date Night</h1>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Curated experiences for quality time together</p>
+                                    </div>
+                                </div>
+                            </motion.header>
 
-                                <TabsContent value="user_created" className="mt-0">
-                                    <div className="mb-8 flex justify-end">
-                                        <Button
-                                            onClick={() => {
-                                                setEditingDate(null);
-                                                setIsAddModalOpen(true);
+                            <motion.div variants={item}>
+                                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                    <TabsList className="relative flex w-full bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-8 h-auto">
+                                        <motion.div
+                                            className="absolute left-1 inset-y-1 w-[calc(50%-4px)] bg-white dark:bg-gray-700 rounded-lg shadow-sm"
+                                            initial={false}
+                                            animate={{
+                                                x: activeTab === 'suggested' ? 0 : '100%'
                                             }}
-                                            className="bg-rose-500 hover:bg-rose-600 text-white gap-2"
+                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                        />
+                                        <TabsTrigger
+                                            value="suggested"
+                                            className="relative z-10 w-1/2 py-2.5 font-medium rounded-lg transition-colors data-[state=active]:bg-transparent data-[state=active]:text-rose-500 data-[state=active]:shadow-none hover:bg-transparent"
                                         >
-                                            <Plus className="w-4 h-4" />
-                                            Add New Date
-                                        </Button>
-                                    </div>
+                                            Suggested Dates
+                                        </TabsTrigger>
+                                        <TabsTrigger
+                                            value="user_created"
+                                            className="relative z-10 w-1/2 py-2.5 font-medium rounded-lg transition-colors data-[state=active]:bg-transparent data-[state=active]:text-rose-500 data-[state=active]:shadow-none hover:bg-transparent"
+                                        >
+                                            Your Dates
+                                        </TabsTrigger>
+                                    </TabsList>
 
-                                    {loadingUserDates ? (
-                                        <div className="flex justify-center py-12">
-                                            <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
-                                        </div>
-                                    ) : (
+                                    <TabsContent value="suggested" className="mt-0">
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {userDates.length > 0 ? (
-                                                userDates.map((date) => (
-                                                    <DateIdeaCard
-                                                        key={date.id}
-                                                        title={date.title}
-                                                        description={date.description}
-                                                        imageUrl={date.image_url || "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&q=80&w=800"}
-                                                        duration={date.duration}
-                                                        cost={date.cost}
-                                                        category="Custom Date"
-                                                        showExternalIcon={false}
-                                                        buttonText="View Details"
-                                                        onStart={() => {
-                                                            setModalTitle(date.title);
-                                                            setModalDescription(date.description);
-                                                            setModalItems([{
-                                                                id: date.id,
-                                                                title: date.title,
-                                                                description: date.description,
-                                                                imageUrl: date.image_url || "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&q=80&w=800",
-                                                                duration: date.duration,
-                                                                cost: date.cost,
-                                                                checklist: date.checklist,
-                                                                link: "", // No link for user dates usually
-                                                                buttonText: "View Details"
-                                                            }]);
-                                                            setIsModalOpen(true);
-                                                        }}
-                                                    />
-                                                ))
-                                            ) : (
-                                                <div className="col-span-full text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-                                                    <p className="text-gray-500 dark:text-gray-400 font-medium mb-4">You haven't added any date ideas yet.</p>
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => {
-                                                            setEditingDate(null);
-                                                            setIsAddModalOpen(true);
-                                                        }}
-                                                    >
-                                                        Create your first date
-                                                    </Button>
-                                                </div>
-                                            )}
+                                            {dateIdeas.map((idea, index) => (
+                                                <DateIdeaCard
+                                                    key={index}
+                                                    {...idea}
+                                                    category={idea.categories[0]} // Display primary category
+                                                    onStart={() => handleStartDate(idea)}
+                                                />
+                                            ))}
                                         </div>
-                                    )}
-                                </TabsContent>
-                            </Tabs>
+                                    </TabsContent>
+
+                                    <TabsContent value="user_created" className="mt-0">
+                                        <div className="mb-8 flex justify-end">
+                                            <Button
+                                                onClick={() => {
+                                                    setEditingDate(null);
+                                                    setIsAddModalOpen(true);
+                                                }}
+                                                className="bg-rose-500 hover:bg-rose-600 text-white gap-2"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                                Add New Date
+                                            </Button>
+                                        </div>
+
+                                        {loadingUserDates ? (
+                                            <div className="flex justify-center py-12">
+                                                <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {userDates.length > 0 ? (
+                                                    userDates.map((date) => (
+                                                        <DateIdeaCard
+                                                            key={date.id}
+                                                            title={date.title}
+                                                            description={date.description}
+                                                            imageUrl={date.image_url || "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&q=80&w=800"}
+                                                            duration={date.duration}
+                                                            cost={date.cost}
+                                                            category="Custom Date"
+                                                            showExternalIcon={false}
+                                                            buttonText="View Details"
+                                                            onStart={() => {
+                                                                setModalTitle(date.title);
+                                                                setModalDescription(date.description);
+                                                                setModalItems([{
+                                                                    id: date.id,
+                                                                    title: date.title,
+                                                                    description: date.description,
+                                                                    imageUrl: date.image_url || "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&q=80&w=800",
+                                                                    duration: date.duration,
+                                                                    cost: date.cost,
+                                                                    checklist: date.checklist,
+                                                                    link: "", // No link for user dates usually
+                                                                    buttonText: "View Details"
+                                                                }]);
+                                                                setIsModalOpen(true);
+                                                            }}
+                                                        />
+                                                    ))
+                                                ) : (
+                                                    <div className="col-span-full text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+                                                        <p className="text-gray-500 dark:text-gray-400 font-medium mb-4">You haven't added any date ideas yet.</p>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                setEditingDate(null);
+                                                                setIsAddModalOpen(true);
+                                                            }}
+                                                        >
+                                                            Create your first date
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </TabsContent>
+                                </Tabs>
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                </main>
+                    </main>
+                </div>
             </div>
 
             <DateIdeaModal
@@ -425,6 +428,7 @@ export default function DateNightPage() {
                 onSuccess={fetchUserDates}
                 coupleId={couple?.id || ""}
                 initialData={editingDate}
+                onFocusChange={setIsOverlayFocused}
             />
         </>
     );

@@ -276,7 +276,7 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             if (error) throw error;
 
             const now = Date.now();
-            console.log(`[DEBUG-COUPONS] Sender: Gift inserted at ${now}`);
+
 
             const anyData = data as any;
             const newCoupon: Coupon = {

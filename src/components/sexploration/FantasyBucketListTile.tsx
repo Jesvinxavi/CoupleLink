@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useFantasyBucketList } from '../../hooks/useFantasyBucketList';
-import { useSexplorationModals } from '../../context/SexplorationModalContext';
+import { useSexplorationModals } from '@/context/SexplorationModalContext';
 
 interface FantasyBucketListTileProps {
     initialOpenModal?: boolean;

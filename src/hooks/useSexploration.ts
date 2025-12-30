@@ -147,8 +147,8 @@ export function useSexploration(): SexplorationData {
                     p_couple_id: couple.id,
                     p_points: 5
                 });
-                console.log('Awarded 5 love action points for completing position');
             } catch (error) {
+
                 console.error('Error adding completed position:', error);
                 setCompletedPositions(prev => prev.filter(id => id !== positionId)); // Revert
             }

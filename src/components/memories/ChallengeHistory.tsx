@@ -131,8 +131,8 @@ const HistoryCard = ({ item, onNext, onPrev, onClick }: { item: HistoryItem; onN
                 {/* Green Bar for Completed Challenges */}
                 {item.type !== 'question' && (
                     <div className={`mt-2 flex items-center gap-2 px-2 py-1 rounded-md w-fit ${item.completedCount && item.completedCount < 2
-                            ? 'text-amber-600 bg-amber-50'
-                            : 'text-green-600 bg-green-50'
+                        ? 'text-amber-600 bg-amber-50'
+                        : 'text-green-600 bg-green-50'
                         }`}>
                         <Trophy className="w-3 h-3" />
                         <span className="text-xs font-medium">
@@ -271,7 +271,7 @@ export function ChallengeHistory() {
                     challengeItems = Array.from(groupedChallenges.values());
 
                     // Count unique uploaders per challenge group
-                    console.log('[DEBUG-HISTORY] Raw Memories:', memories.length);
+
                     memories.forEach((mem: any) => {
                         const dateKey = mem.created_at.split('T')[0];
                         const key = `${mem.title}-${dateKey}`;
@@ -291,9 +291,7 @@ export function ChallengeHistory() {
                         if (!uploaderSets.has(key)) uploaderSets.set(key, new Set());
                         if (mem.uploader_id) uploaderSets.get(key)?.add(mem.uploader_id);
 
-                        // Debug log for photos
-                        if (mem.media_url) console.log('[DEBUG-HISTORY] Found photo for:', key, mem.media_url);
-                        else console.log('[DEBUG-HISTORY] No photo for:', key);
+
                     });
 
                     challengeItems.forEach(item => {
@@ -304,7 +302,7 @@ export function ChallengeHistory() {
                         const dateKey = item.date.split('T')[0];
                         const key = `${item.title}-${dateKey}`;
                         item.completedCount = uploaderSets.get(key)?.size || 0;
-                        console.log('[DEBUG-HISTORY] Item:', item.title, 'CompletedCount:', item.completedCount, 'Photos:', item.photos);
+
                     });
                 }
 

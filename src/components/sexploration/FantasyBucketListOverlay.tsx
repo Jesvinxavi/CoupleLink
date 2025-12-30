@@ -1,14 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Fantasy } from '../../hooks/useFantasyBucketList';
 import { FantasyDetailModal } from './FantasyDetailModal';
 import { X, Loader2 } from 'lucide-react';
-
-
-
-
 
 interface FantasyBucketListOverlayProps {
     isOpen: boolean;
@@ -48,51 +45,96 @@ export function FantasyBucketListOverlay({
     const [isSending, setIsSending] = useState(false);
     const [activeTab, setActiveTab] = useState<'approved' | 'pending' | 'completed'>('approved');
     const [slideDirection, setSlideDirection] = useState(1);
-    const [isFocused, setIsFocused] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const overlayRef = useRef<HTMLDivElement>(null);
+
     // Mobile Viewport Logic
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [isFocused, setIsFocused] = useState(false);
     const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
 
+    // Combined body lock + viewport resize handler (Exactly like PostNoteModal)
     useEffect(() => {
-        if (isOpen) {
-            // Robust Body Lock
-            const scrollY = window.scrollY;
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${scrollY}px`;
-            document.body.style.width = '100%';
-            document.body.style.overflow = 'hidden';
+        if (!isOpen) return;
 
-            const handleResize = () => {
-                // Only update if our input is actually focused
-                if (document.activeElement !== inputRef.current) return;
+        // Robust Body Lock
+        const scrollY = window.scrollY;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
 
-                if (window.visualViewport) {
-                    const height = window.visualViewport.height;
-                    const offsetTop = window.visualViewport.offsetTop;
-                    setViewportStyle({ height, top: offsetTop });
-                }
-            };
+        // Handle Visual Viewport for mobile keyboard
+        const handleVisualResize = () => {
+            // Only update if focus is within this overlay
+            const activeEl = document.activeElement;
+            const isActiveInOverlay = overlayRef.current?.contains(activeEl);
+            const isTextInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
 
-            window.visualViewport?.addEventListener('resize', handleResize);
-            window.visualViewport?.addEventListener('scroll', handleResize);
-            handleResize();
+            // Only update if a keyboard-triggering text input in our overlay is focused
+            if (!isActiveInOverlay || !isTextInput) {
+                return;
+            }
 
-            return () => {
-                const scrollY = document.body.style.top;
-                document.body.style.overflow = '';
-                document.body.style.position = '';
-                document.body.style.top = '';
-                document.body.style.width = '';
+            if (window.visualViewport) {
+                setViewportStyle({
+                    height: window.visualViewport.height,
+                    top: window.visualViewport.offsetTop
+                });
+            }
+        };
 
-                // Restore scroll position
-                window.scrollTo(0, parseInt(scrollY || '0') * -1);
+        window.visualViewport?.addEventListener('resize', handleVisualResize);
+        window.visualViewport?.addEventListener('scroll', handleVisualResize);
+        handleVisualResize();
 
-                window.visualViewport?.removeEventListener('resize', handleResize);
-                window.visualViewport?.removeEventListener('scroll', handleResize);
-            };
-        }
+        return () => {
+            const topStyle = document.body.style.top;
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            window.scrollTo(0, parseInt(topStyle || '0') * -1);
+
+            window.visualViewport?.removeEventListener('resize', handleVisualResize);
+            window.visualViewport?.removeEventListener('scroll', handleVisualResize);
+
+            // Reset focus state on close
+            if (onFocusChange) onFocusChange(false);
+        };
     }, [isOpen]);
+
+    const handleOverlayFocus = (e: React.FocusEvent) => {
+        const target = e.target as HTMLElement;
+        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+        if (!isTextInput) return;
+
+        if (overlayRef.current && window.visualViewport) {
+            // Measure-Lock-Animate pattern
+            const rect = overlayRef.current.getBoundingClientRect();
+            setViewportStyle({ height: rect.height, top: rect.top });
+            setIsFocused(true);
+            if (onFocusChange) onFocusChange(true);
+
+            requestAnimationFrame(() => {
+                setViewportStyle({
+                    height: window.visualViewport!.height,
+                    top: window.visualViewport!.offsetTop
+                });
+            });
+        } else {
+            // Fallback for environments without visualViewport (or desktop testing)
+            setIsFocused(true);
+            if (onFocusChange) onFocusChange(true);
+        }
+    };
+
+    const handleOverlayBlur = (e: React.FocusEvent) => {
+        if (overlayRef.current?.contains(e.relatedTarget as Node)) return;
+        setIsFocused(false);
+        if (onFocusChange) onFocusChange(false);
+        setViewportStyle(undefined);
+    };
+
 
     const tabOrder = { approved: 0, pending: 1, completed: 2 };
 
@@ -115,44 +157,9 @@ export function FantasyBucketListOverlay({
         inputRef.current?.blur();
     };
 
-    const handleInputFocus = () => {
-        if (overlayRef.current && window.visualViewport) {
-            // 1. Measure current 'unfocused' position
-            const rect = overlayRef.current.getBoundingClientRect();
-
-            // 2. Lock it immediately to this position (prevent jump)
-            setViewportStyle({
-                height: rect.height,
-                top: rect.top
-            });
-
-            // 3. Set focused state (render will use the locked px values)
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
-
-            // 4. Animate to target visual viewport in next frame
-            requestAnimationFrame(() => {
-                setViewportStyle({
-                    height: window.visualViewport!.height,
-                    top: window.visualViewport!.offsetTop
-                });
-            });
-        } else {
-            // Fallback if measurement fails
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
-        }
-    };
-
-    const handleInputBlur = () => {
-        setIsFocused(false);
-        if (onFocusChange) onFocusChange(false);
-        setViewportStyle(undefined); // Optional: clear viewport style on blur to force reset?
-    };
-
     const filteredFantasies = fantasies.filter(f => f.status === activeTab);
 
-    return (
+    return createPortal(
         <>
             <AnimatePresence>
                 {isOpen && (
@@ -162,33 +169,34 @@ export function FantasyBucketListOverlay({
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${isFocused ? 'z-[60]' : 'z-40'}`}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
                             onClick={onClose}
                             style={{ touchAction: 'none' }}
                         />
 
-                        {/* Mover (Position & Height) */}
+                        {/* Slide-up Panel */}
                         <motion.div
                             ref={overlayRef}
-                            initial={{ y: '100%' }}
+                            initial={{ y: "100%" }}
                             animate={{
                                 y: 0,
                                 height: isFocused && viewportStyle ? viewportStyle.height : 'auto',
                                 top: isFocused && viewportStyle ? viewportStyle.top : 'auto'
                             }}
-                            exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 40, stiffness: 300 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", damping: 35, stiffness: 150, mass: 1 }}
+                            onFocus={handleOverlayFocus}
+                            onBlur={handleOverlayBlur}
+                            className="fixed inset-x-0 bottom-0 z-[51] outline-none"
                             style={{
                                 maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
                             }}
-                            className={`fixed inset-x-0 bottom-0 z-[61] outline-none ${isFocused && viewportStyle ? '' : ''}`}
                         >
-                            {/* The Skirt - synced background extension */}
+                            {/* The Skirt */}
                             <div className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900" />
 
-                            {/* Inner Card - Appearance & Clipping */}
-                            <div
-                                className={`flex flex-col w-full overflow-hidden bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] ${isFocused ? 'h-full' : ''}`}
+                            {/* Inner Content Container - Standard Overlay Look */}
+                            <div className={`flex flex-col w-full bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] overflow-hidden ${isFocused ? 'h-full' : ''}`}
                                 style={{
                                     maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
                                 }}
@@ -274,12 +282,9 @@ export function FantasyBucketListOverlay({
                                     </div>
                                 </div>
 
-                                {/* Scrollable Content */}
+                                {/* Content */}
                                 <div className="flex-1 overflow-y-auto min-h-0 bg-rose-50 dark:bg-gray-900">
-                                    {/* Inner wrapper for layout animation */}
-                                    <motion.div
-                                        className="p-6 pb-20" // Extra padding at bottom for content
-                                    >
+                                    <div className="p-6 pb-20">
                                         <AnimatePresence mode="popLayout" initial={false} custom={slideDirection}>
                                             <motion.div
                                                 key={activeTab}
@@ -342,10 +347,10 @@ export function FantasyBucketListOverlay({
                                                 )}
                                             </motion.div>
                                         </AnimatePresence>
-                                    </motion.div>
+                                    </div>
                                 </div>
 
-                                {/* Floating Footer Input - Sticky when focused */}
+                                {/* Floating Footer Input */}
                                 <div className={`p-4 bg-transparent shrink-0 safe-area-bottom ${isFocused ? 'pb-2' : 'pb-8'}`}>
                                     <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-lg border border-gray-100 dark:border-gray-700">
                                         <form onSubmit={handleSubmit} className="flex gap-2">
@@ -353,8 +358,7 @@ export function FantasyBucketListOverlay({
                                                 ref={inputRef}
                                                 value={inputText}
                                                 onChange={(e) => setInputText(e.target.value)}
-                                                onFocus={handleInputFocus}
-                                                onBlur={handleInputBlur}
+                                                // Event bubble up to overlay handlers
                                                 placeholder="Describe your fantasy..."
                                                 className="flex-1 bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700 focus:border-rose-400 focus:ring-rose-400"
                                             />
@@ -382,7 +386,6 @@ export function FantasyBucketListOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Detail Modal */}
             <FantasyDetailModal
                 fantasy={selectedFantasy}
                 isOpen={!!selectedFantasy}
@@ -393,6 +396,7 @@ export function FantasyBucketListOverlay({
                 onComplete={completeFantasy}
                 isRequester={isRequester}
             />
-        </>
+        </>,
+        document.body
     );
 }

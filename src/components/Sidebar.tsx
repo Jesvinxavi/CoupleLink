@@ -43,9 +43,7 @@ export default function Sidebar() {
         }
     }, [user])
 
-    useEffect(() => {
-        // console.log('[DEBUG-UNPAIR] Sidebar RENDER. Couple:', couple?.id, 'RainChecks:', couple?.rain_check_tokens)
-    }, [couple])
+
 
     const [canRestore, setCanRestore] = useState(false);
 

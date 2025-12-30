@@ -14,20 +14,7 @@ import { useJournalContext, type JournalEntry } from '../../context/JournalConte
 // Export imported type for compatibility if needed elsewhere, or rely on Context export
 // export type { JournalEntry };
 
-const logMetrics = (context: string) => {
-    console.log(`[Journal] ${context} - Time: ${new Date().toISOString()}`);
-    console.log(`[Journal] ${context} - window.innerHeight:`, window.innerHeight);
-    if (window.visualViewport) {
-        console.log(`[Journal] ${context} - visualViewport.height:`, window.visualViewport.height);
-        console.log(`[Journal] ${context} - visualViewport.offsetTop:`, window.visualViewport.offsetTop);
-        console.log(`[Journal] ${context} - visualViewport.pageTop:`, window.visualViewport.pageTop);
-    }
-    console.log(`[Journal] ${context} - document.documentElement.clientHeight:`, document.documentElement.clientHeight);
-    console.log(`[Journal] ${context} - window.scrollY:`, window.scrollY);
-    console.log(`[Journal] ${context} - body.style.overflow:`, document.body.style.overflow);
-    console.log(`[Journal] ${context} - body.style.position:`, document.body.style.position);
-    console.log(`[Journal] ${context} - body.style.height:`, document.body.style.height);
-};
+
 
 const EMOJI_OPTIONS = ['❤️', '😂', '😮', '😢', '👏'];
 
@@ -53,19 +40,19 @@ export function JournalFeed() {
             }
         };
 
-        const handleResize = () => logMetrics('Window Resize');
-        const handleVisualResize = () => logMetrics('VisualViewport Resize');
+        // Temporarily disabled verbose logging to allow debugging
+
 
         document.addEventListener('mousedown', handleClickOutside);
-        window.addEventListener('resize', handleResize);
-        window.visualViewport?.addEventListener('resize', handleVisualResize);
-        window.visualViewport?.addEventListener('scroll', handleVisualResize);
+        // window.addEventListener('resize', handleResize);
+        // window.visualViewport?.addEventListener('resize', handleVisualResize);
+        // window.visualViewport?.addEventListener('scroll', handleVisualResize);
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
-            window.removeEventListener('resize', handleResize);
-            window.visualViewport?.removeEventListener('resize', handleVisualResize);
-            window.visualViewport?.removeEventListener('scroll', handleVisualResize);
+            // window.removeEventListener('resize', handleResize);
+            // window.visualViewport?.removeEventListener('resize', handleVisualResize);
+            // window.visualViewport?.removeEventListener('scroll', handleVisualResize);
         };
     }, []);
 
@@ -98,10 +85,8 @@ export function JournalFeed() {
     };
 
     const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-        logMetrics('Search Input Focus - Start');
         // Wait for keyboard to slide up to prevent layout jumps/overscroll
         setTimeout(() => {
-            logMetrics('Search Input Focus - 300ms Delay');
             e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
         }, 300);
     };

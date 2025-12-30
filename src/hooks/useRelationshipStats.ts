@@ -332,7 +332,7 @@ export function useRelationshipStats() {
                                         .from(table)
                                         .update({ country: result.country } as any)
                                         .eq('id', item.id);
-                                    console.log(`[Travel Stats] Backfilled ${item.location} -> ${result.country}`);
+
                                     // Polite delay
                                     await new Promise(r => setTimeout(r, 1100));
                                 }

@@ -57,6 +57,7 @@ export default function Dashboard() {
     const [showArchiveModal, setShowArchiveModal] = useState(false)
     const [showPaywall, setShowPaywall] = useState(false)
     const [restoreLoading, setRestoreLoading] = useState(false)
+    const [isOverlayFocused, setIsOverlayFocused] = useState(false)
     // const location = useLocation(); // Unused
 
     const checkArchivedSpace = async () => {
@@ -111,26 +112,16 @@ export default function Dashboard() {
             return;
         }
 
-        if (!foundArchiveId) {
-            console.error('[DEBUG-RESTORE-ACTION] No foundArchiveId available');
-            return;
-        }
-
-        setRestoreLoading(true); // Changed from setRestoring to setRestoreLoading
+        setRestoreLoading(true);
         try {
-            console.log('[DEBUG-RESTORE-ACTION] Attempting restore with ID:', foundArchiveId);
-
             // Arguments must match the SQL function signature exactly
-            const { data, error } = await supabase.rpc('restore_archived_and_delete_current', {
+            const { error } = await supabase.rpc('restore_archived_and_delete_current', {
                 archived_id: foundArchiveId
             });
 
             if (error) {
-                console.error('[DEBUG-RESTORE-ACTION] RPC Error:', JSON.stringify(error, null, 2));
                 throw error;
             }
-
-            console.log('[DEBUG-RESTORE-ACTION] Restore successful. RPC returned:', data);
 
             // Clear any dismissal flags
             sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL);
@@ -138,12 +129,12 @@ export default function Dashboard() {
             window.location.reload(); // Hard reload is safest to reset all state for the new couple ID
 
         } catch (err: any) {
-            console.error('[DEBUG-RESTORE] Restore failed:', err);
             alert("Failed to restore: " + err.message);
         } finally {
             setRestoreLoading(false);
         }
     };
+
 
     const handleDismissRestore = () => {
         setShowArchiveModal(false);
@@ -231,72 +222,74 @@ export default function Dashboard() {
 
     return (
         <>
-            <Sidebar />
-            <div className="pt-14 md:ml-[250px] md:pt-0">
-                <main className="p-4 md:p-8">
-                    <div className="flex max-w-7xl flex-col mx-auto">
-                        {/* Header */}
-                        <motion.header
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex items-center justify-between pt-4 md:pt-8 pb-6"
-                        >
-                            <h1 className="text-[1.75rem] md:text-3xl font-bold tracking-tight text-heading-dark">
-                                Welcome Back{userProfile?.first_name ? `, ${userProfile.first_name}` : ''}
-                            </h1>
-                        </motion.header>
-
-                        {loading || statsLoading ? (
-                            <div className="flex items-center justify-center h-64">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
-                            </div>
-                        ) : (
-                            /* Tiles Grid */
-                            <motion.div
-                                variants={container}
-                                initial="hidden"
-                                animate="show"
-                                className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6"
+            <div style={{ display: isOverlayFocused ? 'none' : 'contents' }}>
+                <Sidebar />
+                <div className="pt-14 md:ml-[250px] md:pt-0">
+                    <main className="p-4 md:p-8">
+                        <div className="flex max-w-7xl flex-col mx-auto">
+                            {/* Header */}
+                            <motion.header
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex items-center justify-between pt-4 md:pt-8 pb-6"
                             >
-                                {/* Row 1: Partner | Streak | Journal/Note */}
-                                <motion.div variants={item} className="md:col-span-4 h-full flex flex-col gap-4">
-                                    <PartnerTile partner={partner} />
-                                    <PartnerNoteTile partner={partner} />
-                                </motion.div>
-                                <motion.div variants={item} className="md:col-span-4 h-full">
-                                    <StreakStatsTile
-                                        currentStreak={couple?.current_streak ?? 0}
-                                        longestStreak={couple?.longest_streak ?? 0}
-                                    />
-                                </motion.div>
-                                <motion.div variants={item} className="md:col-span-4 h-full">
-                                    <QuickActionsTile />
-                                </motion.div>
+                                <h1 className="text-[1.75rem] md:text-3xl font-bold tracking-tight text-heading-dark">
+                                    Welcome Back{userProfile?.first_name ? `, ${userProfile.first_name}` : ''}
+                                </h1>
+                            </motion.header>
 
-                                {/* Row 2: Challenge Summary | Milestone */}
-                                <motion.div variants={item} className="md:col-span-4 h-full">
-                                    <ChallengeSummaryTile />
-                                </motion.div>
-                                <motion.div variants={item} className="md:col-span-8 h-full">
-                                    <MilestoneTrackerTile />
-                                </motion.div>
-
-                                {/* Row 4: Stat of the Day | On This Day | Sexploration Summary */}
-                                <motion.div variants={item} className="md:col-span-4 h-full">
-                                    <StatOfTheDayTile stats={relationshipStats} />
-                                </motion.div>
-                                <motion.div variants={item} className="md:col-span-4 h-full">
-                                    <OnThisDayTile />
-                                </motion.div>
-                                {couple?.spicy_mode && (
-                                    <motion.div variants={item} className="md:col-span-4 h-full">
-                                        <SexplorationSummaryTile />
+                            {loading || statsLoading ? (
+                                <div className="flex items-center justify-center h-64">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
+                                </div>
+                            ) : (
+                                /* Tiles Grid */
+                                <motion.div
+                                    variants={container}
+                                    initial="hidden"
+                                    animate="show"
+                                    className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6"
+                                >
+                                    {/* Row 1: Partner | Streak | Journal/Note */}
+                                    <motion.div variants={item} className="md:col-span-4 h-full flex flex-col gap-4">
+                                        <PartnerTile partner={partner} />
+                                        <PartnerNoteTile partner={partner} />
                                     </motion.div>
-                                )}
-                            </motion.div>
-                        )}
-                    </div>
-                </main>
+                                    <motion.div variants={item} className="md:col-span-4 h-full">
+                                        <StreakStatsTile
+                                            currentStreak={couple?.current_streak ?? 0}
+                                            longestStreak={couple?.longest_streak ?? 0}
+                                        />
+                                    </motion.div>
+                                    <motion.div variants={item} className="md:col-span-4 h-full">
+                                        <QuickActionsTile onFocusChange={setIsOverlayFocused} />
+                                    </motion.div>
+
+                                    {/* Row 2: Challenge Summary | Milestone */}
+                                    <motion.div variants={item} className="md:col-span-4 h-full">
+                                        <ChallengeSummaryTile />
+                                    </motion.div>
+                                    <motion.div variants={item} className="md:col-span-8 h-full">
+                                        <MilestoneTrackerTile />
+                                    </motion.div>
+
+                                    {/* Row 4: Stat of the Day | On This Day | Sexploration Summary */}
+                                    <motion.div variants={item} className="md:col-span-4 h-full">
+                                        <StatOfTheDayTile stats={relationshipStats} />
+                                    </motion.div>
+                                    <motion.div variants={item} className="md:col-span-4 h-full">
+                                        <OnThisDayTile />
+                                    </motion.div>
+                                    {couple?.spicy_mode && (
+                                        <motion.div variants={item} className="md:col-span-4 h-full">
+                                            <SexplorationSummaryTile />
+                                        </motion.div>
+                                    )}
+                                </motion.div>
+                            )}
+                        </div>
+                    </main>
+                </div>
             </div>
 
             {/* Modals */}

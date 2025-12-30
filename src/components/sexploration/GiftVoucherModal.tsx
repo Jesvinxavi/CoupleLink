@@ -80,9 +80,7 @@ export const GiftVoucherModal: React.FC<GiftVoucherModalProps> = ({
     };
 
     const executeSend = async () => {
-        console.log('[GiftVoucherModal] executeSend called', { partnerId: partner?.id, selectedType, selectedTemplate });
         if (!partner?.id || !selectedType) {
-            console.error('[GiftVoucherModal] Missing partner or selectedType', { partnerId: partner?.id, selectedType });
             return;
         }
         setIsSending(true);
@@ -90,35 +88,29 @@ export const GiftVoucherModal: React.FC<GiftVoucherModalProps> = ({
         try {
             let result;
             if (selectedType === 'specific' && selectedTemplate) {
-                console.log('[GiftVoucherModal] Sending specific coupon');
                 result = await giftCoupon(partner.id, 'specific', selectedTemplate);
             } else if (selectedType === 'random') {
-                console.log('[GiftVoucherModal] Sending random coupon');
                 result = await giftCoupon(partner.id, 'random');
             } else if (selectedType === 'create') {
-                console.log('[GiftVoucherModal] Sending custom coupon', customData);
                 result = await giftCoupon(partner.id, 'create', undefined, customData);
             } else if (selectedType === 'free_reign') {
-                console.log('[GiftVoucherModal] Sending free reign coupon');
                 result = await giftCoupon(partner.id, 'create', undefined, {
                     title: "Free Reign",
                     description: "Redeem this for any pleasure of your choice! You have complete control."
                 });
             }
-            console.log('[GiftVoucherModal] giftCoupon result:', result);
 
             if (result) {
                 onGiftSuccess();
                 handleClose();
-            } else {
-                console.error('[GiftVoucherModal] giftCoupon returned undefined - check if couple/userProfile is loaded');
             }
         } catch (error) {
-            console.error('[GiftVoucherModal] Error sending gift:', error);
+            // Error handling preserved implicitly
         } finally {
             setIsSending(false);
         }
     };
+
 
     // For specific template selection
     const handleTemplateSelect = (t: CouponTemplate) => {

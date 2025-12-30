@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCoupons, type CouponTemplate } from '../../hooks/useCoupons';
 import { useCoupleContext } from '../../context/CoupleContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
-import { Gift, Shuffle, PenTool, Globe, ArrowLeft, Loader2, Send, CheckCircle, ChevronRight, X } from 'lucide-react';
+import { Gift, Shuffle, PenTool, Globe, ArrowLeft, Loader2, Send, CheckCircle, X } from 'lucide-react';
 import { Coupon } from './Coupon';
 
 interface GiftCouponOverlayProps {
     isOpen: boolean;
     onClose: () => void;
     onGiftSuccess: () => void;
+    onFocusChange?: (isFocused: boolean) => void;
 }
 
 export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
     isOpen,
     onClose,
-    onGiftSuccess
+    onGiftSuccess,
+    onFocusChange
 }) => {
     const { templates, giftCoupon, fetchTemplates } = useCoupons();
     const { partner } = useCoupleContext();
@@ -36,12 +38,137 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
 
     const [isSending, setIsSending] = useState(false);
 
+    // Mobile Viewport Logic
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const [isFocused, setIsFocused] = useState(false);
+
+    // Combined body lock + viewport resize handler (matches FantasyBucketListOverlay)
+    useEffect(() => {
+        if (!isOpen) return;
+
+        // Robust Body Lock (save scroll position)
+        const scrollY = window.scrollY;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+
+        // Handle Visual Viewport for mobile keyboard
+        const handleVisualResize = () => {
+            // Only update if focus is within this overlay
+            const activeEl = document.activeElement;
+            const isActiveInOverlay = overlayRef.current?.contains(activeEl);
+            const isTextInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
+
+            // Exclude input types that don't trigger keyboard
+            const nonKeyboardInputTypes = ['date', 'time', 'datetime-local', 'month', 'week', 'color', 'file'];
+            const isNonKeyboardInput = activeEl?.tagName === 'INPUT' &&
+                nonKeyboardInputTypes.includes((activeEl as HTMLInputElement).type);
+
+            // Only update if a keyboard-triggering text input in our overlay is focused
+            if (!isActiveInOverlay || !isTextInput || isNonKeyboardInput) {
+                return;
+            }
+
+            if (window.visualViewport) {
+                setViewportStyle({
+                    height: window.visualViewport.height,
+                    top: window.visualViewport.offsetTop
+                });
+            }
+        };
+
+        window.visualViewport?.addEventListener('resize', handleVisualResize);
+        window.visualViewport?.addEventListener('scroll', handleVisualResize);
+        handleVisualResize();
+
+        return () => {
+            const topStyle = document.body.style.top;
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+
+            // Restore scroll position
+            window.scrollTo(0, parseInt(topStyle || '0') * -1);
+
+            window.visualViewport?.removeEventListener('resize', handleVisualResize);
+            window.visualViewport?.removeEventListener('scroll', handleVisualResize);
+        };
+    }, [isOpen]); // Only depends on isOpen
+
     // Initial fetch if needed
     useEffect(() => {
         if (isOpen && templates.length === 0) {
             fetchTemplates();
         }
     }, [isOpen]);
+
+    const handleOverlayFocus = (e: React.FocusEvent) => {
+        const target = e.target as HTMLElement;
+        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+        // Exclude input types that don't trigger keyboard
+        const nonKeyboardInputTypes = ['date', 'time', 'datetime-local', 'month', 'week', 'color', 'file'];
+        const isNonKeyboardInput = target.tagName === 'INPUT' && nonKeyboardInputTypes.includes((target as HTMLInputElement).type);
+
+        // Skip if not a text input or if it's a non-keyboard input type
+        if (!isTextInput || isNonKeyboardInput) {
+            return;
+        }
+
+        if (overlayRef.current && window.visualViewport) {
+            // Measure-Lock-Animate pattern
+            const rect = overlayRef.current.getBoundingClientRect();
+            setViewportStyle({ height: rect.height, top: rect.top });
+            setIsFocused(true);
+            if (onFocusChange) onFocusChange(true);
+
+            // Animate to target visual viewport in next frame
+            requestAnimationFrame(() => {
+                setViewportStyle({
+                    height: window.visualViewport!.height,
+                    top: window.visualViewport!.offsetTop
+                });
+            });
+        } else {
+            setIsFocused(true);
+            if (onFocusChange) onFocusChange(true);
+        }
+
+        // Smart scroll - only if not fully visible
+        setTimeout(() => {
+            const scrollContainer = overlayRef.current?.querySelector('.flex-1.overflow-y-auto');
+            if (scrollContainer && target) {
+                const targetRect = target.getBoundingClientRect();
+                const containerRect = scrollContainer.getBoundingClientRect();
+
+                const isFullyVisible =
+                    targetRect.top >= containerRect.top &&
+                    targetRect.bottom <= containerRect.bottom;
+
+                if (!isFullyVisible) {
+                    const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+                    scrollContainer.scrollTo({
+                        top: Math.max(0, targetTop - 20), // 20px padding from top
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }, 350);
+    };
+
+    const handleOverlayBlur = (e: React.FocusEvent) => {
+        const relatedTarget = e.relatedTarget as Node | null;
+        const isStillInOverlay = overlayRef.current?.contains(relatedTarget);
+
+        if (isStillInOverlay) return;
+
+        setIsFocused(false);
+        if (onFocusChange) onFocusChange(false);
+        setViewportStyle(undefined);
+    };
 
     const reset = () => {
         setStep('main');
@@ -59,8 +186,6 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
         if (selectedType === type) return;
         setSelectedType(type);
     };
-
-
 
     const executeSend = async () => {
         if (!partner?.id || !selectedType) return;
@@ -108,224 +233,319 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
                         transition={{ duration: 0.3 }}
                         onClick={handleClose}
                         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+                        style={{ touchAction: 'none' }}
                     />
 
                     {/* Slide-up Overlay */}
                     <motion.div
+                        ref={overlayRef}
                         initial={{ y: "100%" }}
-                        animate={{ y: 0 }}
+                        animate={{
+                            y: 0,
+                            height: isFocused && viewportStyle ? viewportStyle.height : 'auto',
+                            top: isFocused && viewportStyle ? viewportStyle.top : 'auto'
+                        }}
                         exit={{ y: "100%" }}
-                        transition={{ type: 'tween', duration: 0.5, ease: 'easeInOut' }}
-                        className="fixed inset-x-0 bottom-0 z-[61] h-auto max-h-[calc(100dvh-70px)] bg-rose-50 dark:bg-gray-900 rounded-t-3xl shadow-xl flex flex-col overflow-hidden"
+                        transition={{ type: 'spring', damping: 30, stiffness: 200, mass: 0.8 }}
+                        onFocus={handleOverlayFocus}
+                        onBlur={handleOverlayBlur}
+                        className="fixed inset-x-0 bottom-0 z-[61] outline-none"
+                        style={{
+                            maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                        }}
                     >
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-900 border-b border-rose-100 dark:border-gray-800 shrink-0">
-                            <div className="flex items-center gap-3">
-                                {step !== 'main' && (
-                                    <button
-                                        onClick={() => {
-                                            if (step === 'template-select' || step === 'create-custom') setStep('main');
-                                        }}
-                                        className="p-2 rounded-full hover:bg-rose-50 dark:hover:bg-gray-800 transition-colors"
-                                    >
-                                        <ArrowLeft className="w-5 h-5 text-gray-500" />
-                                    </button>
-                                )}
-                                <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                                    <Gift className="w-5 h-5 text-rose-500" />
-                                </div>
-                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                                    {step === 'template-select' ? 'Select Coupon' : 'Gift a Coupon'}
-                                </h2>
-                            </div>
-                            <button
-                                onClick={handleClose}
-                                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                            >
-                                <X className="w-6 h-6 text-gray-500" />
-                            </button>
-                        </div>
+                        {/* The Skirt */}
+                        <div className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900" />
 
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6">
-                            <AnimatePresence mode="wait">
-                                {step === 'main' && (
-                                    <motion.div
-                                        key="main"
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 20 }}
-                                        transition={{ duration: 0.3 }}
-                                        className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto"
-                                    >
-                                        <OptionCard
-                                            icon={Gift}
-                                            title="Choose Specific Coupon"
-                                            description="Pick a specific pleasure from the collection."
-                                            selected={selectedType === 'specific'}
-                                            onClick={() => handleTypeSelect('specific')}
-                                        />
-                                        <OptionCard
-                                            icon={Shuffle}
-                                            title="Random Surprise"
-                                            description="Send a random coupon to add some mystery."
-                                            selected={selectedType === 'random'}
-                                            onClick={() => handleTypeSelect('random')}
-                                        />
-                                        <OptionCard
-                                            icon={PenTool}
-                                            title="Create Custom"
-                                            description="Write your own special coupon title and rules."
-                                            selected={selectedType === 'create'}
-                                            onClick={() => handleTypeSelect('create')}
-                                        />
-                                        <OptionCard
-                                            icon={Globe}
-                                            title="Free Reign"
-                                            description="Give them the power to choose anything they want."
-                                            selected={selectedType === 'free_reign'}
-                                            onClick={() => handleTypeSelect('free_reign')}
-                                        />
-                                    </motion.div>
-                                )}
-
-                                {step === 'template-select' && (
-                                    <motion.div
-                                        key="templates"
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        transition={{ duration: 0.3 }}
-                                        className="space-y-4 max-w-2xl mx-auto"
-                                    >
-                                        <div className="grid grid-cols-1 gap-4">
-                                            {templates.map(t => (
-                                                <div key={t.id} onClick={() => handleTemplateSelect(t)} className="cursor-pointer transition-transform active:scale-[0.98] group">
-                                                    <div className="relative">
-                                                        {selectedTemplate?.id === t.id && (
-                                                            <div className="absolute -inset-1 bg-pink-500 rounded-xl blur-sm opacity-60 animate-pulse" />
-                                                        )}
-                                                        <div className="relative transform transition-all group-hover:scale-[1.01]">
-                                                            <Coupon
-                                                                title={t.title}
-                                                                description={t.description || t.category}
-                                                                isPreview={true}
-                                                            />
-                                                        </div>
-                                                        {selectedTemplate?.id === t.id && (
-                                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-pink-600 text-white rounded-full p-2 shadow-lg z-20 scale-110">
-                                                                <CheckCircle className="w-6 h-6" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </motion.div>
-                                )}
-
-                                {step === 'create-custom' && (
-                                    <motion.div
-                                        key="custom"
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        transition={{ duration: 0.3 }}
-                                        className="space-y-6 max-w-xl mx-auto"
-                                    >
-                                        <div>
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">Live Preview</p>
-                                            <Coupon
-                                                title={customData.title || "Coupon Title"}
-                                                description={customData.description || "Description will appear here..."}
-                                                isPreview={true}
-                                                isGift={true}
-                                            />
-                                        </div>
-
-                                        <div className="space-y-4 bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-rose-100 dark:border-gray-700">
-                                            <div>
-                                                <h3 className="font-bold text-gray-900 dark:text-white">Customize Coupon</h3>
-                                                <p className="text-xs text-gray-500 mt-1">Enter details below to update the coupon preview.</p>
-                                            </div>
-                                            <Input
-                                                value={customData.title}
-                                                onChange={e => setCustomData({ ...customData, title: e.target.value })}
-                                                placeholder="Enter Title (e.g. Massage Night)"
-                                                className="text-lg font-medium border-gray-200 dark:border-gray-700"
-                                            />
-                                            <Textarea
-                                                value={customData.description}
-                                                onChange={e => setCustomData({ ...customData, description: e.target.value })}
-                                                placeholder="How does it work? (Optional)"
-                                                className="min-h-[100px] border-gray-200 dark:border-gray-700 resize-none"
-                                            />
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        {/* Footer - Floating Card Style */}
-                        <AnimatePresence>
-                            {((step === 'main' && selectedType) ||
-                                (step === 'template-select') ||
-                                (step === 'create-custom' && customData.title)
-                            ) && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        className="w-full px-6 pb-6 pt-0 shrink-0 z-20"
-                                    >
-                                        <div className="bg-white/90 dark:bg-gray-800/95 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-rose-100 dark:border-gray-700">
+                        {/* Inner Content Container */}
+                        <div
+                            className={`flex flex-col w-full overflow-hidden bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] transition-all duration-300 ${isFocused ? 'h-full' : ''}`}
+                            style={{
+                                maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                            }}
+                        >
+                            {/* Header */}
+                            <div className="shrink-0 z-10 overflow-hidden">
+                                <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-900 border-b border-rose-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3">
+                                        {step !== 'main' && (
                                             <Button
-                                                disabled={isSending || (step === 'template-select' && !selectedTemplate)}
-                                                onClick={step === 'main' && selectedType === 'specific' ? () => setStep('template-select') :
-                                                    step === 'main' && selectedType === 'create' ? () => setStep('create-custom') :
-                                                        executeSend}
-                                                className="w-full h-12 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white rounded-xl font-bold shadow-md shadow-pink-500/20 text-lg transition-all active:scale-[0.98]"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    setStep('main');
+                                                    setSelectedType(null);
+                                                    setSelectedTemplate(null);
+                                                }}
+                                                className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
                                             >
-                                                {isSending ? <Loader2 className="animate-spin" /> : (
-                                                    (step === 'main' && (selectedType === 'random' || selectedType === 'free_reign')) ||
-                                                        step === 'template-select' || step === 'create-custom'
-                                                        ? <span className="flex items-center gap-2">Send Gift <Send className="w-5 h-5" /></span>
-                                                        : <span className="flex items-center gap-2">Continue <ChevronRight className="w-5 h-5" /></span>
-                                                )}
+                                                <ArrowLeft className="w-5 h-5" />
                                             </Button>
+                                        )}
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-400 to-pink-600 flex items-center justify-center shadow-lg shadow-pink-500/20">
+                                                <Gift className="text-white w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Send a Gift</h2>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">Surprise your partner</p>
+                                            </div>
                                         </div>
-                                    </motion.div>
-                                )}
-                        </AnimatePresence>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={handleClose}
+                                        className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    >
+                                        <X className="w-5 h-5 text-gray-500" />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Scrollable Content */}
+                            <div className="flex-1 overflow-y-auto min-h-0 scroll-smooth overscroll-contain">
+                                <AnimatePresence mode="wait">
+                                    {step === 'main' && (
+                                        <motion.div
+                                            key="main"
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            className="p-6 space-y-4"
+                                        >
+                                            {/* Type Selection Grid */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <button
+                                                    onClick={() => {
+                                                        handleTypeSelect('specific');
+                                                        setStep('template-select');
+                                                    }}
+                                                    className={`relative p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 text-center ${selectedType === 'specific'
+                                                        ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20'
+                                                        : 'border-transparent bg-white dark:bg-gray-800 hover:border-rose-200 dark:hover:border-rose-800 shadow-sm'
+                                                        }`}
+                                                >
+                                                    <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                                                        <Gift className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-gray-900 dark:text-white">Specific</div>
+                                                        <div className="text-xs text-gray-500 mt-1">Choose a specific coupon</div>
+                                                    </div>
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleTypeSelect('random')}
+                                                    className={`relative p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 text-center ${selectedType === 'random'
+                                                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                                        : 'border-transparent bg-white dark:bg-gray-800 hover:border-purple-200 dark:hover:border-purple-800 shadow-sm'
+                                                        }`}
+                                                >
+                                                    <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                                                        <Shuffle className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-gray-900 dark:text-white">Random</div>
+                                                        <div className="text-xs text-gray-500 mt-1">Send a mystery coupon</div>
+                                                    </div>
+                                                    {selectedType === 'random' && (
+                                                        <div className="absolute top-2 right-2 text-purple-500">
+                                                            <CheckCircle className="w-5 h-5 fill-current" />
+                                                        </div>
+                                                    )}
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        handleTypeSelect('create');
+                                                        setStep('create-custom');
+                                                    }}
+                                                    className={`relative p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 text-center ${selectedType === 'create'
+                                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                                        : 'border-transparent bg-white dark:bg-gray-800 hover:border-blue-200 dark:hover:border-blue-800 shadow-sm'
+                                                        }`}
+                                                >
+                                                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                                        <PenTool className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-gray-900 dark:text-white">Custom</div>
+                                                        <div className="text-xs text-gray-500 mt-1">Create your own coupon</div>
+                                                    </div>
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleTypeSelect('free_reign')}
+                                                    className={`relative p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 text-center ${selectedType === 'free_reign'
+                                                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                                                        : 'border-transparent bg-white dark:bg-gray-800 hover:border-amber-200 dark:hover:border-amber-800 shadow-sm'
+                                                        }`}
+                                                >
+                                                    <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                                        <Globe className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-gray-900 dark:text-white">Free Reign</div>
+                                                        <div className="text-xs text-gray-500 mt-1">Partner's choice</div>
+                                                    </div>
+                                                    {selectedType === 'free_reign' && (
+                                                        <div className="absolute top-2 right-2 text-amber-500">
+                                                            <CheckCircle className="w-5 h-5 fill-current" />
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            </div>
+
+                                            {/* Action Button (For immediate sends like Random/Free Reign) */}
+                                            {(selectedType === 'random' || selectedType === 'free_reign') && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    className="sticky bottom-0 pt-4"
+                                                >
+                                                    <Button
+                                                        className="w-full h-14 text-lg font-bold rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-500/25"
+                                                        onClick={executeSend}
+                                                        disabled={isSending}
+                                                    >
+                                                        {isSending ? (
+                                                            <>
+                                                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                                Sending Gift...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Send className="w-5 h-5 mr-2" />
+                                                                Send Gift Now
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </motion.div>
+                                            )}
+                                        </motion.div>
+                                    )}
+
+                                    {step === 'template-select' && (
+                                        <motion.div
+                                            key="templates"
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            className="p-6 space-y-4"
+                                        >
+                                            <div className="grid gap-4">
+                                                {templates.map(template => (
+                                                    <div
+                                                        key={template.id}
+                                                        onClick={() => handleTemplateSelect(template)}
+                                                        className={`cursor-pointer transition-all transform hover:scale-[1.02] ${selectedTemplate?.id === template.id ? 'ring-2 ring-rose-500 rounded-xl' : ''}`}
+                                                    >
+                                                        <Coupon
+                                                            title={template.title}
+                                                            description={template.description}
+                                                            isGift={false}
+                                                            isPreview={true} // View only mode
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {selectedTemplate && (
+                                                <div className="sticky bottom-0 pt-4 bg-gradient-to-t from-rose-50 via-rose-50 to-transparent dark:from-gray-900 dark:via-gray-900 pb-4">
+                                                    <Button
+                                                        className="w-full h-14 text-lg font-bold rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-500/25"
+                                                        onClick={executeSend}
+                                                        disabled={isSending}
+                                                    >
+                                                        {isSending ? (
+                                                            <>
+                                                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                                Sending...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Send className="w-5 h-5 mr-2" />
+                                                                Send This Coupon
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    )}
+
+                                    {step === 'create-custom' && (
+                                        <motion.div
+                                            key="custom"
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            className="p-6 space-y-6"
+                                        >
+                                            {/* Preview - Moved to Top */}
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Preview</label>
+                                                <div className="transform scale-95 origin-top-left w-full">
+                                                    <Coupon
+                                                        title={customData.title || "Back Massage"}
+                                                        description={customData.description || "Valid for 30 minutes of relaxation"}
+                                                        isPreview={true}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
+                                                    <Input
+                                                        placeholder="e.g. Back Massage"
+                                                        value={customData.title}
+                                                        onChange={(e) => setCustomData(prev => ({ ...prev, title: e.target.value }))}
+                                                        className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+                                                    <Textarea
+                                                        placeholder="What does this coupon grant?"
+                                                        value={customData.description}
+                                                        onChange={(e) => setCustomData(prev => ({ ...prev, description: e.target.value }))}
+                                                        className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 min-h-[100px]"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {!isFocused && ( // Hide footer when focused
+                                                <div className="sticky bottom-0 pt-4 bg-gradient-to-t from-rose-50 via-rose-50 to-transparent dark:from-gray-900 dark:via-gray-900 pb-4">
+                                                    <Button
+                                                        className="w-full h-14 text-lg font-bold rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-500/25"
+                                                        onClick={executeSend}
+                                                        disabled={isSending || !customData.title || !customData.description}
+                                                    >
+                                                        {isSending ? (
+                                                            <>
+                                                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                                Sending...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Send className="w-5 h-5 mr-2" />
+                                                                Create & Send
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </div>
                     </motion.div>
                 </>
             )}
         </AnimatePresence>
     );
-};
-
-const OptionCard = ({ icon: Icon, title, description, selected, onClick }: { icon: any; title: string; description: string; selected?: boolean; onClick: () => void }) => (
-    <button
-        onClick={onClick}
-        className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group w-full ${selected
-            ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/20 shadow-md transform scale-[1.02]'
-            : 'border-white dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md hover:border-pink-200 dark:hover:border-gray-600'
-            }`}
-    >
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors ${selected ? 'bg-pink-500 text-white' : 'bg-pink-100 dark:bg-pink-900/40 text-pink-500 group-hover:bg-pink-500 group-hover:text-white'
-            }`}>
-            <Icon className="w-6 h-6" />
-        </div>
-        <div>
-            <h3 className={`font-bold text-base ${selected ? 'text-pink-600 dark:text-pink-300' : 'text-gray-900 dark:text-white'}`}>{title}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 leading-tight mt-1">{description}</p>
-        </div>
-        {selected && (
-            <div className="ml-auto text-pink-500 animate-in fade-in zoom-in">
-                <div className="w-5 h-5 bg-pink-500 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-3 h-3 text-white" />
-                </div>
-            </div>
-        )}
-    </button>
-);
+}

@@ -301,6 +301,7 @@ export default function StatsPage() {
                     </div>
                 </main>
             </div>
+
             {/* Travel Overlay */}
             <TravelOverlay
                 isOpen={isTravelOverlayOpen}

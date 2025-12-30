@@ -3,11 +3,11 @@ import { supabase } from '../../lib/supabase';
 import { useCoupleData } from '../../hooks/useCoupleData';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Input } from '../ui/input';
-import { Label } from '../ui/label';
+
 import { Textarea } from '../ui/textarea';
-import { Plus, Image as ImageIcon, Loader2, Folder, FolderPlus, ChevronLeft, X, UploadCloud, Trash2, Pencil } from 'lucide-react';
+import { Plus, Image as ImageIcon, Folder, FolderPlus, ChevronLeft, Trash2, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
@@ -27,21 +27,24 @@ interface FolderItem {
     created_at: string;
 }
 
-export function MomentsGallery() {
+// Imports for Overlays
+import { AddMomentsOverlay } from './AddMomentsOverlay';
+import { CreateFolderOverlay } from './CreateFolderOverlay';
+
+interface MomentsGalleryProps {
+    onOverlayFocusChange?: (isFocused: boolean) => void;
+}
+
+export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
     const { couple } = useCoupleData();
     const [moments, setMoments] = useState<Moment[]>([]);
     const [folders, setFolders] = useState<FolderItem[]>([]);
     const [currentFolder, setCurrentFolder] = useState<FolderItem | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Upload State
-    const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-    const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-    const [caption, setCaption] = useState('');
-    const [newFolderName, setNewFolderName] = useState('');
+    // Overlay States
+    const [isUploadOpen, setIsUploadOpen] = useState(false);
+    const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
 
     // Expansion & Management State
     const [selectedMoment, setSelectedMoment] = useState<Moment | null>(null);
@@ -105,114 +108,11 @@ export function MomentsGallery() {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('action') === 'new_post') {
-            setIsUploadDialogOpen(true);
+            setIsUploadOpen(true);
             // Clean up URL
             window.history.replaceState({}, '', window.location.pathname + '?tab=moments');
         }
     }, []);
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const files = Array.from(e.target.files);
-            setSelectedFiles(prev => [...prev, ...files]);
-            const newPreviews = files.map(file => URL.createObjectURL(file));
-            setPreviewUrls(prev => [...prev, ...newPreviews]);
-        }
-    };
-
-    const removeFile = (index: number) => {
-        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-        setPreviewUrls(prev => {
-            URL.revokeObjectURL(prev[index]);
-            return prev.filter((_, i) => i !== index);
-        });
-    };
-
-    const handleUpload = async (targetFolderId: string | null = null) => {
-        if (!couple) return;
-        if (selectedFiles.length === 0 && !targetFolderId) return; // Must have files if just uploading photo
-
-        setUploading(true);
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No user');
-
-            for (const file of selectedFiles) {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${Math.random()}.${fileExt}`;
-                const filePath = `${couple.id}/${fileName}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('memories')
-                    .upload(filePath, file);
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('memories')
-                    .getPublicUrl(filePath);
-
-                await supabase
-                    .from('memories')
-                    .insert({
-                        couple_id: couple.id,
-                        uploader_id: user.id,
-                        type: 'photo',
-                        media_url: publicUrl,
-                        caption: caption,
-                        folder_id: targetFolderId || currentFolder?.id || null
-                    });
-            }
-
-            // Reset
-            setSelectedFiles([]);
-            setPreviewUrls([]);
-            setCaption('');
-            setIsUploadDialogOpen(false);
-            setIsFolderDialogOpen(false);
-            setNewFolderName('');
-            fetchData();
-
-        } catch (err) {
-            console.error('Error uploading:', err);
-            alert('Failed to upload. Please try again.');
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const handleCreateFolder = async () => {
-        if (!couple || !newFolderName.trim()) return;
-        setUploading(true);
-        try {
-            // 1. Create Folder
-            const { data: folder, error } = await supabase
-                .from('folders')
-                .insert({
-                    couple_id: couple.id,
-                    name: newFolderName
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            // 2. Upload photos to this folder if any
-            if (selectedFiles.length > 0) {
-                await handleUpload(folder.id);
-            } else {
-                // Just reset if no files
-                setNewFolderName('');
-                setIsFolderDialogOpen(false);
-                fetchData();
-            }
-
-        } catch (err) {
-            console.error('Error creating folder:', err);
-        } finally {
-            setUploading(false);
-        }
-    };
 
     const handleUpdateMoment = async () => {
         if (!selectedMoment) return;
@@ -327,14 +227,6 @@ export function MomentsGallery() {
         }
     };
 
-
-    const resetUploadForm = () => {
-        setSelectedFiles([]);
-        setPreviewUrls([]);
-        setCaption('');
-        setNewFolderName('');
-    };
-
     return (
         <div className="space-y-6">
             {/* Header / Breadcrumbs */}
@@ -379,141 +271,24 @@ export function MomentsGallery() {
                             </Button>
                         </>
                     ) : (
-                        <Dialog open={isFolderDialogOpen} onOpenChange={(open) => {
-                            setIsFolderDialogOpen(open);
-                            if (!open) resetUploadForm();
-                        }}>
-                            <DialogTrigger asChild>
-                                <Button variant="outline" className="gap-2">
-                                    <FolderPlus className="w-4 h-4" />
-                                    <span className="hidden sm:inline">New Folder</span>
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent
-                                onOpenAutoFocus={(e) => e.preventDefault()}
-                                className="w-[90%] sm:max-w-[425px] rounded-xl"
-                            >
-                                <DialogHeader>
-                                    <DialogTitle>Create New Folder</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4 mt-4">
-                                    <div className="grid w-full items-center gap-1.5">
-                                        <Label htmlFor="folderName">Folder Name</Label>
-                                        <Input
-                                            id="folderName"
-                                            value={newFolderName}
-                                            onChange={(e) => setNewFolderName(e.target.value)}
-                                            placeholder="e.g. Summer Vacation 2024"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label>Add Photos (Optional)</Label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {previewUrls.map((url, idx) => (
-                                                <div key={idx} className="relative w-20 h-20 rounded-md overflow-hidden group">
-                                                    <img src={url} alt="Preview" className="w-full h-full object-cover" />
-                                                    <button
-                                                        onClick={() => removeFile(idx)}
-                                                        className="absolute top-1 right-1 bg-black/50 rounded-full p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                                                <ImageIcon className="w-6 h-6 text-gray-400" />
-                                                <input
-                                                    type="file"
-                                                    multiple
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={handleFileSelect}
-                                                />
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button onClick={handleCreateFolder} disabled={uploading || !newFolderName.trim()} className="bg-rose-500 hover:bg-rose-600 text-white">
-                                        {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Folder'}
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                        <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => setIsCreateFolderOpen(true)}
+                        >
+                            <FolderPlus className="w-4 h-4" />
+                            <span className="hidden sm:inline">New Folder</span>
+                        </Button>
                     )}
 
-                    <Dialog open={isUploadDialogOpen} onOpenChange={(open) => {
-                        setIsUploadDialogOpen(open);
-                        if (!open) resetUploadForm();
-                    }}>
-                        <DialogTrigger asChild>
-                            <Button
-                                size={currentFolder ? 'icon' : 'default'}
-                                className="bg-rose-500 hover:bg-rose-600 text-white gap-2 border border-transparent"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span className="hidden sm:inline">Add Photo</span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent
-                            onOpenAutoFocus={(e) => e.preventDefault()}
-                            className="w-[90%] sm:max-w-[425px] rounded-xl"
-                        >
-                            <DialogHeader>
-                                <DialogTitle>Upload Photo</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 mt-4">
-                                <div className="flex items-center justify-center w-full">
-                                    <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                            <UploadCloud className="w-8 h-8 text-gray-400 mb-2" />
-                                            <p className="text-sm text-gray-500">Click to upload photos</p>
-                                        </div>
-                                        <input
-                                            id="dropzone-file"
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={handleFileSelect}
-                                        />
-                                    </label>
-                                </div>
-
-                                {selectedFiles.length > 0 && (
-                                    <div className="flex flex-wrap gap-2">
-                                        {previewUrls.map((url, idx) => (
-                                            <div key={idx} className="relative w-20 h-20 rounded-md overflow-hidden group">
-                                                <img src={url} alt="Preview" className="w-full h-full object-cover" />
-                                                <button
-                                                    onClick={() => removeFile(idx)}
-                                                    className="absolute top-1 right-1 bg-black/50 rounded-full p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                <div className="grid w-full items-center gap-1.5">
-                                    <Label htmlFor="caption">Caption (Optional)</Label>
-                                    <Input
-                                        id="caption"
-                                        value={caption}
-                                        onChange={(e) => setCaption(e.target.value)}
-                                        placeholder="What's happening?"
-                                    />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button onClick={() => handleUpload()} disabled={uploading || selectedFiles.length === 0} className="bg-rose-500 hover:bg-rose-600 text-white">
-                                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Upload'}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    <Button
+                        size={currentFolder ? 'icon' : 'default'}
+                        className="bg-rose-500 hover:bg-rose-600 text-white gap-2 border border-transparent"
+                        onClick={() => setIsUploadOpen(true)}
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden sm:inline">Add Photo</span>
+                    </Button>
                 </div>
             </div>
 
@@ -712,6 +487,22 @@ export function MomentsGallery() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Overlays */}
+            <AddMomentsOverlay
+                isOpen={isUploadOpen}
+                onClose={() => setIsUploadOpen(false)}
+                currentFolderId={currentFolder?.id || null}
+                onSuccess={fetchData}
+                onFocusChange={onOverlayFocusChange}
+            />
+
+            <CreateFolderOverlay
+                isOpen={isCreateFolderOpen}
+                onClose={() => setIsCreateFolderOpen(false)}
+                onSuccess={fetchData}
+                onFocusChange={onOverlayFocusChange}
+            />
 
         </div >
     );

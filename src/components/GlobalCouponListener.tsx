@@ -23,9 +23,9 @@ export function GlobalCouponListener() {
         );
 
         if (pendingGifts.length > 0) {
-            console.log('[GlobalCouponListener] Found pending gift coupon:', pendingGifts[0]);
             enqueueModal('gift', { coupon: pendingGifts[0] });
         }
+
     }, [coupons, userProfile?.id, enqueueModal]);
 
     // When modal opens/closes, handle side effects
@@ -35,8 +35,9 @@ export function GlobalCouponListener() {
                 // Determine if this is a "Free Reign" coupon (which is actually a voucher)
                 // In our system, real "coupons" are vouchers.
                 // The Coupon type has a title or code we can check, or just assume all gifts need ack.
-                await acknowledgeCoupon(receivedCoupon.id).catch(console.error);
+                await acknowledgeCoupon(receivedCoupon.id).catch(() => { });
                 refreshCoupons();
+
             }
         };
 

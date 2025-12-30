@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useCoupons } from '../../hooks/useCoupons';
 import { useCoupleContext } from '../../context/CoupleContext';
-import { useSexplorationModals } from '../../context/SexplorationModalContext';
+import { useSexplorationModals } from '@/context/SexplorationModalContext';
 
 // import { GiftReceivedModal } from './GiftReceivedModal';
 import { CouponEarnedModal } from './CouponEarnedModal';
 import { CouponCollectionModal } from './CouponCollectionModal';
-import { GiftCouponOverlay } from './GiftCouponOverlay';
 import { Ticket, Gift, Wallet, PartyPopper } from 'lucide-react';
 
 interface PleasureCouponsTileProps {
@@ -17,12 +16,11 @@ interface PleasureCouponsTileProps {
 export function PleasureCouponsTile({ initialOpenWallet = false }: PleasureCouponsTileProps) {
     const { coupons, refreshCoupons, claimCoupon } = useCoupons();
     const { userProfile } = useCoupleContext();
-    const { openWallet } = useSexplorationModals();
+    const { openWallet, openGiftCoupon } = useSexplorationModals();
 
     // Modal States
     const [showEarnedModal, setShowEarnedModal] = useState(false);
     const [showCollectionModal, setShowCollectionModal] = useState(false);
-    const [showGiftModal, setShowGiftModal] = useState(false);
 
     // Handle initial open wallet via effect if needed, or simple redirect if it was a prop used for deep linking
     if (initialOpenWallet) {
@@ -95,7 +93,7 @@ export function PleasureCouponsTile({ initialOpenWallet = false }: PleasureCoupo
                         </button>
                     ) : (
                         <button
-                            onClick={() => setShowGiftModal(true)}
+                            onClick={openGiftCoupon}
                             className="flex-1 bg-rose-50 dark:bg-rose-900/20 rounded-2xl p-4 flex flex-col items-center justify-center text-center border border-rose-100 dark:border-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-all group"
                         >
                             <Gift className="w-6 h-6 text-rose-500 mb-2 group-hover:scale-110 transition-transform" />
@@ -139,14 +137,6 @@ export function PleasureCouponsTile({ initialOpenWallet = false }: PleasureCoupo
                 onClaimSuccess={() => {
                     // Optional: Show success toast or re-open earned modal if more vouchers
                     // For now just close
-                }}
-            />
-
-            <GiftCouponOverlay
-                isOpen={showGiftModal}
-                onClose={() => setShowGiftModal(false)}
-                onGiftSuccess={() => {
-                    // Refresh logic if needed
                 }}
             />
         </>

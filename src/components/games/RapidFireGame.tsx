@@ -19,6 +19,8 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
     const [gameComplete, setGameComplete] = useState(false);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+
+
     // Determine player IDs from session
     const myId = currentUser?.id;
     const partnerId = session.player_one_id === myId ? session.player_two_id : session.player_one_id;
@@ -64,13 +66,7 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
         }
 
         timerRef.current = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    handleAutoSubmit();
-                    return 10;
-                }
-                return prev - 1;
-            });
+            setTimeLeft(prev => Math.max(0, prev - 1));
         }, 1000);
 
         return () => {
@@ -79,7 +75,22 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                 timerRef.current = null;
             }
         };
-    }, [myAnswer, partnerInSession, gameComplete, handleAutoSubmit]);
+    }, [myAnswer, partnerInSession, gameComplete]);
+
+    const hasFiredAutoSubmit = useRef(false);
+
+    useEffect(() => {
+        if (timeLeft === 0 && !hasFiredAutoSubmit.current && myAnswer === undefined && !gameComplete) {
+            hasFiredAutoSubmit.current = true;
+            handleAutoSubmit();
+        }
+    }, [timeLeft, handleAutoSubmit, myAnswer, gameComplete]);
+
+    // Reset fired flag on round change
+    useEffect(() => {
+        hasFiredAutoSubmit.current = false;
+    }, [session.current_round]);
+
 
     const [isAdvancing, setIsAdvancing] = useState(false);
 
@@ -295,17 +306,16 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                             <Timer className="w-4 h-4" />
                             Time remaining
                         </span>
-                        <span className={`font-bold text-lg ${timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-amber-600 dark:text-amber-400'}`}>
+                        <span className={`font-bold text-lg tabular-nums ${timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-amber-600 dark:text-amber-400'}`}>
                             {timeLeft}s
                         </span>
                     </div>
                     <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <motion.div
-                            key={`timer-${session.current_round}-${timeLeft}`}
-                            initial={{ width: `${((timeLeft + 1) / 10) * 100}%` }}
+                            initial={false}
                             animate={{ width: `${(timeLeft / 10) * 100}%` }}
                             transition={{ duration: 1, ease: 'linear' }}
-                            className={`h-full rounded-full ${timeLeft <= 3 ? 'bg-red-500' : 'bg-amber-500'}`}
+                            className={`h-full rounded-full transition-colors duration-300 ${timeLeft <= 3 ? 'bg-red-500' : 'bg-amber-500'}`}
                         />
                     </div>
                 </div>

@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSexploration } from '../../hooks/useSexploration';
-import { useSexplorationModals } from '../../context/SexplorationModalContext';
+import { useSexplorationModals } from '@/context/SexplorationModalContext';
 import { positions, getPositionOfTheWeek } from '../../data/positionsData';
 import { PositionSVG } from './PositionSVG';
 

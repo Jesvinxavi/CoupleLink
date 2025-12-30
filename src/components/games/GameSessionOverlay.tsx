@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
+
 import { X, Users, Clock, Trophy } from 'lucide-react';
 import { Button } from '../ui/button';
 import type { GameSession } from '../../hooks/useGameSession';
@@ -15,9 +17,10 @@ interface GameSessionOverlayProps {
     isOpen: boolean;
     onClose: () => void;
     session: GameSession;
+    onFocusChange?: (isFocused: boolean) => void;
 }
 
-export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOverlayProps) {
+export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: GameSessionOverlayProps) {
     const { leaveSession, endSession, getGameLabel, partnerInSession, joinOrStartSession } = useGameSession();
     const { partner } = useCoupleData();
 
@@ -30,6 +33,8 @@ export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOver
     const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
 
     // Generic Focus Handler (Measure-Lock-Animate)
+
+
     const handleOverlayFocus = (e: React.FocusEvent) => {
         // Filter out non-text inputs (like buttons in other games) which shouldn't trigger keyboard mode
         const target = e.target as HTMLElement;
@@ -51,6 +56,7 @@ export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOver
 
             // 3. Set focused state
             setIsFocused(true);
+            if (onFocusChange) onFocusChange(true);
 
             // 4. Animate to target visual viewport in next frame
             requestAnimationFrame(() => {
@@ -68,6 +74,7 @@ export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOver
         // Only blur if focus is leaving the overlay entirely
         if (!e.currentTarget.contains(e.relatedTarget)) {
             setIsFocused(false);
+            if (onFocusChange) onFocusChange(false);
         }
     };
 
@@ -112,6 +119,7 @@ export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOver
     // Reset focus state when round changes (e.g. going from guessing to drawing) to prevents sticky header
     useEffect(() => {
         setIsFocused(false);
+        if (onFocusChange) onFocusChange(false);
     }, [session.current_round]);
 
     // Check if game is complete (current_round > total_rounds)
@@ -132,6 +140,7 @@ export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOver
 
     const renderGame = () => {
         switch (session.game_type) {
+
             case 'would_you_rather':
                 return <WouldYouRatherGame session={session} />;
             case 'never_have_i_ever':
@@ -140,6 +149,8 @@ export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOver
                 return <RapidFireGame session={session} />;
             case 'draw_and_guess':
                 return <DrawAndGuessGame session={session} />;
+
+
             default:
                 return <div>Unknown game type</div>;
         }
@@ -155,120 +166,119 @@ export function GameSessionOverlay({ isOpen, onClose, session }: GameSessionOver
         }
     };
 
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <>
-                    {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-                        onClick={handleLeave}
-                    />
+    return createPortal(
+        <>
+            {/* Backdrop */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                onClick={handleLeave}
+            />
 
-                    {/* Slide-up Panel */}
-                    <motion.div
-                        ref={overlayRef}
-                        initial={{ y: '100%' }}
-                        animate={{
-                            y: 0,
-                            height: isFocused && viewportStyle ? viewportStyle.height : 'auto',
-                            top: isFocused && viewportStyle ? viewportStyle.top : 'auto'
-                        }}
-                        exit={{ y: '100%' }}
-                        transition={{ type: 'spring', damping: 40, stiffness: 300 }}
-                        onFocus={handleOverlayFocus}
-                        onBlur={handleOverlayBlur}
-                        className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl shadow-2xl overflow-hidden flex flex-col outline-none"
-                    >
-                        {/* The Skirt - synced background extension matching footer (or sticky input) */}
-                        <div className={`absolute top-full inset-x-0 h-[100vh] ${isFocused ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50'}`} />
+            {/* Slide-up Panel */}
+            <motion.div
 
-                        {/* Inner Content Container */}
-                        <div
-                            className={`flex flex-col w-full bg-white dark:bg-gray-900 ${isFocused ? 'h-full' : ''}`}
-                            style={{
-                                maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
-                            }}
-                        >
-                            {/* Header */}
-                            <div className={`bg-gradient-to-r ${getGameColor(session.game_type)} px-6 py-3`}>
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h2 className="text-xl font-bold text-white">
-                                            {getGameLabel(session.game_type)}
-                                        </h2>
-                                        <div className="flex items-center gap-4 mt-1 text-white/80 text-sm">
-                                            <span className="flex items-center gap-1">
-                                                <Users className="w-4 h-4" />
-                                                {partnerInSession ? `Playing with ${partner?.first_name || 'Partner'}` : 'Waiting for partner...'}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Trophy className="w-4 h-4" />
-                                                <span className="text-sm text-white/90">Round {Math.min(session.current_round, session.total_rounds)} of {session.total_rounds}</span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={handleLeave}
-                                        className="text-white hover:bg-white/20 rounded-full"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </Button>
+                ref={overlayRef}
+                initial={{ y: '100%' }}
+                animate={{
+                    y: 0,
+                    height: isFocused && viewportStyle ? viewportStyle.height : 'auto',
+                    top: isFocused && viewportStyle ? viewportStyle.top : 'auto'
+                }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 40, stiffness: 300 }}
+                onFocus={handleOverlayFocus}
+                onBlur={handleOverlayBlur}
+                className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl shadow-2xl overflow-hidden flex flex-col outline-none"
+            >
+                {/* The Skirt - synced background extension matching footer (or sticky input) */}
+                <div className={`absolute top-full inset-x-0 h-[100vh] ${isFocused ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50'}`} />
+
+                {/* Inner Content Container */}
+                <div
+                    className={`flex flex-col w-full bg-white dark:bg-gray-900 ${isFocused ? 'h-full' : ''}`}
+                    style={{
+                        maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                    }}
+                >
+                    {/* Header */}
+                    <div className={`bg-gradient-to-r ${getGameColor(session.game_type)} px-6 py-3`}>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white">
+                                    {getGameLabel(session.game_type)}
+                                </h2>
+                                <div className="flex items-center gap-4 mt-1 text-white/80 text-sm">
+                                    <span className="flex items-center gap-1">
+                                        <Users className="w-4 h-4" />
+                                        {partnerInSession ? `Playing with ${partner?.first_name || 'Partner'}` : 'Waiting for partner...'}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <Trophy className="w-4 h-4" />
+                                        <span className="text-sm text-white/90">Round {Math.min(session.current_round, session.total_rounds)} of {session.total_rounds}</span>
+                                    </span>
                                 </div>
                             </div>
-
-                            {/* Game Content */}
-                            <div className="flex-1 overflow-y-auto p-4">
-                                {isStartingNewGame || (!partnerInSession && session.status === 'waiting') ? (
-                                    <WaitingForPartner
-                                        gameLabel={getGameLabel(session.game_type)}
-                                        partnerName={partner?.first_name || 'Partner'}
-                                    />
-                                ) : (
-                                    renderGame()
-                                )}
-                            </div>
-
-                            {/* Footer Actions */}
-                            <div className="border-t border-gray-200 dark:border-gray-800 px-6 py-4 bg-gray-50 dark:bg-gray-800/50">
-                                {isGameComplete ? (
-                                    <div className="flex gap-3">
-                                        <Button
-                                            variant="outline"
-                                            onClick={handleLeave}
-                                            className="flex-1"
-                                        >
-                                            Leave Game
-                                        </Button>
-                                        <Button
-                                            onClick={handlePlayAgain}
-                                            className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
-                                        >
-                                            Play Again
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleLeave}
-                                        className="w-full"
-                                    >
-                                        Leave Game
-                                    </Button>
-                                )}
-                            </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleLeave}
+                                className="text-white hover:bg-white/20 rounded-full"
+                            >
+                                <X className="w-5 h-5" />
+                            </Button>
                         </div>
-                    </motion.div>
-                </>
-            )}
-        </AnimatePresence >
+                    </div>
+
+                    {/* Game Content */}
+                    <div className="flex-1 overflow-y-auto p-4">
+                        {isStartingNewGame || (!partnerInSession && session.status === 'waiting') ? (
+                            <WaitingForPartner
+                                gameLabel={getGameLabel(session.game_type)}
+                                partnerName={partner?.first_name || 'Partner'}
+                            />
+                        ) : (
+                            renderGame()
+                        )}
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="border-t border-gray-200 dark:border-gray-800 px-6 py-4 bg-gray-50 dark:bg-gray-800/50">
+                        {isGameComplete ? (
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={handleLeave}
+                                    className="flex-1"
+                                >
+                                    Leave Game
+                                </Button>
+                                <Button
+                                    onClick={handlePlayAgain}
+                                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
+                                >
+                                    Play Again
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                onClick={handleLeave}
+                                className="w-full"
+                            >
+                                Leave Game
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </motion.div>
+        </>,
+        document.body
     );
 }
+
 
 // Waiting state component
 function WaitingForPartner({ gameLabel, partnerName }: { gameLabel: string; partnerName: string }) {

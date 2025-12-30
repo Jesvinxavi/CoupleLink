@@ -1,7 +1,8 @@
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog"
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "../ui/button"
 import type { Challenge } from "../../types/challenge"
+import { X, Trophy, AlertTriangle, Clock, Timer, CheckCircle, Upload, AlertOctagon, RotateCcw } from "lucide-react"
 
 interface ChallengeModalProps {
     isOpen: boolean
@@ -49,180 +50,249 @@ export function ChallengeModal({
         }
     }
 
+    // Robust Body Lock
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const scrollY = window.scrollY;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            const topStyle = document.body.style.top;
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            window.scrollTo(0, parseInt(topStyle || '0') * -1);
+        };
+    }, [isOpen]);
+
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px] rounded-xl">
-                <DialogHeader className="text-left">
-                    <div className="flex items-center justify-between">
-                        <DialogTitle className="text-xl font-bold text-heading-dark">{challenge.title}</DialogTitle>
-                    </div>
-                    <DialogDescription className="text-base text-body-soft mt-2 text-left">
-                        {challenge.description}
-                    </DialogDescription>
+        <AnimatePresence>
+            {isOpen && (
+                <>
+                    {/* Backdrop */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+                        onClick={onClose}
+                        style={{ touchAction: 'none' }}
+                    />
 
-                    {/* Partner Completed Message */}
-                    {!isCompleted && !isSkipped && isPartnerCompleted && (
-                        <div className="mt-3 p-2 bg-blue-50 rounded-lg flex items-center gap-2">
-                            <span className="material-symbols-outlined text-blue-500 text-sm">check_circle</span>
-                            <p className="text-xs font-medium text-blue-700">Partner has completed this challenge!</p>
-                        </div>
-                    )}
+                    {/* Slide-up Panel */}
+                    <motion.div
+                        initial={{ y: "100%" }}
+                        animate={{ y: 0 }}
+                        exit={{ y: "100%" }}
+                        transition={{ type: "spring", damping: 30, stiffness: 200, mass: 0.8 }}
+                        className="fixed inset-x-0 bottom-0 z-[61] outline-none"
+                    >
+                        {/* The Skirt */}
+                        <div className="absolute top-full inset-x-0 h-[100vh] bg-white dark:bg-gray-900" />
 
-                    {/* Disagreement Warning */}
-                    {winnerAgreement === 'disagreed' && (
-                        <div className="mt-3 p-2 bg-red-50 rounded-lg flex items-center gap-2 border border-red-100">
-                            <span className="material-symbols-outlined text-red-500 text-sm">warning</span>
-                            <p className="text-xs font-medium text-red-700">You and your partner disagreed on the winner. Please discuss and update!</p>
-                        </div>
-                    )}
+                        {/* Inner Content Container */}
+                        <div className="flex flex-col w-full bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] overflow-hidden max-h-[90vh]">
 
-                    {/* Pending Agreement Message */}
-                    {winnerAgreement === 'pending' && isCompleted && (
-                        <div className="mt-3 p-2 bg-yellow-50 rounded-lg flex items-center gap-2 border border-yellow-100">
-                            <span className="material-symbols-outlined text-yellow-500 text-sm">hourglass_empty</span>
-                            <p className="text-xs font-medium text-yellow-700">Waiting for partner to confirm the winner...</p>
-                        </div>
-                    )}
-                </DialogHeader>
+                            {/* Header */}
+                            <div className="flex flex-col px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 z-10">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                                            <Trophy className="w-4 h-4 text-rose-500" />
+                                        </div>
+                                        <span className="text-sm font-bold text-rose-500 uppercase tracking-wider">{type} Challenge</span>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={onClose}
+                                        className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 -mr-2"
+                                    >
+                                        <X className="w-6 h-6 text-gray-500" />
+                                    </Button>
+                                </div>
 
-                <div className="py-4">
-                    <div className="rounded-lg bg-gray-50 p-4 border border-gray-100 mb-6">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="material-symbols-outlined text-body-soft">timer</span>
-                            <span className="text-sm font-medium text-heading-dark">
-                                Estimated time: {challenge.durationMinutes} mins
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-body-soft">category</span>
-                            <span className="text-sm font-medium text-heading-dark capitalize">
-                                {challenge.category}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Winner Selection for Competitions */}
-                    {((!isCompleted && !isSkipped) || winnerAgreement === 'disagreed') && challenge.isCompetition && (
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-heading-dark mb-3">
-                                Who won this challenge?
-                            </label>
-                            <div className="grid grid-cols-3 gap-2">
-                                <button
-                                    onClick={() => setWinnerSelection('me')}
-                                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${winnerSelection === 'me'
-                                        ? 'bg-gray-900 text-white border-gray-900'
-                                        : 'bg-white text-body-soft border-gray-200 hover:border-gray-900/50'
-                                        }`}
-                                >
-                                    Me
-                                </button>
-                                <button
-                                    onClick={() => setWinnerSelection('partner')}
-                                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${winnerSelection === 'partner'
-                                        ? 'bg-gray-900 text-white border-gray-900'
-                                        : 'bg-white text-body-soft border-gray-200 hover:border-gray-900/50'
-                                        }`}
-                                >
-                                    Partner
-                                </button>
-                                <button
-                                    onClick={() => setWinnerSelection('tie')}
-                                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${winnerSelection === 'tie'
-                                        ? 'bg-gray-900 text-white border-gray-900'
-                                        : 'bg-white text-body-soft border-gray-200 hover:border-gray-900/50'
-                                        }`}
-                                >
-                                    Tie
-                                </button>
                             </div>
-                        </div>
-                    )}
 
-                    {/* Evidence Upload */}
-                    {!isCompleted && !isSkipped && winnerAgreement !== 'disagreed' && (
-                        <div className="mt-2">
-                            <label className="block text-sm font-medium text-heading-dark mb-2">
-                                Upload Evidence {isEvidenceMandatory ? <span className="text-red-500">*</span> : '(Optional)'}
-                            </label>
-                            <div className="flex items-center justify-center w-full">
-                                <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        {evidence ? (
-                                            <div className="flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-green-500">check_circle</span>
-                                                <p className="text-sm text-gray-500">{evidence.name}</p>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <span className="material-symbols-outlined text-gray-400 text-3xl mb-2">cloud_upload</span>
-                                                <p className="text-sm text-gray-500">Click to upload photo</p>
-                                            </>
+                            {/* Scrollable Content */}
+                            <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6 scroll-smooth overscroll-contain">
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight mb-2">
+                                    {challenge.title}
+                                </h2>
+                                <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed mb-6">
+                                    {challenge.description}
+                                </p>
+
+                                {/* Meta Info */}
+                                <div className="flex flex-wrap gap-3 mb-6">
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
+                                        <Timer className="w-4 h-4" />
+                                        {challenge.durationMinutes} mins
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300 capitalize">
+                                        <span className="material-symbols-outlined text-sm">category</span>
+                                        {challenge.category}
+                                    </div>
+                                    {!isCompleted && !isSkipped && (
+                                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium ${isUrgent ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                            <Clock className="w-4 h-4" />
+                                            {timeLeft}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Status Messages */}
+                                {!isCompleted && !isSkipped && isPartnerCompleted && (
+                                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center gap-3 border border-blue-100 dark:border-blue-800">
+                                        <CheckCircle className="w-5 h-5 text-blue-500 shrink-0" />
+                                        <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Partner has completed this challenge!</p>
+                                    </div>
+                                )}
+
+                                {winnerAgreement === 'disagreed' && (
+                                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center gap-3 border border-red-100 dark:border-red-800">
+                                        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+                                        <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                                            Winner disagreement! Please verify who won.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {winnerAgreement === 'pending' && isCompleted && (
+                                    <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl flex items-center gap-3 border border-yellow-100 dark:border-yellow-800">
+                                        <Clock className="w-5 h-5 text-yellow-500 shrink-0" />
+                                        <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300">Waiting for partner confirmation...</p>
+                                    </div>
+                                )}
+
+                                {/* Winner Selection */}
+                                {((!isCompleted && !isSkipped) || winnerAgreement === 'disagreed') && challenge.isCompetition && (
+                                    <div className="mb-6 space-y-3">
+                                        <label className="block text-sm font-bold text-gray-900 dark:text-white">
+                                            Who won this challenge?
+                                        </label>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {['me', 'partner', 'tie'].map((opt) => (
+                                                <button
+                                                    key={opt}
+                                                    onClick={() => setWinnerSelection(opt as any)}
+                                                    className={`p-3 rounded-xl border-2 text-sm font-bold transition-all capitalize ${winnerSelection === opt
+                                                        ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                                                        : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
+                                                        }`}
+                                                >
+                                                    {opt}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Evidence Upload */}
+                                {!isCompleted && !isSkipped && winnerAgreement !== 'disagreed' && (
+                                    <div className="mb-6 space-y-3">
+                                        <label className="block text-sm font-bold text-gray-900 dark:text-white">
+                                            Upload Evidence {isEvidenceMandatory && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <div className="flex items-center justify-center w-full">
+                                            <label htmlFor="evidence-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 dark:border-gray-700 border-dashed rounded-2xl cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors">
+                                                <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                                                    {evidence ? (
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <CheckCircle className="w-8 h-8 text-green-500" />
+                                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-full">{evidence.name}</p>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                                                            <p className="text-sm text-gray-500 dark:text-gray-400">Click to upload photo evidence</p>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    id="evidence-file"
+                                                    type="file"
+                                                    className="hidden"
+                                                    onChange={handleFileChange}
+                                                    accept="image/*"
+                                                />
+                                            </label>
+                                        </div>
+                                        {isEvidenceMandatory && !evidence && (
+                                            <p className="text-xs text-red-500 flex items-center gap-1">
+                                                <AlertOctagon className="w-3 h-3" />
+                                                Photo evidence is required
+                                            </p>
                                         )}
                                     </div>
-                                    <input
-                                        id="dropzone-file"
-                                        type="file"
-                                        className="hidden"
-                                        onChange={handleFileChange}
-                                        accept="image/*"
-                                    />
-                                </label>
+                                )}
+
+                                <div className="h-8" />
                             </div>
-                            {isEvidenceMandatory && !evidence && (
-                                <p className="text-xs text-red-500 mt-1">Photo evidence is required for this challenge.</p>
-                            )}
+
+                            {/* Footer Actions */}
+                            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 sticky bottom-0 z-20 space-y-3">
+                                {/* Action Button */}
+                                {(isCompleted && !challenge.isCompetition) ||
+                                    (isCompleted && challenge.isCompetition && winnerAgreement !== 'disagreed') ||
+                                    isSkipped ? (
+                                    <Button
+                                        onClick={() => {
+                                            onUndo()
+                                            onClose()
+                                        }}
+                                        variant="outline"
+                                        className="w-full h-14 text-lg font-bold rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200"
+                                    >
+                                        <RotateCcw className="w-5 h-5 mr-2" />
+                                        {isSkipped ? 'Unskip' : 'Undo Completion'}
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        onClick={() => {
+                                            onComplete(evidence, winnerSelection || undefined)
+                                            onClose()
+                                        }}
+                                        disabled={(challenge.isCompetition && !winnerSelection) || (isEvidenceMandatory && !evidence && winnerAgreement !== 'disagreed')}
+                                        className="w-full h-14 text-lg font-bold rounded-xl bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20 disabled:shadow-none disabled:opacity-50"
+                                    >
+                                        {challenge.isCompetition && winnerAgreement === 'disagreed' ? 'Update Winner' : 'Complete Challenge'}
+                                    </Button>
+                                )}
+
+                                {/* Rain Check / Skip */}
+                                {!isCompleted && !isSkipped && (
+                                    <Button
+                                        onClick={() => {
+                                            if (rainCheckTokens > 0) {
+                                                onSkip()
+                                                onClose()
+                                            }
+                                        }}
+                                        disabled={rainCheckTokens <= 0}
+                                        variant="ghost"
+                                        className={`w-full h-12 rounded-xl border border-transparent ${rainCheckTokens > 0 ? 'text-purple-600 hover:bg-purple-50' : 'text-gray-400'}`}
+                                    >
+                                        {rainCheckTokens > 0 ? (
+                                            <>
+                                                <span className="material-symbols-outlined mr-2 text-lg">umbrella</span>
+                                                Use Rain Check (Skip)
+                                            </>
+                                        ) : (
+                                            "No Rain Checks Available"
+                                        )}
+                                    </Button>
+                                )}
+                            </div>
                         </div>
-                    )}
-                </div>
-
-                <DialogFooter className="sm:justify-end gap-2 flex-col sm:flex-row">
-                    {!isCompleted && !isSkipped && (
-                        <Button
-                            onClick={() => {
-                                onSkip()
-                                onClose()
-                            }}
-                            variant="outline"
-                            disabled={rainCheckTokens <= 0}
-                            className="w-full sm:w-auto bg-purple-600 text-white hover:bg-purple-700 border-transparent"
-                        >
-                            <span className="material-symbols-outlined mr-2 text-lg">confirmation_number</span>
-                            Use Rain Check
-                        </Button>
-                    )}
-
-                    {(isCompleted && !challenge.isCompetition) || (isCompleted && challenge.isCompetition && winnerAgreement === 'agreed') || isSkipped ? (
-                        <Button
-                            onClick={() => {
-                                onUndo()
-                                onClose()
-                            }}
-                            variant="outline"
-                            className="w-full sm:w-auto text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
-                        >
-                            <span className="material-symbols-outlined mr-2 text-lg">undo</span>
-                            {isSkipped ? 'Unskip' : 'Uncomplete'}
-                        </Button>
-                    ) : (
-                        <Button
-                            onClick={() => {
-                                onComplete(evidence, winnerSelection || undefined)
-                                onClose()
-                            }}
-                            disabled={(challenge.isCompetition && !winnerSelection) || (isEvidenceMandatory && !evidence && winnerAgreement !== 'disagreed')}
-                            className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {challenge.isCompetition && winnerAgreement === 'disagreed' ? 'Update Selection' : 'Complete Challenge'}
-                        </Button>
-                    )}
-                </DialogFooter>
-                {!isCompleted && !isSkipped && (
-                    <div className={`text-sm font-medium text-center ${isUrgent ? 'text-gray-900' : 'text-body-soft'}`}>
-                        {timeLeft}
-                    </div>
-                )}
-            </DialogContent>
-        </Dialog>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
     )
 }

@@ -18,8 +18,8 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
     // Listen for refund event (Local + Broadcast)
     useEffect(() => {
         const handleRefund = () => {
-            console.log('[useStreak] Refund event received. Setting flag.');
             isRefundingRef.current = true;
+
             setTimeout(() => {
                 if (isRefundingRef.current) {
                     isRefundingRef.current = false;

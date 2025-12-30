@@ -7,6 +7,8 @@ import { CreateJournalOverlay } from '../components/journal/CreateJournalOverlay
 interface JournalModalContextType {
     openNewPost: () => void;
     openEditPost: (entry: JournalEntry) => void;
+    isOverlayOpen: boolean;
+    isOverlayFocused: boolean;
 }
 
 const JournalModalContext = createContext<JournalModalContextType | null>(null);
@@ -30,6 +32,7 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
     const { saveEntry, deleteEntry } = useJournalContext();
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isOverlayFocused, setIsOverlayFocused] = useState(false);
     const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -89,7 +92,12 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
     };
 
     return (
-        <JournalModalContext.Provider value={{ openNewPost, openEditPost }}>
+        <JournalModalContext.Provider value={{
+            openNewPost,
+            openEditPost,
+            isOverlayOpen: isDialogOpen,
+            isOverlayFocused
+        }}>
             {children}
             <CreateJournalOverlay
                 isOpen={isDialogOpen}
@@ -99,6 +107,7 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
                 initialEntry={editingEntry}
                 isSubmitting={isSubmitting}
                 isDeleting={isDeleting}
+                onFocusChange={setIsOverlayFocused}
             />
         </JournalModalContext.Provider>
     );

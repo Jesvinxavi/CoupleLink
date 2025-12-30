@@ -4,7 +4,7 @@ import { useCoupons } from '../../hooks/useCoupons';
 import { getPositionOfTheWeek } from '../../data/positionsData';
 import { PositionSVG } from '../sexploration/PositionSVG';
 import { Ticket } from 'lucide-react';
-import { useSexplorationModals } from '../../context/SexplorationModalContext';
+import { useSexplorationModals } from '@/context/SexplorationModalContext';
 
 export function SexplorationSummaryTile() {
     const { approvedCount, pendingCount, completedCount } = useFantasyBucketList();

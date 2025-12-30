@@ -257,17 +257,11 @@ export function ChallengesTile({
                 if (!id || !userProfile?.id) return;
 
                 const alreadyCelebrated = Boolean(celebrated[id]?.includes(userProfile.id));
-                console.log(`[Confetti Check] Type: ${type}, matches: ${isBoth}, prev: ${prevBoth}, alreadyCelebrated: ${alreadyCelebrated}, ID: ${id}`);
-
                 if (!alreadyCelebrated) {
-                    console.log(`[Confetti Trigger] Firing confetti for ${type}!`);
                     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#FF69B4', '#FFD700', '#00BFFF', '#32CD32'] });
-
-                    console.log(`[Confetti Mark] Marking ${type} (${id}) as seen.`);
                     markChallengeConfettiSeen(id);
-                } else {
-                    console.log(`[Confetti Skip] Already celebrated ${type} (${id}).`);
                 }
+
             }
         };
 

@@ -5,14 +5,17 @@ import { useSexploration } from '../hooks/useSexploration';
 import { WalletOverlay } from '../components/sexploration/WalletOverlay';
 import { PositionsOverlay } from '../components/sexploration/PositionsOverlay';
 import { FantasyBucketListOverlay } from '../components/sexploration/FantasyBucketListOverlay';
+import { GiftCouponOverlay } from '../components/sexploration/GiftCouponOverlay';
 
 interface SexplorationModalContextType {
     openWallet: () => void;
     openPositions: () => void;
     openFantasies: () => void;
+    openGiftCoupon: () => void;
     isFantasyOpen: boolean;
     isFantasyFocused: boolean;
     setFantasyFocused: (focused: boolean) => void;
+    isAnyOverlayOpen: boolean;
 }
 
 const SexplorationModalContext = createContext<SexplorationModalContextType | null>(null);
@@ -37,6 +40,7 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
     const [showWallet, setShowWallet] = useState(false);
     const [showPositions, setShowPositions] = useState(false);
     const [showFantasies, setShowFantasies] = useState(false);
+    const [showGiftCoupon, setShowGiftCoupon] = useState(false);
     const [isFantasyFocused, setFantasyFocused] = useState(false);
 
     // Data for modals
@@ -69,19 +73,25 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
     const openWallet = () => openWithNavigation(() => setShowWallet(true));
     const openPositions = () => openWithNavigation(() => setShowPositions(true));
     const openFantasies = () => openWithNavigation(() => setShowFantasies(true));
+    const openGiftCoupon = () => openWithNavigation(() => setShowGiftCoupon(true));
 
     const handleWalletClose = () => setShowWallet(false);
     const handlePositionsClose = () => setShowPositions(false);
     const handleFantasiesClose = () => setShowFantasies(false);
+    const handleGiftCouponClose = () => setShowGiftCoupon(false);
+
+    const isAnyOverlayOpen = showWallet || showPositions || showFantasies || showGiftCoupon;
 
     return (
         <SexplorationModalContext.Provider value={{
             openWallet,
             openPositions,
             openFantasies,
+            openGiftCoupon,
             isFantasyOpen: showFantasies,
             isFantasyFocused,
-            setFantasyFocused
+            setFantasyFocused,
+            isAnyOverlayOpen
         }}>
             {children}
 
@@ -113,6 +123,14 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
                 completeFantasy={completeFantasy}
                 isRequester={isRequester}
                 onFocusChange={setFantasyFocused}
+            />
+
+            <GiftCouponOverlay
+                isOpen={showGiftCoupon}
+                onClose={handleGiftCouponClose}
+                onGiftSuccess={() => {
+                    // Optional: Refresh logic could go here if needed globally
+                }}
             />
         </SexplorationModalContext.Provider>
     );

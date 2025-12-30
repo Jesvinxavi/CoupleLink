@@ -24,6 +24,7 @@ interface AddEventOverlayProps {
     initialValues?: Partial<CalendarEvent>;
     onSave: (event: CalendarEvent) => Promise<void>;
     onDelete: (eventId: string) => Promise<void>;
+    onFocusChange?: (isFocused: boolean) => void;
 }
 
 interface Category {
@@ -57,7 +58,7 @@ const COLOR_PRESETS = [
     '#ec4899', // Pink
 ];
 
-export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, initialValues, onSave, onDelete }: AddEventOverlayProps) {
+export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, initialValues, onSave, onDelete, onFocusChange }: AddEventOverlayProps) {
     const [title, setTitle] = useState('');
     const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
     const [selectedCategoryId, setSelectedCategoryId] = useState(DEFAULT_CATEGORIES[0].id);
@@ -100,47 +101,133 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
 
 
     // Mobile Viewport Logic
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const [isFocused, setIsFocused] = useState(false);
     const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
 
+    // Combined body lock + viewport resize handler (matches FantasyBucketListOverlay)
     useEffect(() => {
-        if (isOpen) {
-            // Store current scroll position
-            const scrollY = window.scrollY;
+        if (!isOpen) return;
 
-            // Lock body scroll
-            document.body.style.overflow = 'hidden';
-            document.body.style.position = 'fixed'; // Required for iOS
-            document.body.style.width = '100%';
-            document.body.style.top = `-${scrollY}px`; // Prevent scroll jump
+        // Robust Body Lock (save scroll position)
+        const scrollY = window.scrollY;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
 
-            // Handle Visual Viewport for mobile keyboard
-            const handleResize = () => {
-                if (window.visualViewport) {
-                    setViewportStyle({
-                        height: window.visualViewport.height,
-                        top: window.visualViewport.offsetTop
+        // Handle Visual Viewport for mobile keyboard
+        const handleVisualResize = () => {
+            // Only update if focus is within this overlay
+            const activeEl = document.activeElement;
+            const isActiveInOverlay = overlayRef.current?.contains(activeEl);
+            const isTextInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
+
+            // Exclude input types that don't trigger keyboard
+            const nonKeyboardInputTypes = ['date', 'time', 'datetime-local', 'month', 'week', 'color'];
+            const isNonKeyboardInput = activeEl?.tagName === 'INPUT' &&
+                nonKeyboardInputTypes.includes((activeEl as HTMLInputElement).type);
+
+            // Only update if a keyboard-triggering text input in our overlay is focused
+            if (!isActiveInOverlay || !isTextInput || isNonKeyboardInput) {
+                return;
+            }
+
+            if (window.visualViewport) {
+                setViewportStyle({
+                    height: window.visualViewport.height,
+                    top: window.visualViewport.offsetTop
+                });
+            }
+        };
+
+        window.visualViewport?.addEventListener('resize', handleVisualResize);
+        window.visualViewport?.addEventListener('scroll', handleVisualResize);
+        handleVisualResize();
+
+        return () => {
+            const topStyle = document.body.style.top;
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+
+            // Restore scroll position
+            window.scrollTo(0, parseInt(topStyle || '0') * -1);
+
+            window.visualViewport?.removeEventListener('resize', handleVisualResize);
+            window.visualViewport?.removeEventListener('scroll', handleVisualResize);
+        };
+    }, [isOpen]); // Only depends on isOpen
+
+    const handleOverlayFocus = (e: React.FocusEvent) => {
+        const target = e.target as HTMLInputElement;
+        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+        // Exclude input types that don't trigger keyboard (date, time, etc.)
+        const nonKeyboardInputTypes = ['date', 'time', 'datetime-local', 'month', 'week', 'color'];
+        const isNonKeyboardInput = target.tagName === 'INPUT' && nonKeyboardInputTypes.includes(target.type);
+
+        // Skip if not a text input or if it's a non-keyboard input type
+        if (!isTextInput || isNonKeyboardInput) {
+            return;
+        }
+
+        if (overlayRef.current && window.visualViewport) {
+            // Measure-Lock-Animate pattern
+            const rect = overlayRef.current.getBoundingClientRect();
+            setViewportStyle({ height: rect.height, top: rect.top });
+            setIsFocused(true);
+            if (onFocusChange) onFocusChange(true);
+
+            // Animate to target visual viewport in next frame
+            requestAnimationFrame(() => {
+                setViewportStyle({
+                    height: window.visualViewport!.height,
+                    top: window.visualViewport!.offsetTop
+                });
+            });
+        } else {
+            setIsFocused(true);
+            if (onFocusChange) onFocusChange(true);
+        }
+
+        // Smart scroll - only if not fully visible
+        setTimeout(() => {
+            const scrollContainer = overlayRef.current?.querySelector('.flex-1.overflow-y-auto');
+            if (scrollContainer && target) {
+                const targetRect = target.getBoundingClientRect();
+                const containerRect = scrollContainer.getBoundingClientRect();
+
+                const isFullyVisible =
+                    targetRect.top >= containerRect.top + 10 &&
+                    targetRect.bottom <= containerRect.bottom - 10;
+
+                if (!isFullyVisible) {
+                    // For textareas/larger inputs, scroll more to give breathing room
+                    const isTextarea = target.tagName === 'TEXTAREA';
+                    const padding = isTextarea ? 40 : 20; // More padding for textareas
+
+                    const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+                    scrollContainer.scrollTo({
+                        top: Math.max(0, targetTop - padding),
+                        behavior: 'smooth'
                     });
                 }
-            };
+            }
+        }, 350);
+    };
 
-            window.visualViewport?.addEventListener('resize', handleResize);
-            window.visualViewport?.addEventListener('scroll', handleResize);
+    const handleOverlayBlur = (e: React.FocusEvent) => {
+        const relatedTarget = e.relatedTarget as Node | null;
+        const isStillInOverlay = overlayRef.current?.contains(relatedTarget);
 
-            // Initial set
-            handleResize();
+        if (isStillInOverlay) return;
 
-            return () => {
-                document.body.style.overflow = '';
-                document.body.style.position = '';
-                document.body.style.width = '';
-                document.body.style.top = '';
-                window.scrollTo(0, scrollY); // Restore scroll position
-
-                window.visualViewport?.removeEventListener('resize', handleResize);
-                window.visualViewport?.removeEventListener('scroll', handleResize);
-            };
-        }
-    }, [isOpen]);
+        setIsFocused(false);
+        if (onFocusChange) onFocusChange(false);
+        setViewportStyle(undefined);
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -298,12 +385,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
 
     const isFormValid = title.trim() !== '' && startDate !== '' && (!isMultiDay || endDate !== '');
 
-    const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        // Wait for keyboard to slide up
-        setTimeout(() => {
-            e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }, 300);
-    };
+
 
     if (!isOpen) return null;
 
@@ -319,190 +401,174 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                             exit={{ opacity: 0 }}
                             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
                             onClick={onClose}
+                            style={{ touchAction: 'none' }}
                         />
 
                         {/* Slide-up Overlay */}
                         <motion.div
+                            ref={overlayRef}
+                            onFocus={handleOverlayFocus}
+                            onBlur={handleOverlayBlur}
                             initial={{ y: '100%' }}
-                            animate={{ y: 0 }}
+                            animate={{
+                                y: 0,
+                                height: isFocused && viewportStyle ? viewportStyle.height : 'auto',
+                                top: isFocused && viewportStyle ? viewportStyle.top : 'auto'
+                            }}
                             exit={{ y: '100%' }}
-                            transition={{ type: 'tween', duration: 0.5, ease: 'easeInOut' }}
-                            // Force height/top to match viewport to snap to visible area
-                            style={viewportStyle ? {
-                                height: `${viewportStyle.height}px`,
-                                top: `${viewportStyle.top}px`
-                            } : { height: 'auto' }}
-                            className={`fixed inset-x-0 z-[61] bg-white dark:bg-gray-900 rounded-t-3xl shadow-xl flex flex-col overflow-hidden ${viewportStyle ? '' : 'bottom-0'}`}
+                            transition={{ type: 'spring', damping: 30, stiffness: 200, mass: 0.8 }}
+                            className="fixed inset-x-0 bottom-0 z-[61] outline-none"
+                            style={{
+                                maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                            }}
                         >
-                            {/* Sticky Header */}
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-white dark:bg-gray-900">
-                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                                    {eventToEdit ? 'Edit Event' : 'Add Event'}
-                                </h2>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={onClose}
-                                    className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                                >
-                                    <X className="w-5 h-5 text-gray-500" />
-                                </Button>
-                            </div>
+                            {/* The Skirt */}
+                            <div className="absolute top-full inset-x-0 h-[100vh] bg-white dark:bg-gray-900" />
 
-                            {/* Scrollable Content */}
-                            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-                                {/* Title */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="title">Event Title</Label>
-                                    <input
-                                        id="title"
-                                        type="text"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        onFocus={handleInputFocus}
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
-                                        placeholder="Event Title"
-                                        required
-                                    />
+                            {/* Inner Content Container */}
+                            <div
+                                className={`flex flex-col w-full overflow-hidden bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] transition-all duration-300 ${isFocused ? 'h-full' : ''}`}
+                                style={{ maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)' }}
+                            >
+                                {/* Header */}
+                                <div className="shrink-0 z-10 overflow-hidden">
+                                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+                                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                            {eventToEdit ? 'Edit Event' : 'Add Event'}
+                                        </h2>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={onClose}
+                                            className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                                        >
+                                            <X className="w-5 h-5 text-gray-500" />
+                                        </Button>
+                                    </div>
                                 </div>
 
-                                {/* Category & Color */}
-                                <div className="grid gap-2">
-                                    <div className="flex justify-between items-center h-8">
-                                        <Label>Category</Label>
-                                        {!isAddingCategory ? (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setIsAddingCategory(true)}
-                                                className="h-7 text-xs text-gray-900 px-2 hover:bg-transparent md:hover:bg-accent md:hover:text-accent-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-                                            >
-                                                <Plus className="w-3 h-3 mr-1" />
-                                                Add Category
-                                            </Button>
-                                        ) : (
-                                            <div className="flex gap-2">
+                                {/* Scrollable Content */}
+                                <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 scroll-smooth overscroll-contain">
+                                    {/* Title */}
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="title">Event Title</Label>
+                                        <input
+                                            id="title"
+                                            type="text"
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                                            placeholder="Event Title"
+                                            required
+                                        />
+                                    </div>
+
+                                    {/* Category & Color */}
+                                    <div className="grid gap-2">
+                                        <div className="flex justify-between items-center h-8">
+                                            <Label>Category</Label>
+                                            {!isAddingCategory ? (
                                                 <Button
-                                                    type="button"
-                                                    onClick={() => setIsAddingCategory(false)}
-                                                    size="sm"
                                                     variant="ghost"
-                                                    className="h-7 text-xs px-2 hover:bg-transparent md:hover:bg-accent md:hover:text-accent-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-                                                >
-                                                    Cancel
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    onClick={handleAddCategory}
                                                     size="sm"
-                                                    className="h-7 text-xs bg-gray-900 text-white px-3 hover:bg-gray-900 md:hover:bg-gray-800 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                    onClick={() => setIsAddingCategory(true)}
+                                                    className="h-7 text-xs text-gray-900 px-2 hover:bg-transparent md:hover:bg-accent md:hover:text-accent-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                                                 >
-                                                    Add
+                                                    <Plus className="w-3 h-3 mr-1" />
+                                                    Add Category
                                                 </Button>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        onClick={() => setIsAddingCategory(false)}
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-7 text-xs px-2 hover:bg-transparent md:hover:bg-accent md:hover:text-accent-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        onClick={handleAddCategory}
+                                                        size="sm"
+                                                        className="h-7 text-xs bg-gray-900 text-white px-3 hover:bg-gray-900 md:hover:bg-gray-800 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                    >
+                                                        Add
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {isAddingCategory ? (
+                                            <div className="flex gap-2">
+                                                <input
+                                                    autoFocus
+                                                    type="text"
+                                                    value={newCategoryName}
+                                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                                    placeholder="New Category Name"
+                                                    className="flex-1 px-3 py-2 h-11 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                                                />
+                                                <button
+                                                    ref={newCategoryColorBtnRef}
+                                                    type="button"
+                                                    onClick={() => openColorPicker('new', newCategoryColorBtnRef)}
+                                                    className="w-11 h-11 rounded-md border border-gray-200 dark:border-gray-700 flex-shrink-0 transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-rose-500/50 input-button"
+                                                    style={{ backgroundColor: newCategoryColor }}
+                                                    title="Select Color"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    value={selectedCategoryId}
+                                                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                                                    className="flex h-11 w-full rounded-md border border-input bg-white dark:bg-gray-800 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    {categories.map(category => (
+                                                        <option key={category.id} value={category.id}>
+                                                            {category.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+
+                                                <div className="relative">
+                                                    <button
+                                                        ref={mainColorBtnRef}
+                                                        type="button"
+                                                        onClick={() => openColorPicker('main', mainColorBtnRef)}
+                                                        className="w-11 h-11 rounded-md border border-input flex items-center justify-center transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                        style={{ backgroundColor: selectedColor }}
+                                                        title="Change Color"
+                                                    />
+                                                </div>
                                             </div>
                                         )}
                                     </div>
 
-                                    {isAddingCategory ? (
-                                        <div className="flex gap-2">
-                                            <input
-                                                autoFocus
-                                                type="text"
-                                                value={newCategoryName}
-                                                onChange={(e) => setNewCategoryName(e.target.value)}
-                                                onFocus={handleInputFocus}
-                                                placeholder="New Category Name"
-                                                className="flex-1 px-3 py-2 h-11 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
-                                            />
-                                            <button
-                                                ref={newCategoryColorBtnRef}
-                                                type="button"
-                                                onClick={() => openColorPicker('new', newCategoryColorBtnRef)}
-                                                className="w-11 h-11 rounded-md border border-gray-200 dark:border-gray-700 flex-shrink-0 transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-rose-500/50 input-button"
-                                                style={{ backgroundColor: newCategoryColor }}
-                                                title="Select Color"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2">
-                                            <select
-                                                value={selectedCategoryId}
-                                                onChange={(e) => setSelectedCategoryId(e.target.value)}
-                                                className="flex h-11 w-full rounded-md border border-input bg-white dark:bg-gray-800 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                {categories.map(category => (
-                                                    <option key={category.id} value={category.id}>
-                                                        {category.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-
-                                            <div className="relative">
-                                                <button
-                                                    ref={mainColorBtnRef}
-                                                    type="button"
-                                                    onClick={() => openColorPicker('main', mainColorBtnRef)}
-                                                    className="w-11 h-11 rounded-md border border-input flex items-center justify-center transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                                    style={{ backgroundColor: selectedColor }}
-                                                    title="Change Color"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Date Selection */}
-                                <div className="grid gap-4">
-                                    <div className="flex items-center justify-between">
-                                        <Label>Date</Label>
-                                        <div className="flex items-center gap-2">
-                                            <Label htmlFor="multi-day" className="text-xs text-gray-500 font-normal cursor-pointer">Multiple Days?</Label>
-                                            <Switch
-                                                id="multi-day"
-                                                checked={isMultiDay}
-                                                onCheckedChange={setIsMultiDay}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-3">
-                                        {/* Start Date */}
-                                        <div className="flex gap-2 relative">
-                                            <input
-                                                type="text"
-                                                readOnly
-                                                value={startDate ? startDate.split('-').reverse().join('-') : ''}
-                                                onChange={(e) => setStartDate(e.target.value)}
-                                                onFocus={handleInputFocus}
-                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50 pointer-events-none"
-                                            />
-                                            <div className="relative">
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    className="h-11 w-11 shrink-0 p-0 text-gray-500 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:text-rose-500"
-                                                >
-                                                    <CalendarIcon className="w-5 h-5" />
-                                                </Button>
-                                                <input
-                                                    type="date"
-                                                    value={startDate}
-                                                    onChange={(e) => setStartDate(e.target.value)}
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer p-0 border-none"
-                                                    title="Select date"
+                                    {/* Date Selection */}
+                                    <div className="grid gap-4">
+                                        <div className="flex items-center justify-between">
+                                            <Label>Date</Label>
+                                            <div className="flex items-center gap-2">
+                                                <Label htmlFor="multi-day" className="text-xs text-gray-500 font-normal cursor-pointer">Multiple Days?</Label>
+                                                <Switch
+                                                    id="multi-day"
+                                                    checked={isMultiDay}
+                                                    onCheckedChange={setIsMultiDay}
                                                 />
                                             </div>
                                         </div>
 
-                                        {/* End Date (Animated) */}
-                                        {isMultiDay && (
-                                            <div className="flex gap-2 animate-in fade-in slide-in-from-top-2 relative">
+                                        <div className="grid gap-3">
+                                            {/* Start Date */}
+                                            <div className="flex gap-2 relative">
                                                 <input
                                                     type="text"
                                                     readOnly
-                                                    value={endDate ? endDate.split('-').reverse().join('-') : ''}
-                                                    onChange={(e) => setEndDate(e.target.value)}
-                                                    onFocus={handleInputFocus}
+                                                    value={startDate ? startDate.split('-').reverse().join('-') : ''}
+                                                    onChange={(e) => setStartDate(e.target.value)}
                                                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50 pointer-events-none"
                                                 />
                                                 <div className="relative">
@@ -515,90 +581,117 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                                                     </Button>
                                                     <input
                                                         type="date"
-                                                        value={endDate}
-                                                        onChange={(e) => setEndDate(e.target.value)}
+                                                        value={startDate}
+                                                        onChange={(e) => setStartDate(e.target.value)}
                                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer p-0 border-none"
                                                         title="Select date"
                                                     />
                                                 </div>
                                             </div>
-                                        )}
+
+                                            {/* End Date (Animated) */}
+                                            {isMultiDay && (
+                                                <div className="flex gap-2 animate-in fade-in slide-in-from-top-2 relative">
+                                                    <input
+                                                        type="text"
+                                                        readOnly
+                                                        value={endDate ? endDate.split('-').reverse().join('-') : ''}
+                                                        onChange={(e) => setEndDate(e.target.value)}
+                                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50 pointer-events-none"
+                                                    />
+                                                    <div className="relative">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            className="h-11 w-11 shrink-0 p-0 text-gray-500 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:text-rose-500"
+                                                        >
+                                                            <CalendarIcon className="w-5 h-5" />
+                                                        </Button>
+                                                        <input
+                                                            type="date"
+                                                            value={endDate}
+                                                            onChange={(e) => setEndDate(e.target.value)}
+                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer p-0 border-none"
+                                                            title="Select date"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Recurrence */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="recurrence">Repeat</Label>
-                                    <select
-                                        id="recurrence"
-                                        value={recurrence}
-                                        onChange={(e) => setRecurrence(e.target.value as any)}
-                                        className="flex h-11 w-full rounded-md border border-input bg-white dark:bg-gray-800 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        <option value="none">Does not repeat</option>
-                                        <option value="monthly">Every month</option>
-                                        <option value="six_months">Every 6 months</option>
-                                        <option value="yearly">Every year</option>
-                                    </select>
-                                </div>
+                                    {/* Recurrence */}
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="recurrence">Repeat</Label>
+                                        <select
+                                            id="recurrence"
+                                            value={recurrence}
+                                            onChange={(e) => setRecurrence(e.target.value as any)}
+                                            className="flex h-11 w-full rounded-md border border-input bg-white dark:bg-gray-800 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <option value="none">Does not repeat</option>
+                                            <option value="monthly">Every month</option>
+                                            <option value="six_months">Every 6 months</option>
+                                            <option value="yearly">Every year</option>
+                                        </select>
+                                    </div>
 
-                                {/* Location */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="location">Location</Label>
-                                    <div className="relative">
-                                        <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                                        <input
-                                            id="location"
-                                            type="text"
-                                            value={location}
-                                            onChange={(e) => setLocation(e.target.value)}
-                                            onFocus={handleInputFocus}
-                                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
-                                            placeholder="Location (Optional)"
+                                    {/* Location */}
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="location">Location</Label>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                                            <input
+                                                id="location"
+                                                type="text"
+                                                value={location}
+                                                onChange={(e) => setLocation(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                                                placeholder="Location (Optional)"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Description */}
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="description">Description</Label>
+                                        <textarea
+                                            id="description"
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50 min-h-[100px] resize-none"
+                                            placeholder="Notes (Optional)"
                                         />
                                     </div>
                                 </div>
 
-                                {/* Description */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="description">Description</Label>
-                                    <textarea
-                                        id="description"
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        onFocus={handleInputFocus}
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-500/50 min-h-[100px] resize-none"
-                                        placeholder="Notes (Optional)"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Sticky Footer */}
-                            <div className="p-4 pt-2 shrink-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 safe-area-bottom">
-                                <div className="flex justify-between items-center gap-3">
-                                    {eventToEdit ? (
+                                {/* Sticky Footer */}
+                                <div className={`p-4 pt-2 shrink-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 safe-area-bottom ${isFocused ? 'hidden' : ''}`}>
+                                    <div className="flex justify-between items-center gap-3">
+                                        {eventToEdit ? (
+                                            <Button
+                                                variant="ghost"
+                                                onClick={() => setShowDeleteConfirm(true)}
+                                                className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </Button>
+                                        ) : (
+                                            <div />
+                                        )}
                                         <Button
-                                            variant="ghost"
-                                            onClick={() => setShowDeleteConfirm(true)}
-                                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                            className="flex-1 max-w-[200px] h-11 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold"
+                                            disabled={!isFormValid || isSubmitting}
+                                            onClick={handleSubmit}
                                         >
-                                            <Trash2 className="w-5 h-5" />
+                                            {isSubmitting ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Saving...
+                                                </>
+                                            ) : (eventToEdit ? 'Save Changes' : 'Add Event')}
                                         </Button>
-                                    ) : (
-                                        <div />
-                                    )}
-                                    <Button
-                                        className="flex-1 max-w-[200px] h-11 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold"
-                                        disabled={!isFormValid || isSubmitting}
-                                        onClick={handleSubmit}
-                                    >
-                                        {isSubmitting ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Saving...
-                                            </>
-                                        ) : (eventToEdit ? 'Save Changes' : 'Add Event')}
-                                    </Button>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>

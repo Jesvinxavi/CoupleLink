@@ -9,6 +9,7 @@ import { useCoupleData } from '../../hooks/useCoupleData';
 import { supabase } from '../../lib/supabase';
 
 import { drawPrompts } from '../../data/gameQuestions';
+import { GameTimer } from './GameTimer';
 
 interface DrawAndGuessGameProps {
     session: GameSession;
@@ -17,15 +18,22 @@ interface DrawAndGuessGameProps {
 export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
     const { updateGameState, nextRound, isPlayerOne, isPlayerTwo, partnerInSession } = useGameSession();
 
+
     const { couple } = useCoupleData();
+
+
 
     const canvasRef = useRef<any>(null);
     const [brushColor, setBrushColor] = useState("#000000");
     const [brushRadius, setBrushRadius] = useState(4);
-    const [timeLeft, setTimeLeft] = useState(60); // 60 seconds to draw
-    const [guess, setGuess] = useState('');
     const [showAnswer, setShowAnswer] = useState(false);
+
+    const [guess, setGuess] = useState('');
+
+
     const [isCorrect, setIsCorrect] = useState(false);
+
+
     const [hasGuessed, setHasGuessed] = useState(false);
     const [isInputFocused, setIsInputFocused] = useState(false);
 
@@ -47,26 +55,12 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
 
     const colors = ["#000000", "#FF0000", "#FF6B00", "#FFEB3B", "#4CAF50", "#2196F3", "#9C27B0", "#E91E63"];
 
-    // Timer countdown
-    useEffect(() => {
-        if (!partnerInSession || showAnswer) return;
-
-        const timer = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    setShowAnswer(true);
-                    return 60;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [partnerInSession, showAnswer, session.current_round]);
+    const handleTimeUp = useCallback(() => {
+        setShowAnswer(true);
+    }, []);
 
     // Reset state when round changes
     useEffect(() => {
-        setTimeLeft(60);
         setShowAnswer(false);
         setGuess('');
         setIsCorrect(false);
@@ -316,10 +310,15 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
                     )}
                 </div>
 
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${timeLeft <= 10 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
-                    <Clock className="w-4 h-4" />
-                    <span className="font-bold">{timeLeft}s</span>
-                </div>
+                <GameTimer
+                    key={`timer-${session.id}-${session.current_round}`}
+                    duration={60}
+                    onTimeUp={handleTimeUp}
+                    currentRound={session.current_round}
+                    showAnswer={showAnswer}
+                    isPaused={!partnerInSession}
+                />
+
             </div>
 
             {/* Word to Draw (only visible to drawer) */}
@@ -346,8 +345,9 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
                     brushColor={brushColor}
                     brushRadius={brushRadius}
                     lazyRadius={0}
-                    canvasWidth={Math.min(600, window.innerWidth - 48)}
+                    canvasWidth={Math.max(200, Math.min(600, window.innerWidth - 48))}
                     canvasHeight={350}
+
                     onChange={isDrawer ? handleDraw : undefined}
                     disabled={!isDrawer}
                     hideGrid

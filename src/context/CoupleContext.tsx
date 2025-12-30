@@ -82,10 +82,10 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                 if (!specificError) {
                     coupleData = specificCouple;
                 } else {
-                    // console.warn('fetchCoupleData: Profile has couple_id but fetch active couple failed:', specificError.message);
+
                 }
             } else {
-                // console.log('fetchCoupleData: No couple_id in profile.');
+
             }
 
             if (!coupleData) {
@@ -144,7 +144,7 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                 },
                 (payload) => {
                     const currentCouple = coupleRef.current; // Use ref
-                    // console.log('couplesChannel: Received payload', payload);
+
 
                     const newCouple = payload.new as CoupleData;
 
@@ -175,11 +175,8 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
             )
-            .subscribe((status) => {
-                // console.log('couplesChannel status:', status);
-                if (status === 'SUBSCRIBED') {
-                    // console.log('Subscribed to couple changes');
-                }
+            .subscribe(() => {
+
             });
 
         // Subscribe to Realtime changes for MY profile
@@ -194,7 +191,7 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                     filter: `id=eq.${user.id}`
                 },
                 (payload) => {
-                    // console.log('profileChannel: Received payload', payload);
+
                     const newProfile = payload.new as Profile;
                     // const oldProfile = payload.old as Profile;
 
@@ -230,7 +227,7 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                 }
             )
             .subscribe((_status, _err) => {
-                // console.log(`profileChannel status for ${user.id}:`, status, err);
+
             });
 
         return () => {

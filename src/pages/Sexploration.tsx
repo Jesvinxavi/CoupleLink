@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { SexCounterTile } from '../components/sexploration/SexCounterTile';
 import { PositionTrackerTile } from '../components/sexploration/PositionTrackerTile';
 import { PleasureCouponsTile } from '../components/sexploration/PleasureCouponsTile';
-import { useSexplorationModals } from '../context/SexplorationModalContext';
+import { useSexplorationModals } from '@/context/SexplorationModalContext';
 import { FantasyBucketListTile } from '../components/sexploration/FantasyBucketListTile';
 import { SpicyDiceTile } from '../components/sexploration/SpicyDiceTile';
 import { useCoupleData } from '@/hooks/useCoupleData';

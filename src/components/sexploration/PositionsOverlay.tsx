@@ -13,9 +13,10 @@ interface PositionsOverlayProps {
     onClose: () => void;
     isPositionCompleted: (id: string) => boolean;
     togglePositionComplete: (id: string) => Promise<void>;
+    onFocusChange?: (isFocused: boolean) => void;
 }
 
-export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, togglePositionComplete }: PositionsOverlayProps) {
+export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, togglePositionComplete, onFocusChange }: PositionsOverlayProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
@@ -24,66 +25,87 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
     // Mobile Viewport Logic
     const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
 
+    // Combined body lock + viewport resize handler (matches FantasyBucketListOverlay)
     useEffect(() => {
-        if (isOpen) {
-            // Lock body scroll
-            document.body.style.overflow = 'hidden';
-            document.body.style.position = 'fixed';
-            document.body.style.width = '100%';
+        if (!isOpen) return;
 
-            // Handle Visual Viewport for mobile keyboard
-            const handleResize = () => {
-                // Only update if our input is actually focused
-                if (document.activeElement !== document.querySelector('input[type="text"]')) {
-                    // Note: Ideally use a ref for the input to be precise, but strict check is okay for now or we can add inputRef
-                    // skipping strict check for now to match pattern, relying on isSearchFocused logic mainly
-                }
+        // Robust Body Lock (save scroll position)
+        const scrollY = window.scrollY;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
 
-                if (window.visualViewport && isSearchFocused) {
-                    setViewportStyle({
-                        height: window.visualViewport.height,
-                        top: window.visualViewport.offsetTop
-                    });
-                }
-            };
+        // Handle Visual Viewport for mobile keyboard
+        const handleVisualResize = () => {
+            // Only update if focus is within this overlay
+            const activeEl = document.activeElement;
+            const isActiveInOverlay = overlayRef.current?.contains(activeEl);
+            const isTextInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
 
-            // Better pattern from guide:
-            // The guide uses: if (document.activeElement !== inputRef.current) return;
-            // I should probably add inputRef too for correctness.
+            // Exclude input types that don't trigger keyboard
+            const nonKeyboardInputTypes = ['date', 'time', 'datetime-local', 'month', 'week', 'color', 'file'];
+            const isNonKeyboardInput = activeEl?.tagName === 'INPUT' &&
+                nonKeyboardInputTypes.includes((activeEl as HTMLInputElement).type);
 
-            window.visualViewport?.addEventListener('resize', handleResize);
-            window.visualViewport?.addEventListener('scroll', handleResize);
+            // Only update if a keyboard-triggering text input in our overlay is focused
+            if (!isActiveInOverlay || !isTextInput || isNonKeyboardInput) {
+                return;
+            }
 
-            return () => {
-                document.body.style.overflow = '';
-                document.body.style.position = '';
-                document.body.style.width = '';
-                window.visualViewport?.removeEventListener('resize', handleResize);
-                window.visualViewport?.removeEventListener('scroll', handleResize);
-            };
-        }
-    }, [isOpen, isSearchFocused]);
+            if (window.visualViewport) {
+                setViewportStyle({
+                    height: window.visualViewport.height,
+                    top: window.visualViewport.offsetTop
+                });
+            }
+        };
+
+        window.visualViewport?.addEventListener('resize', handleVisualResize);
+        window.visualViewport?.addEventListener('scroll', handleVisualResize);
+        handleVisualResize();
+
+        return () => {
+            const topStyle = document.body.style.top;
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+
+            // Restore scroll position
+            window.scrollTo(0, parseInt(topStyle || '0') * -1);
+
+            window.visualViewport?.removeEventListener('resize', handleVisualResize);
+            window.visualViewport?.removeEventListener('scroll', handleVisualResize);
+        };
+    }, [isOpen]); // Only depends on isOpen
 
     const handleClose = () => {
         setSearchQuery(''); // Reset search
         onClose();
     };
 
-    const handleInputFocus = () => {
+    const handleOverlayFocus = (e: React.FocusEvent) => {
+        const target = e.target as HTMLInputElement;
+        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+        // Exclude input types that don't trigger keyboard
+        const nonKeyboardInputTypes = ['date', 'time', 'datetime-local', 'month', 'week', 'color', 'file'];
+        const isNonKeyboardInput = target.tagName === 'INPUT' && nonKeyboardInputTypes.includes(target.type);
+
+        // Skip if not a text input or if it's a non-keyboard input type
+        if (!isTextInput || isNonKeyboardInput) {
+            return;
+        }
+
         if (overlayRef.current && window.visualViewport) {
-            // 1. Measure current 'sheet' position
+            // Measure-Lock-Animate pattern
             const rect = overlayRef.current.getBoundingClientRect();
-
-            // 2. Lock it immediately
-            setViewportStyle({
-                height: rect.height,
-                top: rect.top
-            });
-
-            // 3. Set focused state
+            setViewportStyle({ height: rect.height, top: rect.top });
             setIsSearchFocused(true);
+            if (onFocusChange) onFocusChange(true);
 
-            // 4. Animate to target visual viewport in next frame
+            // Animate to target visual viewport in next frame
             requestAnimationFrame(() => {
                 setViewportStyle({
                     height: window.visualViewport!.height,
@@ -92,11 +114,40 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
             });
         } else {
             setIsSearchFocused(true);
+            if (onFocusChange) onFocusChange(true);
         }
+
+        // Smart scroll - only if not fully visible
+        setTimeout(() => {
+            const scrollContainer = overlayRef.current?.querySelector('.flex-1.overflow-y-auto');
+            if (scrollContainer && target) {
+                const targetRect = target.getBoundingClientRect();
+                const containerRect = scrollContainer.getBoundingClientRect();
+
+                const isFullyVisible =
+                    targetRect.top >= containerRect.top &&
+                    targetRect.bottom <= containerRect.bottom;
+
+                if (!isFullyVisible) {
+                    const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+                    scrollContainer.scrollTo({
+                        top: Math.max(0, targetTop - 20), // 20px padding from top
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }, 350);
     };
 
-    const handleInputBlur = () => {
+    const handleOverlayBlur = (e: React.FocusEvent) => {
+        const relatedTarget = e.relatedTarget as Node | null;
+        const isStillInOverlay = overlayRef.current?.contains(relatedTarget);
+
+        if (isStillInOverlay) return;
+
         setIsSearchFocused(false);
+        if (onFocusChange) onFocusChange(false);
+        setViewportStyle(undefined);
     };
 
     const filteredPositions = positions.filter(p =>
@@ -120,13 +171,16 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${isSearchFocused ? 'z-[60]' : 'z-40'}`}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
                             onClick={handleClose}
+                            style={{ touchAction: 'none' }}
                         />
 
-                        {/* Slide-up Panel */}
+                        {/* Slide-up Overlay */}
                         <motion.div
                             ref={overlayRef}
+                            onFocus={handleOverlayFocus}
+                            onBlur={handleOverlayBlur}
                             initial={{ y: '100%' }}
                             animate={{
                                 y: 0,
@@ -134,22 +188,25 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                                 top: isSearchFocused && viewportStyle ? viewportStyle.top : 'auto'
                             }}
                             exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 40, stiffness: 300 }}
-                            className={`fixed inset-x-0 bottom-0 z-[61] outline-none`}
+                            transition={{ type: 'spring', damping: 30, stiffness: 200, mass: 0.8 }}
+                            className="fixed inset-x-0 bottom-0 z-[61] outline-none"
+                            style={{
+                                maxHeight: isSearchFocused ? 'none' : 'calc(100dvh - 70px)'
+                            }}
                         >
                             {/* The Skirt - synced background extension */}
                             <div className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900" />
 
                             {/* Inner Card - Appearance & Clipping */}
                             <div
-                                className={`flex flex-col w-full overflow-hidden bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] ${isSearchFocused ? 'h-full' : ''}`}
+                                className={`flex flex-col w-full overflow-hidden bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] transition-all duration-300 ${isSearchFocused ? 'h-full' : ''}`}
                                 style={{
                                     maxHeight: isSearchFocused ? 'none' : 'calc(100dvh - 70px)'
                                 }}
                             >
                                 {/* Header */}
                                 <div className="shrink-0 z-10 overflow-hidden">
-                                    {/* Title Section - Rose */}
+                                    {/* Title Section */}
                                     <div className="bg-rose-50 dark:bg-gray-900 px-6 py-4">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
@@ -172,7 +229,7 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                                         </div>
                                     </div>
 
-                                    {/* Search Section - Pink (matches body) */}
+                                    {/* Search Section */}
                                     <div className="px-6 pt-6 pb-2 bg-rose-50 dark:bg-gray-900">
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -181,8 +238,6 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                                                 placeholder="Search positions..."
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                                onFocus={handleInputFocus}
-                                                onBlur={handleInputBlur}
                                                 className="pl-9 pr-9 bg-gray-100 dark:bg-gray-800 border-transparent focus:bg-white dark:focus:bg-gray-700 transition-colors"
                                             />
                                             {searchQuery && (
@@ -199,7 +254,7 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                                 </div>
 
                                 {/* Scrollable Content */}
-                                <div className="flex-1 overflow-y-auto p-6 min-h-0">
+                                <div className="flex-1 overflow-y-auto p-6 min-h-0 scroll-smooth overscroll-contain">
                                     <AnimatePresence mode="wait">
                                         {groupedPositions.length === 0 ? (
                                             <motion.div

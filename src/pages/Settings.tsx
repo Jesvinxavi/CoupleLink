@@ -137,16 +137,15 @@ export default function Settings() {
                 if (avatarUrl.includes('/avatars/')) {
                     const path = avatarUrl.split('/avatars/')[1];
                     if (path) {
-                        console.log('Cleaning up old avatar:', path);
                         const { error: deleteError } = await supabase.storage
                             .from('avatars')
                             .remove([path]);
 
                         if (deleteError) {
-                            console.error('Error deleting old avatar:', deleteError);
-                            // Non-blocking
+                            // Non-blocking cleanup error
                         }
                     }
+
                 }
             }
         } catch (error: any) {
@@ -169,7 +168,7 @@ export default function Settings() {
             setShowSpicy(checked)
             await refreshCoupleData()
         } catch (error: any) {
-            console.error('Error updating spicy mode:', error)
+
             setMessage({ type: 'error', text: 'Failed to update setting' })
             // Revert on error
             setShowSpicy(!checked)
@@ -219,10 +218,10 @@ export default function Settings() {
             if (couple) {
                 const { error: unpairError } = await supabase.rpc('unpair_couple')
                 if (unpairError) {
-                    console.error('Unpair failed during deletion, proceeding:', unpairError)
-                    // Proceeding anyway as the user wants to delete their account
+                    // Proceeding anyway
                 }
             }
+
 
             // 2. Wipe the account
             const { error } = await supabase.rpc('reset_profile')

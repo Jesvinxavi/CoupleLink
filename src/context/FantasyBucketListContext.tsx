@@ -197,7 +197,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
     };
 
     const approveFantasy = async (id: string) => {
-        console.log('Approving fantasy:', id);
+
         // Optimistic update
         setFantasies((prev) =>
             prev.map((f) =>
@@ -225,7 +225,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                 console.error('Error approving fantasy (DB):', error);
                 throw error;
             }
-            console.log('Fantasy approved successfully');
+
         } catch (error) {
             console.error('Error approving fantasy:', error);
             await fetchFantasies(); // Revert on error
@@ -233,7 +233,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
     };
 
     const vetoFantasy = async (id: string) => {
-        console.log('Vetoing fantasy:', id);
+
         // Optimistic update - remove from list
         const previousFantasies = fantasies;
         setFantasies((prev) => prev.filter((f) => f.id !== id));
@@ -248,7 +248,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                 console.error('Error vetoing fantasy (DB):', error);
                 throw error;
             }
-            console.log('Fantasy vetoed successfully');
+
 
             if (channelRef.current) {
                 await channelRef.current.send({
@@ -264,7 +264,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
     };
 
     const deleteFantasy = async (id: string) => {
-        console.log('Deleting fantasy:', id);
+
         // Same as veto - removes the fantasy
         const previousFantasies = fantasies;
         setFantasies((prev) => prev.filter((f) => f.id !== id));
@@ -279,7 +279,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                 console.error('Error deleting fantasy (DB):', error);
                 throw error;
             }
-            console.log('Fantasy deleted successfully');
+
 
             if (channelRef.current) {
                 await channelRef.current.send({
@@ -295,7 +295,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
     };
 
     const completeFantasy = async (id: string) => {
-        console.log('Completing fantasy:', id);
+
         // Optimistic update
         setFantasies((prev) =>
             prev.map((f) =>
@@ -322,10 +322,10 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                     p_couple_id: couple.id,
                     p_points: 5
                 });
-                console.log('Awarded 5 love action points for completing fantasy');
+
             }
 
-            console.log('Fantasy completed successfully');
+
 
             if (channelRef.current) {
                 await channelRef.current.send({
