@@ -131,6 +131,7 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
     };
 
     const handlePlayAgain = async () => {
+        if (!session) return;
         setIsStartingNewGame(true);
         await endSession();
         // joinOrStartSession will create a new waiting session
