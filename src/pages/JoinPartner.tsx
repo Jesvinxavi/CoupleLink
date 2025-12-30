@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import confetti from "canvas-confetti"
 import { supabase } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
@@ -24,6 +24,7 @@ export default function JoinPartner() {
     const { user } = useAuth()
     const { refreshCoupleData, userProfile } = useCoupleData()
     const navigate = useNavigate()
+    const location = useLocation()
     const [code, setCode] = useState("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -236,7 +237,13 @@ export default function JoinPartner() {
                             type="button"
                             variant="ghost"
                             className="w-full"
-                            onClick={() => navigate("/pairing")}
+                            onClick={() => {
+                                if (location.state?.from === 'dashboard') {
+                                    navigate("/dashboard")
+                                } else {
+                                    navigate("/pairing")
+                                }
+                            }}
                         >
                             Back
                         </Button>

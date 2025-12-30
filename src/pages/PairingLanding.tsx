@@ -26,24 +26,25 @@ export default function PairingLanding() {
                 <div className="grid gap-6 md:grid-cols-2">
                     {/* Create Space Card */}
                     <SpaceActionTile
-                        title="Create a New Space"
                         description="Start here and get a unique code to share with your partner"
                         icon="add_circle"
                         buttonText="Create Space"
                         onClick={() => navigate("/create-space")}
                         variant="primary"
+                        className="bg-[#FFF5F5]"
                     />
 
                     {/* Join Partner Card */}
                     <SpaceActionTile
-                        title="Join a Partner"
                         description="Have a code from your partner? Enter it here to connect"
                         icon="group_add"
                         iconColor="text-blue-500"
                         iconBgColor="bg-blue-50"
                         buttonText="Join Partner"
                         onClick={() => navigate("/join-partner")}
-                        variant="secondary"
+                        variant="primary"
+                        buttonClassName="bg-[#3B82F6] hover:bg-[#2563EB]"
+                        className="bg-blue-50/50"
                     />
                 </div>
             </motion.div>

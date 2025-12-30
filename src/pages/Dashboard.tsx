@@ -1,4 +1,6 @@
 import Sidebar from "../components/Sidebar"
+import { useNavigate } from "react-router-dom"
+import { SpaceActionTile } from "../components/ui/SpaceActionTile"
 import { useCoupleData } from "../hooks/useCoupleData"
 
 import { useStreak } from "../hooks/useStreak"
@@ -10,12 +12,12 @@ import { StreakBrokenModal } from "../components/dashboard/StreakBrokenModal"
 
 import { StatOfTheDayTile } from "../components/dashboard/StatOfTheDayTile"
 import { useRelationshipStats } from "../hooks/useRelationshipStats"
-import { useChallenges } from "../hooks/useChallenges"
+
 import { OnThisDayTile } from "../components/dashboard/OnThisDayTile"
 import { StreakStatsTile } from "../components/dashboard/StreakStatsTile"
 import { MilestoneTrackerTile } from "../components/dashboard/MilestoneTrackerTile"
 import { SexplorationSummaryTile } from "../components/dashboard/SexplorationSummaryTile"
-import { ChallengesTile } from "../components/dashboard/ChallengesTile"
+
 
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
@@ -40,9 +42,10 @@ const item = {
 }
 
 export default function Dashboard() {
+    const navigate = useNavigate()
     const { couple, partner, userProfile, loading } = useCoupleData()
     const { stats: relationshipStats, loading: statsLoading } = useRelationshipStats()
-    const challenges = useChallenges()
+
 
     const {
         streakBroken,
@@ -182,34 +185,26 @@ export default function Dashboard() {
                                     </p>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto w-full">
-                                    <ChallengesTile
-                                        dailyStatus={challenges.dailyStatus}
-                                        dailyTimeLeft={challenges.dailyTimeLeft}
-                                        dailyTimeUrgent={challenges.dailyTimeUrgent}
-                                        daily={challenges.daily}
-                                        weeklyStatus={challenges.weeklyStatus}
-                                        weeklyTimeLeft={challenges.weeklyTimeLeft}
-                                        weeklyTimeUrgent={challenges.weeklyTimeUrgent}
-                                        weekly={challenges.weekly}
-                                        monthlyStatus={challenges.monthlyStatus}
-                                        monthlyTimeLeft={challenges.monthlyTimeLeft}
-                                        monthlyTimeUrgent={challenges.monthlyTimeUrgent}
-                                        monthly={challenges.monthly}
-                                        myDailyMemory={challenges.myDailyMemory}
-                                        myWeeklyMemory={challenges.myWeeklyMemory}
-                                        myMonthlyMemory={challenges.myMonthlyMemory}
-                                        partnerDailyMemory={challenges.partnerDailyMemory}
-                                        partnerWeeklyMemory={challenges.partnerWeeklyMemory}
-                                        partnerMonthlyMemory={challenges.partnerMonthlyMemory}
-                                        markChallengeConfettiSeen={challenges.markChallengeConfettiSeen}
-                                        completeChallenge={challenges.completeChallenge}
-                                        undoChallenge={challenges.undoChallenge}
-                                        skipChallenge={challenges.skipChallenge}
-                                        loadingPartner={challenges.loadingPartner}
-                                        winnerAgreement={challenges.winnerAgreement}
-                                        couple={couple}
-                                        userProfile={userProfile}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full">
+                                    <SpaceActionTile
+                                        description="Start here and get a unique code to share with your partner"
+                                        icon="add_circle"
+                                        buttonText="Create Space"
+                                        onClick={() => navigate("/create-space", { state: { from: 'dashboard' } })}
+                                        variant="primary"
+                                        className="bg-[#FFF5F5]"
+                                    />
+
+                                    <SpaceActionTile
+                                        description="Have a code from your partner? Enter it here to connect"
+                                        icon="group_add"
+                                        iconColor="text-blue-500"
+                                        iconBgColor="bg-blue-50"
+                                        buttonText="Join Partner"
+                                        onClick={() => navigate("/join-partner", { state: { from: 'dashboard' } })}
+                                        variant="primary"
+                                        buttonClassName="bg-[#3B82F6] hover:bg-[#2563EB]"
+                                        className="bg-blue-50/50"
                                     />
                                 </div>
                             </motion.div>
