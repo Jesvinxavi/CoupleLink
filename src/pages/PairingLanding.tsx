@@ -1,23 +1,29 @@
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { SpaceActionTile } from "../components/ui/SpaceActionTile"
+import { useLockBodyScroll } from "../hooks/useLockBodyScroll"
 
 export default function PairingLanding() {
     const navigate = useNavigate()
+    useLockBodyScroll()
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-[#FFF5F5] p-4">
+        <div
+            className="fixed inset-0 flex h-[100dvh] w-full flex-col items-center overflow-hidden overscroll-none bg-[#FFF5F5] p-4 pt-12"
+            style={{ touchAction: 'none' }}
+            onTouchMove={(e) => e.preventDefault()}
+        >
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
                 className="w-full max-w-5xl"
             >
-                <div className="mb-10 text-center">
-                    <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-sm">
-                        <span className="material-symbols-outlined text-4xl text-[#EA2831]">favorite_border</span>
+                <div className="mb-6 text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
+                        <span className="material-symbols-outlined text-3xl text-[#EA2831]">favorite_border</span>
                     </div>
-                    <h1 className="text-4xl font-bold text-heading-dark">Let's Connect</h1>
+                    <h1 className="text-3xl font-bold text-heading-dark">Let's Connect</h1>
                     <p className="mt-3 text-lg text-body-soft">
                         Choose how you'd like to set up your shared space
                     </p>

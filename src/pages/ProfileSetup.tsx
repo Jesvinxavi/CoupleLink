@@ -130,26 +130,34 @@ export default function ProfileSetup() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="birthDate" className="text-heading-dark">Birthday</Label>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 relative">
                                     <Input
                                         id="birthDate"
-                                        type="date"
-                                        value={birthDate}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBirthDate(e.target.value)}
+                                        type="text"
+                                        readOnly
+                                        value={birthDate ? birthDate.split('-').reverse().join('-') : ''}
+                                        onChange={(e) => setBirthDate(e.target.value)}
                                         required
-                                        className="h-12 flex-1 rounded-xl border-gray-200 bg-gray-50 focus:border-[#EA2831] focus:ring-[#EA2831] [&::-webkit-calendar-picker-indicator]:hidden"
+                                        className="h-12 flex-1 rounded-xl border-gray-200 bg-gray-50 focus:border-[#EA2831] focus:ring-[#EA2831] pointer-events-none"
+                                        placeholder="DD-MM-YYYY"
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="h-12 w-12 shrink-0 rounded-xl border-gray-200 bg-gray-50 p-0 text-gray-500 hover:bg-gray-100 hover:text-[#EA2831]"
-                                        onClick={() => {
-                                            const input = document.getElementById('birthDate') as HTMLInputElement;
-                                            input?.showPicker();
-                                        }}
-                                    >
-                                        <span className="material-symbols-outlined">calendar_month</span>
-                                    </Button>
+                                    <div className="relative">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="h-12 w-12 shrink-0 rounded-xl border-gray-200 bg-gray-50 p-0 text-gray-500 hover:bg-gray-100 hover:text-[#EA2831]"
+                                        >
+                                            <span className="material-symbols-outlined">calendar_month</span>
+                                        </Button>
+                                        <input
+                                            type="date"
+                                            value={birthDate}
+                                            onChange={(e) => setBirthDate(e.target.value)}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer p-0 border-none"
+                                            title="Select date"
+                                            required
+                                        />
+                                    </div>
                                 </div>
                                 <p className="text-xs text-body-soft">So we can celebrate your special day!</p>
                             </div>
