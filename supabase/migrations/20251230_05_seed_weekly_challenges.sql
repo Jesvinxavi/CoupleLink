@@ -2,7 +2,8 @@
 -- Frequency: weekly
 -- Mix: ~20% Online Game, ~33% Competitive, ~47% Normal
 
-DELETE FROM activities WHERE type = 'challenge' AND content->>'frequency' = 'weekly';
+DELETE FROM public.user_answers WHERE activity_id IN (SELECT id FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'weekly');
+DELETE FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'weekly';
 
 INSERT INTO public.activities (category, type, content) VALUES
 -- ONLINE GAME (approx 10)

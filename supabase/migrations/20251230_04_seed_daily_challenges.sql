@@ -2,7 +2,8 @@
 -- Frequency: daily
 -- Mix: ~20% Competitive
 
-DELETE FROM activities WHERE type = 'challenge' AND content->>'frequency' = 'daily';
+DELETE FROM public.user_answers WHERE activity_id IN (SELECT id FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'daily');
+DELETE FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'daily';
 
 INSERT INTO public.activities (category, type, content) VALUES
 -- COMPETITIVE (approx 60)

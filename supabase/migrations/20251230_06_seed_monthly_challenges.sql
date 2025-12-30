@@ -2,7 +2,8 @@
 -- Frequency: monthly
 -- Mix: ~33% Competitive, ~67% Normal
 
-DELETE FROM activities WHERE type = 'challenge' AND content->>'frequency' = 'monthly';
+DELETE FROM public.user_answers WHERE activity_id IN (SELECT id FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'monthly');
+DELETE FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'monthly';
 
 INSERT INTO public.activities (category, type, content) VALUES
 -- COMPETITIVE (approx 8)

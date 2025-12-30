@@ -1,7 +1,8 @@
 -- Seed Daily Questions (Quizzes)
 -- Categories: fun, deep, spicy, romantic
 
-DELETE FROM activities WHERE type = 'quiz';
+DELETE FROM public.user_answers WHERE activity_id IN (SELECT id FROM public.activities WHERE type = 'quiz');
+DELETE FROM public.activities WHERE type = 'quiz';
 
 INSERT INTO public.activities (category, type, content) VALUES
 -- FUN & HYPOTHETICAL

@@ -8,6 +8,7 @@ ALTER TYPE activity_category ADD VALUE IF NOT EXISTS 'date_idea';
 CREATE INDEX IF NOT EXISTS idx_activities_category ON activities(category);
 CREATE INDEX IF NOT EXISTS idx_activities_type ON activities(type);
 
+DELETE FROM public.user_answers WHERE activity_id IN (SELECT id FROM public.activities WHERE category = 'date_idea');
 DELETE FROM public.activities WHERE category = 'date_idea';
 
 INSERT INTO public.activities (category, type, content) VALUES
