@@ -36,20 +36,20 @@ export function SpaceActionTile({
             )}
             onClick={onClick}
         >
-            <CardHeader className="text-center pb-2">
+            <CardHeader className="text-center pb-2 pt-4">
                 <div className={cn(
-                    "mx-auto flex h-20 w-20 items-center justify-center rounded-full transition-transform group-hover:scale-110",
-                    title ? "mb-4" : "mb-0",
+                    "mx-auto flex h-14 w-14 items-center justify-center rounded-full transition-transform group-hover:scale-110",
+                    title ? "mb-3" : "mb-0",
                     iconBgColor
                 )}>
-                    <span className={cn("material-symbols-outlined text-4xl", iconColor)}>{icon}</span>
+                    <span className={cn("material-symbols-outlined text-3xl", iconColor)}>{icon}</span>
                 </div>
-                {title && <CardTitle className="text-2xl font-bold text-heading-dark">{title}</CardTitle>}
+                {title && <CardTitle className="text-xl font-bold text-heading-dark">{title}</CardTitle>}
             </CardHeader>
-            <CardContent className="text-center">
+            <CardContent className="text-center pb-4">
                 <Button
                     className={cn(
-                        "h-12 w-auto min-w-[200px] px-8 rounded-full text-lg font-medium shadow-sm transition-all",
+                        "h-10 w-auto min-w-[140px] px-6 rounded-full text-sm font-medium shadow-sm transition-all",
                         variant === "primary"
                             ? "bg-[#EA2831] text-white hover:bg-[#D41F27]"
                             : "border-2 border-[#EA2831] bg-transparent text-[#EA2831] hover:bg-[#EA2831]/5",
@@ -58,7 +58,7 @@ export function SpaceActionTile({
                 >
                     {buttonText}
                 </Button>
-                <CardDescription className="mt-4 text-body-soft">
+                <CardDescription className="mt-3 text-sm text-body-soft px-2">
                     {description}
                 </CardDescription>
             </CardContent>

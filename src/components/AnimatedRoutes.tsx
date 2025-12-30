@@ -11,6 +11,7 @@ import ProfileSetup from "@/pages/ProfileSetup"
 import PairingLanding from "@/pages/PairingLanding"
 import CreateSpace from "@/pages/CreateSpace"
 import JoinPartner from "@/pages/JoinPartner"
+import RestoreSpace from "@/pages/RestoreSpace"
 import JournalPage from "@/pages/Journal"
 import MemoriesPage from "@/pages/Memories"
 import GamesPage from "@/pages/Games"
@@ -110,6 +111,11 @@ export default function AnimatedRoutes() {
                         <Route path="/create-space" element={
                             <PageTransition>
                                 <CreateSpace />
+                            </PageTransition>
+                        } />
+                        <Route path="/restore-space" element={
+                            <PageTransition>
+                                <RestoreSpace />
                             </PageTransition>
                         } />
                         <Route path="/join-partner" element={

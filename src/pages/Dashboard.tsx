@@ -185,9 +185,9 @@ export default function Dashboard() {
                                     </p>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto w-full">
                                     <SpaceActionTile
-                                        description="Start here and get a unique code to share with your partner"
+                                        description="Ready to start your journey? Create a space now"
                                         icon="add_circle"
                                         buttonText="Create Space"
                                         onClick={() => navigate("/create-space", { state: { from: 'dashboard' } })}
@@ -196,7 +196,7 @@ export default function Dashboard() {
                                     />
 
                                     <SpaceActionTile
-                                        description="Have a code from your partner? Enter it here to connect"
+                                        description="Partner already made a space?"
                                         icon="group_add"
                                         iconColor="text-blue-500"
                                         iconBgColor="bg-blue-50"
@@ -205,6 +205,18 @@ export default function Dashboard() {
                                         variant="primary"
                                         buttonClassName="bg-[#3B82F6] hover:bg-[#2563EB]"
                                         className="bg-blue-50/50"
+                                    />
+
+                                    <SpaceActionTile
+                                        description="Recover a previous connection"
+                                        icon="history"
+                                        iconColor="text-purple-500"
+                                        iconBgColor="bg-purple-50"
+                                        buttonText="Restore Space"
+                                        onClick={() => navigate("/restore-space", { state: { from: 'dashboard' } })}
+                                        variant="primary"
+                                        buttonClassName="bg-purple-600 hover:bg-purple-700"
+                                        className="bg-purple-50/50"
                                     />
                                 </div>
                             </motion.div>

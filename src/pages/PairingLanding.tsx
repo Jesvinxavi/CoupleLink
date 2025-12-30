@@ -11,7 +11,7 @@ export default function PairingLanding() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
-                className="w-full max-w-4xl"
+                className="w-full max-w-5xl"
             >
                 <div className="mb-10 text-center">
                     <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-sm">
@@ -23,10 +23,10 @@ export default function PairingLanding() {
                     </p>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                     {/* Create Space Card */}
                     <SpaceActionTile
-                        description="Start here and get a unique code to share with your partner"
+                        description="Ready to start your journey? Create a space now"
                         icon="add_circle"
                         buttonText="Create Space"
                         onClick={() => navigate("/create-space")}
@@ -36,7 +36,7 @@ export default function PairingLanding() {
 
                     {/* Join Partner Card */}
                     <SpaceActionTile
-                        description="Have a code from your partner? Enter it here to connect"
+                        description="Partner already made a space?"
                         icon="group_add"
                         iconColor="text-blue-500"
                         iconBgColor="bg-blue-50"
@@ -45,6 +45,19 @@ export default function PairingLanding() {
                         variant="primary"
                         buttonClassName="bg-[#3B82F6] hover:bg-[#2563EB]"
                         className="bg-blue-50/50"
+                    />
+
+                    {/* Restore Space Card */}
+                    <SpaceActionTile
+                        description="Recover a previous connection"
+                        icon="history"
+                        iconColor="text-purple-500"
+                        iconBgColor="bg-purple-50"
+                        buttonText="Restore Space"
+                        onClick={() => navigate("/restore-space")}
+                        variant="primary"
+                        buttonClassName="bg-purple-600 hover:bg-purple-700"
+                        className="bg-purple-50/50"
                     />
                 </div>
             </motion.div>
