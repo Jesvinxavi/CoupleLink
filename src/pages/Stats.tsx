@@ -32,11 +32,13 @@ import { useState, useEffect } from "react"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 
 import { TravelOverlay } from "@/components/stats/TravelOverlay"
+import { LovePointsOverlay } from "@/components/stats/LovePointsOverlay"
 
 export default function StatsPage() {
     const { stats, loading } = useRelationshipStats()
     const [forceLoading, setForceLoading] = useState(true)
     const [isTravelOverlayOpen, setIsTravelOverlayOpen] = useState(false)
+    const [isLovePointsOverlayOpen, setIsLovePointsOverlayOpen] = useState(false)
     const [challengeTimeframe, setChallengeTimeframe] = useState<'all' | '90'>('90')
 
     const activeChallengeStats = challengeTimeframe === 'all' ? stats?.challengeCompletion : stats?.challengeCompletion90
@@ -85,14 +87,14 @@ export default function StatsPage() {
                                 className="grid grid-cols-2 md:grid-cols-4 gap-4"
                             >
                                 {/* Key Stats Row */}
-                                <motion.div variants={item} className="md:col-span-1 bg-gradient-to-br from-rose-500 to-pink-600 rounded-3xl p-6 text-white shadow-lg shadow-rose-500/20 relative overflow-hidden flex flex-col justify-between">
+                                <motion.div variants={item} className="md:col-span-1 bg-gradient-to-br from-rose-500 to-pink-600 rounded-3xl p-6 text-white shadow-lg shadow-rose-500/20 relative overflow-hidden flex flex-col">
                                     <div className="relative z-10">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="material-symbols-outlined text-2xl bg-white/20 p-1.5 rounded-lg">favorite</span>
-                                            <span className="font-medium text-rose-100 text-sm">Days</span>
+                                        <div className="flex items-center gap-2 mb-2 text-rose-100">
+                                            <span className="material-symbols-outlined">favorite</span>
+                                            <span className="font-medium text-sm uppercase tracking-wider">Days</span>
                                         </div>
-                                        <div className="text-4xl font-bold mb-1">{stats?.daysTogether}</div>
-                                        <div className="text-rose-100 text-xs">Days of love</div>
+                                        <div className="text-4xl font-bold text-center">{stats?.daysTogether}</div>
+                                        <div className="text-rose-100 text-sm mt-2 text-center">Days of love</div>
                                     </div>
                                     <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-8xl text-white/10 rotate-12">favorite</span>
                                 </motion.div>
@@ -103,22 +105,29 @@ export default function StatsPage() {
                                             <span className="material-symbols-outlined">local_fire_department</span>
                                             <span className="font-medium text-sm uppercase tracking-wider">Streak</span>
                                         </div>
-                                        <div className="text-4xl font-bold text-gray-900 dark:text-white">{stats?.currentStreak}</div>
-                                        <div className="text-gray-400 text-sm mt-2">Keep the flame alive!</div>
+                                        <div className="text-4xl font-bold text-gray-900 dark:text-white text-center">{stats?.currentStreak}</div>
+                                        <div className="text-gray-400 text-sm mt-2 text-center">Keep the flame alive!</div>
                                     </div>
                                     <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-100 dark:bg-gray-700">
                                         <div className="h-full bg-orange-500" style={{ width: '100%' }}></div>
                                     </div>
                                 </motion.div>
 
-                                <motion.div variants={item} className="md:col-span-1 bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow">
+                                <motion.div
+                                    variants={item}
+                                    onClick={() => setIsLovePointsOverlayOpen(true)}
+                                    className="md:col-span-1 bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer active:scale-95"
+                                >
                                     <div>
                                         <div className="flex items-center gap-2 mb-2 text-purple-500">
                                             <span className="material-symbols-outlined">stars</span>
                                             <span className="font-medium text-sm uppercase tracking-wider">Love Points</span>
                                         </div>
-                                        <div className="text-4xl font-bold text-gray-900 dark:text-white">{stats?.totalLovePoints}</div>
-                                        <div className="text-gray-400 text-sm mt-2">Total Accumulated Love</div>
+                                        <div className="text-4xl font-bold text-gray-900 dark:text-white text-center">{stats?.totalLovePoints}</div>
+                                        <div className="text-gray-400 text-sm mt-2 text-center">
+                                            Total Accumulated Love
+                                            <span className="material-symbols-outlined text-[14px] inline-block align-middle ml-1 group-hover:text-purple-500 transition-colors">arrow_forward</span>
+                                        </div>
                                     </div>
                                     <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl text-purple-500/5 rotate-12">stars</span>
                                 </motion.div>
@@ -129,15 +138,15 @@ export default function StatsPage() {
                                     className="md:col-span-1 bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer active:scale-95"
                                 >
                                     <div>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-2 text-blue-500">
-                                                <span className="material-symbols-outlined">flight_takeoff</span>
-                                                <span className="font-medium text-sm uppercase tracking-wider">Travel</span>
-                                            </div>
-                                            <span className="material-symbols-outlined text-gray-400 group-hover:text-blue-500 transition-colors">arrow_forward</span>
+                                        <div className="flex items-center gap-2 mb-2 text-blue-500">
+                                            <span className="material-symbols-outlined">flight_takeoff</span>
+                                            <span className="font-medium text-sm uppercase tracking-wider">Travel</span>
                                         </div>
-                                        <div className="text-4xl font-bold text-gray-900 dark:text-white">{stats?.travelStats.countriesVisited}</div>
-                                        <div className="text-gray-400 text-sm mt-2">Countries visited together</div>
+                                        <div className="text-4xl font-bold text-gray-900 dark:text-white text-center">{stats?.travelStats.countriesVisited}</div>
+                                        <div className="text-gray-400 text-sm mt-2 text-center">
+                                            Countries visited together
+                                            <span className="material-symbols-outlined text-[14px] inline-block align-middle ml-1 group-hover:text-blue-500 transition-colors">arrow_forward</span>
+                                        </div>
                                     </div>
                                     <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl text-blue-500/5 rotate-12">public</span>
                                 </motion.div>
@@ -307,6 +316,21 @@ export default function StatsPage() {
                 isOpen={isTravelOverlayOpen}
                 onClose={() => setIsTravelOverlayOpen(false)}
                 countries={stats?.travelStats.visitedCountries || []}
+            />
+
+            {/* Love Points Overlay */}
+            <LovePointsOverlay
+                isOpen={isLovePointsOverlayOpen}
+                onClose={() => setIsLovePointsOverlayOpen(false)}
+                totalPoints={stats?.totalLovePoints || 0}
+                breakdown={stats?.lovePointsBreakdown || {
+                    dailyChallenges: 0,
+                    weeklyChallenges: 0,
+                    monthlyChallenges: 0,
+                    dailyQuestions: 0,
+                    positionsCompleted: 0,
+                    fantasiesCompleted: 0,
+                }}
             />
         </>
     )

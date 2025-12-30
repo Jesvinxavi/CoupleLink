@@ -161,7 +161,11 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                         return; // Stop processing
                     }
 
-                    if (newCouple && (newCouple.user_one_id === user.id || newCouple.user_two_id === user.id)) {
+                    // Update couple data if this update is for our couple
+                    // This handles real-time point updates, streak updates, etc.
+                    if (newCouple && newCouple.id === currentCouple?.id) {
+                        setCouple(newCouple);
+                    } else if (newCouple && (newCouple.user_one_id === user.id || newCouple.user_two_id === user.id)) {
                         setCouple(newCouple);
                     } else if (payload.eventType === 'DELETE') {
                         // Check if the deleted couple IS our couple

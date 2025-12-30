@@ -39,6 +39,14 @@ export interface RelationshipStats {
         partnerWins: number
         ties: number
     }
+    lovePointsBreakdown: {
+        dailyChallenges: number
+        weeklyChallenges: number
+        monthlyChallenges: number
+        dailyQuestions: number
+        positionsCompleted: number
+        fantasiesCompleted: number
+    }
     loading: boolean
 }
 
@@ -99,6 +107,19 @@ export function useRelationshipStats() {
 
             if (challengeError) throw challengeError
 
+            // Positions Completed (for love points breakdown)
+            const { count: positionsCompletedCount } = await supabase
+                .from('completed_positions')
+                .select('*', { count: 'exact', head: true })
+                .eq('couple_id', couple.id)
+
+            // Fantasies Completed (for love points breakdown)
+            const { count: fantasiesCompletedCount } = await supabase
+                .from('fantasy_bucket_list')
+                .select('*', { count: 'exact', head: true })
+                .eq('couple_id', couple.id)
+                .eq('status', 'completed')
+
             // Calculate Active Days (days with any answer or challenge memory)
             const activeDates = new Set<string>()
             userAnswers?.forEach((a: any) => activeDates.add(new Date(a.created_at).toDateString()))
@@ -156,6 +177,9 @@ export function useRelationshipStats() {
 
                 const myMem = mems.find((m: any) => m.uploader_id === userProfile.id);
                 const partnerMem = mems.find((m: any) => m.uploader_id !== userProfile.id);
+
+                // Don't count skipped challenges for mastery or leaderboard
+                if (myMem?.metadata?.skipped || partnerMem?.metadata?.skipped) return;
 
                 if (myMem && partnerMem) {
                     const type = myMem.metadata?.challenge_type || 'daily';
@@ -407,6 +431,18 @@ export function useRelationshipStats() {
                 .eq('couple_id', couple.id)
                 .neq('type', 'journal')
 
+            // Calculate completed questions (where both partners answered)
+            const answersByActivity = new Map<string, Set<string>>();
+            userAnswers?.forEach((a: any) => {
+                if (!answersByActivity.has(a.activity_id)) {
+                    answersByActivity.set(a.activity_id, new Set());
+                }
+                if (a.user_id) {
+                    answersByActivity.get(a.activity_id)!.add(a.user_id);
+                }
+            });
+            const completedQuestionsCount = Array.from(answersByActivity.values()).filter(users => users.size >= 2).length;
+
             setStats({
                 daysTogether,
                 currentStreak: couple.current_streak || 0,
@@ -420,6 +456,14 @@ export function useRelationshipStats() {
                 travelStats: { placesVisited, countriesVisited, topLocation, visitedCountries: Array.from(uniqueCountries) },
                 funStats: { mostActiveDay, timeOfDay },
                 activityBreakdown,
+                lovePointsBreakdown: {
+                    dailyChallenges: completedDaily,
+                    weeklyChallenges: completedWeekly,
+                    monthlyChallenges: completedMonthly,
+                    dailyQuestions: completedQuestionsCount,
+                    positionsCompleted: positionsCompletedCount || 0,
+                    fantasiesCompleted: fantasiesCompletedCount || 0,
+                },
                 loading: false
             })
 

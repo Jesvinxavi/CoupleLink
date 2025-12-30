@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { ChallengeModal } from '../components/dashboard/ChallengeModal';
 import { useChallenges } from '../hooks/useChallenges';
-import { useStreak } from '../hooks/useStreak';
+import { useChallengePoints } from '../hooks/useChallengePoints';
 import { useCoupleData } from '../hooks/useCoupleData';
 
 interface ChallengeModalContextType {
@@ -32,7 +32,7 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
 
     // Get challenge data
     const challenges = useChallenges();
-    const { addPoints, checkStreakUpdate } = useStreak({ enableTokenCheck: false });
+    const { awardChallengePoints, deductChallengePointsLegacy, checkStreakUpdate } = useChallengePoints();
 
     // Open modal directly (no navigation)
     const openDaily = () => setSelectedChallenge({ type: 'daily' });
@@ -45,52 +45,29 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
         if (selectedChallenge) {
             await challenges.completeChallenge(selectedChallenge.type, file, winnerSelection);
 
+            // Use shared hook for points logic
             const partnerMem = selectedChallenge.type === 'daily' ? challenges.partnerDailyMemory :
                 selectedChallenge.type === 'weekly' ? challenges.partnerWeeklyMemory : challenges.partnerMonthlyMemory;
 
-            if (partnerMem) {
-                // Check for agreement
-                let isAgreed = true;
-                const challenge = selectedChallenge.type === 'daily' ? challenges.daily :
-                    selectedChallenge.type === 'weekly' ? challenges.weekly : challenges.monthly;
+            const challenge = selectedChallenge.type === 'daily' ? challenges.daily :
+                selectedChallenge.type === 'weekly' ? challenges.weekly : challenges.monthly;
 
-                if (challenge?.isCompetition) {
-                    const partnerSelection = partnerMem.metadata?.winner_selection;
-                    if (!winnerSelection || !partnerSelection) isAgreed = false;
-                    else if (winnerSelection === 'tie' && partnerSelection !== 'tie') isAgreed = false;
-                    else if (winnerSelection === 'me' && partnerSelection !== 'partner') isAgreed = false;
-                    else if (winnerSelection === 'partner' && partnerSelection !== 'me') isAgreed = false;
-                }
-
-                if (isAgreed) {
-                    if (selectedChallenge.type === 'daily') await addPoints(1);
-                    else if (selectedChallenge.type === 'weekly') await addPoints(3);
-                    else if (selectedChallenge.type === 'monthly') await addPoints(5);
-
-                    await checkStreakUpdate();
-                }
-            } else {
-                const challenge = selectedChallenge.type === 'daily' ? challenges.daily :
-                    selectedChallenge.type === 'weekly' ? challenges.weekly : challenges.monthly;
-
-                if (!challenge?.isCompetition) {
-                    await checkStreakUpdate();
-                }
-            }
+            await awardChallengePoints(
+                selectedChallenge.type,
+                challenge,
+                partnerMem,
+                winnerSelection
+            );
         }
     };
 
     const handleUndo = async () => {
         if (selectedChallenge) {
+            // Use shared hook for undo logic (legacy version checks partner memory)
             const partnerMem = selectedChallenge.type === 'daily' ? challenges.partnerDailyMemory :
                 selectedChallenge.type === 'weekly' ? challenges.partnerWeeklyMemory : challenges.partnerMonthlyMemory;
 
-            if (partnerMem) {
-                if (selectedChallenge.type === 'daily') await addPoints(-1);
-                else if (selectedChallenge.type === 'weekly') await addPoints(-3);
-                else if (selectedChallenge.type === 'monthly') await addPoints(-5);
-            }
-
+            await deductChallengePointsLegacy(selectedChallenge.type, partnerMem);
             challenges.undoChallenge(selectedChallenge.type);
         }
     };

@@ -125,6 +125,12 @@ export function useSexploration(): SexplorationData {
                     .delete()
                     .eq('couple_id', couple.id)
                     .eq('position_id', positionId);
+
+                // Deduct 5 love action points for uncompleting a position
+                await supabase.rpc('add_love_action_points', {
+                    p_couple_id: couple.id,
+                    p_points: -5
+                });
             } catch (error) {
                 console.error('Error removing completed position:', error);
                 setCompletedPositions(prev => [...prev, positionId]); // Revert

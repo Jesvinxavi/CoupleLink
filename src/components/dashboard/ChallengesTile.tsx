@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { type ChallengeStatus } from '../../hooks/useChallenges';
-import { useStreak } from '../../hooks/useStreak';
+import { useChallengePoints } from '../../hooks/useChallengePoints';
 import { ChallengeModal } from './ChallengeModal';
 
 const container = {
@@ -229,7 +229,7 @@ export function ChallengesTile({
 
 
 
-    const { addPoints, checkStreakUpdate } = useStreak({ enableTokenCheck: false });
+    const { awardChallengePoints, deductChallengePointsLegacy, checkStreakUpdate } = useChallengePoints();
 
     // Confetti Trigger for Partner Completion (Realtime)
     const prevDailyBoth = useRef(false);
@@ -288,54 +288,28 @@ export function ChallengesTile({
 
     const handleComplete = async (file?: File | null, winnerSelection?: 'me' | 'partner' | 'tie') => {
         if (selectedChallenge) {
-
             await completeChallenge(selectedChallenge.type, file, winnerSelection);
 
-            // Points logic
+            // Use shared hook for points logic
             const partnerMem = selectedChallenge.type === 'daily' ? partnerDailyMemory :
                 selectedChallenge.type === 'weekly' ? partnerWeeklyMemory : partnerMonthlyMemory;
 
-            if (partnerMem) {
-                // Check for agreement
-                let isAgreed = true;
-                if (selectedChallenge.data.isCompetition) {
-                    const partnerSelection = partnerMem.metadata?.winner_selection;
-                    if (!winnerSelection || !partnerSelection) isAgreed = false;
-                    else if (winnerSelection === 'tie' && partnerSelection !== 'tie') isAgreed = false;
-                    else if (winnerSelection === 'me' && partnerSelection !== 'partner') isAgreed = false;
-                    else if (winnerSelection === 'partner' && partnerSelection !== 'me') isAgreed = false;
-                }
-
-                if (isAgreed) {
-                    if (selectedChallenge.type === 'daily') await addPoints(1);
-                    else if (selectedChallenge.type === 'weekly') await addPoints(3);
-                    else if (selectedChallenge.type === 'monthly') await addPoints(5);
-
-                    await checkStreakUpdate();
-                }
-            } else {
-                // If partner hasn't completed, we can update streak if it's NOT a competition (or handled elsewhere)
-                // But for now, let's keep it simple: only update streak if both done OR non-competitive might be different.
-                // Actually, streak usually updates on YOUR completion. But for competitive, maybe wait?
-                // Let's stick to: Update streak only if AGREED or NOT COMPETITIVE.
-                if (!selectedChallenge.data.isCompetition) {
-                    await checkStreakUpdate();
-                }
-            }
+            await awardChallengePoints(
+                selectedChallenge.type,
+                selectedChallenge.data,
+                partnerMem,
+                winnerSelection
+            );
         }
     };
 
     const handleUndo = async () => {
         if (selectedChallenge) {
+            // Use shared hook for undo logic (legacy version checks partner memory)
             const partnerMem = selectedChallenge.type === 'daily' ? partnerDailyMemory :
                 selectedChallenge.type === 'weekly' ? partnerWeeklyMemory : partnerMonthlyMemory;
 
-            if (partnerMem) {
-                if (selectedChallenge.type === 'daily') await addPoints(-1);
-                else if (selectedChallenge.type === 'weekly') await addPoints(-3);
-                else if (selectedChallenge.type === 'monthly') await addPoints(-5);
-            }
-
+            await deductChallengePointsLegacy(selectedChallenge.type, partnerMem);
             undoChallenge(selectedChallenge.type);
         }
     };
