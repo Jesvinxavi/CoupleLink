@@ -6,6 +6,7 @@ import { useGameSession } from "../hooks/useGameSession";
 import { useCoupleData } from "../hooks/useCoupleData";
 import { GameSessionOverlay, JoinSessionBanner } from "../components/games/GameSessionOverlay";
 import type { GameType } from "../data/gameQuestions";
+import { useGameProgress } from "../hooks/useGameProgress";
 
 const container = {
     hidden: { opacity: 0 },
@@ -32,7 +33,8 @@ export default function GamesPage() {
         partnerInSession,
         getGameLabel
     } = useGameSession();
-    const { partner, currentUser } = useCoupleData();
+    const { partner, currentUser, couple } = useCoupleData();
+    const { progress } = useGameProgress(couple?.id, couple?.sexploration_opt_in ?? false);
 
     const [showGameOverlay, setShowGameOverlay] = useState(false);
 
@@ -172,6 +174,7 @@ export default function GamesPage() {
                                             color="from-purple-500 to-violet-600"
                                             players="2 players"
                                             time="~10 min"
+                                            progress={progress['draw_and_guess']}
                                         />
                                     </motion.div>
 
@@ -188,6 +191,7 @@ export default function GamesPage() {
                                             color="from-rose-500 to-pink-600"
                                             players="2 players"
                                             time="~15 min"
+                                            progress={progress['would_you_rather']}
                                         />
                                     </motion.div>
 
@@ -204,6 +208,7 @@ export default function GamesPage() {
                                             color="from-blue-500 to-cyan-600"
                                             players="2 players"
                                             time="~15 min"
+                                            progress={progress['never_have_i_ever']}
                                         />
                                     </motion.div>
 
@@ -220,6 +225,7 @@ export default function GamesPage() {
                                             color="from-amber-500 to-orange-600"
                                             players="2 players"
                                             time="~5 min"
+                                            progress={progress['rapid_fire']}
                                         />
                                     </motion.div>
                                 </div>
@@ -266,11 +272,18 @@ interface GameCardEnhancedProps {
     color: string;
     players: string;
     time: string;
+    progress?: number;
 }
 
-function GameCardEnhanced({ title, description, icon, color, players, time }: GameCardEnhancedProps) {
+function GameCardEnhanced({ title, description, icon, color, players, time, progress = 0 }: GameCardEnhancedProps) {
+    // Calculate circle circumference for SVG dash offset
+    // Size 24x24 now (w-6 h-6), radius 10, center 12
+    const radius = 9;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (progress / 100) * circumference;
+
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 relative group">
             <div className={`h-24 bg-gradient-to-br ${color} flex items-center justify-center relative overflow-hidden`}>
                 <div className="absolute inset-0 opacity-20">
                     <div className="absolute -right-4 -top-4 w-20 h-20 bg-white rounded-full" />
@@ -280,8 +293,39 @@ function GameCardEnhanced({ title, description, icon, color, players, time }: Ga
                     {icon}
                 </div>
             </div>
-            <div className="p-4">
-                <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-1">{title}</h3>
+            <div className="p-4 relative">
+                {/* Progress Circle - Top Right of Body */}
+                <div className="absolute top-4 right-4 z-20">
+                    <div className="relative flex items-center justify-center w-6 h-6">
+                        {/* Background Circle */}
+                        <svg className="transform -rotate-90 w-full h-full">
+                            <circle
+                                cx="12"
+                                cy="12"
+                                r={radius}
+                                stroke="currentColor"
+                                strokeWidth="3.5"
+                                fill="transparent"
+                                className="text-gray-100 dark:text-gray-700"
+                            />
+                            {/* Progress Circle */}
+                            <circle
+                                cx="12"
+                                cy="12"
+                                r={radius}
+                                stroke="currentColor"
+                                strokeWidth="3.5"
+                                fill="transparent"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={strokeDashoffset}
+                                className={`${progress === 100 ? 'text-green-500' : 'text-rose-500'} transition-all duration-1000 ease-out`}
+                                strokeLinecap="round"
+                            />
+                        </svg>
+                    </div>
+                </div>
+
+                <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-1 pr-8">{title}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
                     {description}
                 </p>

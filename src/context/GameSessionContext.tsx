@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 import { useCoupleData } from '../hooks/useCoupleData';
 import {
     gameTypeLabels,
-    getFilteredQuestions,
     getRandomQuestions,
     wouldYouRatherQuestions,
     neverHaveIEverQuestions,
@@ -74,47 +73,106 @@ const generateSessionQuestions = async (gameType: string, coupleId: string, coun
         }
     });
 
-
-
     // 3. Get all available questions for this game type
     let allQuestions: any[] = [];
     switch (gameType) {
         case 'would_you_rather':
-            allQuestions = getFilteredQuestions(wouldYouRatherQuestions, spicyMode);
+            allQuestions = wouldYouRatherQuestions; // Get ALL questions initially
             break;
         case 'never_have_i_ever':
-            allQuestions = getFilteredQuestions(neverHaveIEverQuestions, spicyMode);
+            allQuestions = neverHaveIEverQuestions;
             break;
         case 'rapid_fire':
-            allQuestions = getFilteredQuestions(rapidFireQuestions, spicyMode);
+            allQuestions = rapidFireQuestions;
             break;
         case 'draw_and_guess':
-            allQuestions = getFilteredQuestions(drawPrompts, spicyMode);
+            allQuestions = drawPrompts;
             break;
     }
 
-    // 4. Filter out seen questions
-    const unseenQuestions = allQuestions.filter(q => !seenQuestionIds.has(q.id));
+    // 4. Separate Spicy and Regular
+    const availableSpicy = allQuestions.filter(q => q.isSpicy && !seenQuestionIds.has(q.id));
+    const availableRegular = allQuestions.filter(q => !q.isSpicy && !seenQuestionIds.has(q.id));
 
+    // Also keep seen pools for fallback if we run out
+    const seenSpicy = allQuestions.filter(q => q.isSpicy && seenQuestionIds.has(q.id));
+    const seenRegular = allQuestions.filter(q => !q.isSpicy && seenQuestionIds.has(q.id));
 
-
-    // 5. Select questions (prioritize unseen, fill with random if needed)
+    // 5. Select Questions Logic
     let selectedQuestions: any[] = [];
 
-    if (unseenQuestions.length >= count) {
-        // We have enough new questions
-        selectedQuestions = getRandomQuestions(unseenQuestions, count);
-    } else {
-        // Not enough new questions, reset cycle: use all unseen + fill with random from seen
-        selectedQuestions = [...unseenQuestions];
-        const needed = count - selectedQuestions.length;
-        // Get random from the seen pile (which is just allQuestions minus unseen)
-        const seenPool = allQuestions.filter(q => !unseenQuestions.includes(q));
-        const filled = getRandomQuestions(seenPool, needed);
-        selectedQuestions = [...selectedQuestions, ...filled];
+    // Determine counts
+    const spicyTarget = spicyMode ? 3 : 0; // Max 3 spicy if mode is on
+    // const regularTarget = count - spicyTarget; // Unused, calculated later as finalRegularTarget
 
-        // Shuffle the combined list so new ones aren't always first
-        selectedQuestions.sort(() => Math.random() - 0.5);
+    // --- Select Spicy ---
+    let chosenSpicy: any[] = [];
+    if (spicyTarget > 0) {
+        if (availableSpicy.length >= spicyTarget) {
+            chosenSpicy = getRandomQuestions(availableSpicy, spicyTarget);
+        } else {
+            // Take all available, fill with seen
+            chosenSpicy = [...availableSpicy];
+            const needed = spicyTarget - chosenSpicy.length;
+            const filled = getRandomQuestions(seenSpicy, needed);
+            chosenSpicy = [...chosenSpicy, ...filled];
+        }
+        // If we still don't have enough (unlikely), we just proceed with what we have
+    }
+
+    // --- Select Regular ---
+    let chosenRegular: any[] = [];
+    // Adjust regular target if we didn't get enough spicy
+    const actualSpicyCount = chosenSpicy.length;
+    const finalRegularTarget = count - actualSpicyCount;
+
+    if (availableRegular.length >= finalRegularTarget) {
+        chosenRegular = getRandomQuestions(availableRegular, finalRegularTarget);
+    } else {
+        // Take all available, fill with seen
+        chosenRegular = [...availableRegular];
+        const needed = finalRegularTarget - chosenRegular.length;
+        const filled = getRandomQuestions(seenRegular, needed);
+        chosenRegular = [...chosenRegular, ...filled];
+    }
+
+    // 6. Merge and Shuffle with Constraints (No consecutive spicy)
+
+    if (chosenSpicy.length === 0) {
+        // Just shuffle regular
+        selectedQuestions = chosenRegular.sort(() => Math.random() - 0.5);
+    } else {
+        // Randomized insertion strategy
+        // Start with regular questions shuffled
+        const result = [...chosenRegular].sort(() => Math.random() - 0.5);
+        const spicyToInsert = [...chosenSpicy].sort(() => Math.random() - 0.5);
+
+        for (const spicyQ of spicyToInsert) {
+            // Find valid indices where we can insert this spicy Q without touching another spicy Q
+            // We check slots in the CURRENT result array.
+
+            const validIndices = [];
+            // We can insert at index 0 to length
+            for (let i = 0; i <= result.length; i++) {
+                const prevIsSpicy = i > 0 && (result[i - 1] as any).isSpicy;
+                const nextIsSpicy = i < result.length && (result[i] as any).isSpicy;
+
+                if (!prevIsSpicy && !nextIsSpicy) {
+                    validIndices.push(i);
+                }
+            }
+
+            if (validIndices.length > 0) {
+                // Pick random valid index
+                const insertAt = validIndices[Math.floor(Math.random() * validIndices.length)];
+                result.splice(insertAt, 0, spicyQ);
+            } else {
+                // Fallback: Just push to end if we painted ourselves into a corner
+                const fallbackIndex = Math.floor(Math.random() * (result.length + 1));
+                result.splice(fallbackIndex, 0, spicyQ);
+            }
+        }
+        selectedQuestions = result;
     }
 
     return selectedQuestions.map(q => q.id);
