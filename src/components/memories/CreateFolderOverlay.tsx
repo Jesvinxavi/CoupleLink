@@ -322,21 +322,23 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
                                 <div className="h-8"></div> {/* Spacer for keyboard */}
                             </div>
 
-                            {/* Footer Action */}
-                            <div className="p-4 bg-white dark:bg-gray-900 border-t border-rose-100 dark:border-gray-800 safebottom">
-                                <Button
-                                    onClick={handleCreateFolder}
-                                    disabled={uploading || !folderName.trim()}
-                                    className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-xl h-12 shadow-lg shadow-blue-500/20 text-lg font-medium"
-                                >
-                                    {uploading ? (
-                                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                    ) : (
-                                        <FolderPlus className="w-5 h-5 mr-2" />
-                                    )}
-                                    {uploading ? 'Creating...' : 'Create Folder'}
-                                </Button>
-                            </div>
+                            {/* Footer Action - Hidden when keyboard is open */}
+                            {!isFocused && (
+                                <div className="p-4 bg-white dark:bg-gray-900 border-t border-rose-100 dark:border-gray-800 safebottom">
+                                    <Button
+                                        onClick={handleCreateFolder}
+                                        disabled={uploading || !folderName.trim()}
+                                        className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-xl h-12 shadow-lg shadow-blue-500/20 text-lg font-medium"
+                                    >
+                                        {uploading ? (
+                                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                        ) : (
+                                            <FolderPlus className="w-5 h-5 mr-2" />
+                                        )}
+                                        {uploading ? 'Creating...' : 'Create Folder'}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 </>
