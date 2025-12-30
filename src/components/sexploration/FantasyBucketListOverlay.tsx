@@ -172,6 +172,7 @@ export function FantasyBucketListOverlay({
                             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
                             onClick={onClose}
                             style={{ touchAction: 'none' }}
+                            onTouchMove={(e) => e.preventDefault()}
                         />
 
                         {/* Slide-up Panel */}
@@ -187,13 +188,20 @@ export function FantasyBucketListOverlay({
                             transition={{ type: "spring", damping: 35, stiffness: 150, mass: 1 }}
                             onFocus={handleOverlayFocus}
                             onBlur={handleOverlayBlur}
-                            className="fixed inset-x-0 bottom-0 z-[51] outline-none"
+                            className="fixed inset-x-0 bottom-0 z-[51] outline-none overflow-hidden"
                             style={{
-                                maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                                maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)',
+                                touchAction: 'none',
+                                overscrollBehavior: 'none'
                             }}
+                            onTouchMove={(e) => e.preventDefault()}
                         >
                             {/* The Skirt */}
-                            <div className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900" />
+                            <div
+                                className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900"
+                                style={{ touchAction: 'none' }}
+                                onTouchMove={(e) => e.preventDefault()}
+                            />
 
                             {/* Inner Content Container - Standard Overlay Look */}
                             <div className={`flex flex-col w-full bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] overflow-hidden ${isFocused ? 'h-full' : ''}`}
@@ -283,7 +291,11 @@ export function FantasyBucketListOverlay({
                                 </div>
 
                                 {/* Content */}
-                                <div className="flex-1 overflow-y-auto min-h-0 bg-rose-50 dark:bg-gray-900">
+                                <div
+                                    className="flex-1 overflow-y-auto min-h-0 bg-rose-50 dark:bg-gray-900"
+                                    style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}
+                                    onTouchMove={(e) => e.stopPropagation()}
+                                >
                                     <div className="p-6 pb-20">
                                         <AnimatePresence mode="popLayout" initial={false} custom={slideDirection}>
                                             <motion.div

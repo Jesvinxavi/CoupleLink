@@ -177,6 +177,8 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
                 onClick={handleLeave}
+                style={{ touchAction: 'none' }}
+                onTouchMove={(e) => e.preventDefault()}
             />
 
             {/* Slide-up Panel */}
@@ -194,9 +196,15 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
                 onFocus={handleOverlayFocus}
                 onBlur={handleOverlayBlur}
                 className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl shadow-2xl overflow-hidden flex flex-col outline-none"
+                style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+                onTouchMove={(e) => e.preventDefault()}
             >
                 {/* The Skirt - synced background extension matching footer (or sticky input) */}
-                <div className={`absolute top-full inset-x-0 h-[100vh] ${isFocused ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50'}`} />
+                <div
+                    className={`absolute top-full inset-x-0 h-[100vh] ${isFocused ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50'}`}
+                    style={{ touchAction: 'none' }}
+                    onTouchMove={(e) => e.preventDefault()}
+                />
 
                 {/* Inner Content Container */}
                 <div
@@ -237,7 +245,11 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
                     </div>
 
                     {/* Game Content */}
-                    <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+                    <div
+                        className="flex-1 overflow-y-auto p-4 flex flex-col"
+                        style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}
+                        onTouchMove={(e) => e.stopPropagation()}
+                    >
                         {!session ? (
                             <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
                                 <div className="w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mb-4" />

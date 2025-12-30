@@ -294,6 +294,7 @@ export function CreateJournalOverlay({
                         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
                         onClick={onClose}
                         style={{ touchAction: 'none' }}
+                        onTouchMove={(e) => e.preventDefault()}
                     />
 
                     {/* Slide-up Overlay */}
@@ -309,13 +310,20 @@ export function CreateJournalOverlay({
                         transition={{ type: 'spring', damping: 30, stiffness: 200, mass: 0.8 }}
                         onFocus={handleOverlayFocus}
                         onBlur={handleOverlayBlur}
-                        className="fixed inset-x-0 bottom-0 z-[61] outline-none"
+                        className="fixed inset-x-0 bottom-0 z-[61] outline-none overflow-hidden"
                         style={{
-                            maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                            maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)',
+                            touchAction: 'none',
+                            overscrollBehavior: 'none'
                         }}
+                        onTouchMove={(e) => e.preventDefault()}
                     >
                         {/* The Skirt - synced background extension matching footer */}
-                        <div className="absolute top-full inset-x-0 h-[100vh] bg-white dark:bg-gray-900" />
+                        <div
+                            className="absolute top-full inset-x-0 h-[100vh] bg-white dark:bg-gray-900"
+                            style={{ touchAction: 'none' }}
+                            onTouchMove={(e) => e.preventDefault()}
+                        />
 
                         {/* Inner Content Container */}
                         <div
@@ -342,7 +350,11 @@ export function CreateJournalOverlay({
                             </div>
 
                             {/* Scrollable Content */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth overscroll-contain">
+                            <div
+                                className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
+                                style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}
+                                onTouchMove={(e) => e.stopPropagation()}
+                            >
                                 {/* Date Picker */}
                                 <div className="grid w-full items-center gap-2">
                                     <Label htmlFor="date">Date</Label>

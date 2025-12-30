@@ -16,6 +16,7 @@ import { NotificationListener } from "@/components/NotificationListener"
 import { GlobalCouponListener } from "@/components/GlobalCouponListener"
 import { GlobalModalQueueProvider } from "@/context/GlobalModalQueueContext"
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary"
+import { DebugConsole } from "@/components/debug/DebugConsole"
 
 
 function App() {
@@ -36,7 +37,8 @@ function App() {
                               <ChallengeProvider>
                                 <ChallengeModalProvider>
                                   <NotificationListener />
-
+                                  {/* PERMANENT DEV TOOL - DO NOT DELETE - Mobile debug console for development */}
+                                  <DebugConsole />
                                   <GlobalCouponListener />
                                   <AnimatedRoutes />
                                 </ChallengeModalProvider>

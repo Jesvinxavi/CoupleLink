@@ -60,6 +60,7 @@ export const TravelOverlay: React.FC<TravelOverlayProps> = ({ isOpen, onClose, c
                         onClick={onClose}
                         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
                         style={{ touchAction: 'none' }}
+                        onTouchMove={(e) => e.preventDefault()}
                     />
 
                     {/* Overlay */}
@@ -68,10 +69,16 @@ export const TravelOverlay: React.FC<TravelOverlayProps> = ({ isOpen, onClose, c
                         animate={{ y: 0 }}
                         exit={{ y: "100%" }}
                         transition={{ type: "spring", damping: 30, stiffness: 200, mass: 0.8 }}
-                        className="fixed inset-x-0 bottom-0 z-[61] outline-none"
+                        className="fixed inset-x-0 bottom-0 z-[61] outline-none overflow-hidden"
+                        style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+                        onTouchMove={(e) => e.preventDefault()}
                     >
                         {/* The Skirt */}
-                        <div className="absolute top-full inset-x-0 h-[100vh] bg-white dark:bg-gray-900" />
+                        <div
+                            className="absolute top-full inset-x-0 h-[100vh] bg-white dark:bg-gray-900"
+                            style={{ touchAction: 'none' }}
+                            onTouchMove={(e) => e.preventDefault()}
+                        />
 
                         {/* Inner Content Container */}
                         <div className="flex flex-col w-full bg-white dark:bg-gray-900 max-h-[85vh] shadow-2xl ring-1 ring-black/5 rounded-t-[32px] overflow-hidden">
@@ -97,7 +104,11 @@ export const TravelOverlay: React.FC<TravelOverlayProps> = ({ isOpen, onClose, c
                             </div>
 
                             {/* Content */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth overscroll-contain">
+                            <div
+                                className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
+                                style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}
+                                onTouchMove={(e) => e.stopPropagation()}
+                            >
                                 {groupedCountries.length > 0 ? groupedCountries.map(([continent, list]) => (
                                     <div key={continent} className="space-y-1">
                                         <h3 className="text-lg font-bold text-blue-500 pl-2">

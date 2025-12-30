@@ -195,6 +195,7 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
                         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
                         onClick={onClose}
                         style={{ touchAction: 'none' }}
+                        onTouchMove={(e) => e.preventDefault()}
                     />
 
                     {/* Slide-up Panel */}
@@ -210,13 +211,20 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
                         transition={{ type: "spring", damping: 35, stiffness: 150, mass: 1 }}
                         onFocus={handleOverlayFocus}
                         onBlur={handleOverlayBlur}
-                        className="fixed inset-x-0 bottom-0 z-[51] outline-none"
+                        className="fixed inset-x-0 bottom-0 z-[51] outline-none overflow-hidden"
                         style={{
-                            maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)'
+                            maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)',
+                            touchAction: 'none',
+                            overscrollBehavior: 'none'
                         }}
+                        onTouchMove={(e) => e.preventDefault()}
                     >
                         {/* The Skirt */}
-                        <div className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900" />
+                        <div
+                            className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900"
+                            style={{ touchAction: 'none' }}
+                            onTouchMove={(e) => e.preventDefault()}
+                        />
 
                         {/* Inner Content Container */}
                         <div className={`flex flex-col w-full bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] overflow-hidden ${isFocused ? 'h-full' : ''}`}
@@ -249,7 +257,11 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
                             </div>
 
                             {/* Content */}
-                            <div className="p-6 flex flex-col flex-1 bg-rose-50 dark:bg-gray-900 overflow-y-auto space-y-6">
+                            <div
+                                className="p-6 flex flex-col flex-1 bg-rose-50 dark:bg-gray-900 overflow-y-auto space-y-6"
+                                style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}
+                                onTouchMove={(e) => e.stopPropagation()}
+                            >
 
                                 {/* Folder Name Input */}
                                 <div className="space-y-2">

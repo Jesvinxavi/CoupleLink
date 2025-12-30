@@ -174,6 +174,7 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
                             onClick={handleClose}
                             style={{ touchAction: 'none' }}
+                            onTouchMove={(e) => e.preventDefault()}
                         />
 
                         {/* Slide-up Overlay */}
@@ -189,13 +190,20 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                             }}
                             exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 30, stiffness: 200, mass: 0.8 }}
-                            className="fixed inset-x-0 bottom-0 z-[61] outline-none"
+                            className="fixed inset-x-0 bottom-0 z-[61] outline-none overflow-hidden"
                             style={{
-                                maxHeight: isSearchFocused ? 'none' : 'calc(100dvh - 70px)'
+                                maxHeight: isSearchFocused ? 'none' : 'calc(100dvh - 70px)',
+                                touchAction: 'none',
+                                overscrollBehavior: 'none'
                             }}
+                            onTouchMove={(e) => e.preventDefault()}
                         >
                             {/* The Skirt - synced background extension */}
-                            <div className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900" />
+                            <div
+                                className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900"
+                                style={{ touchAction: 'none' }}
+                                onTouchMove={(e) => e.preventDefault()}
+                            />
 
                             {/* Inner Card - Appearance & Clipping */}
                             <div
@@ -254,7 +262,11 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
                                 </div>
 
                                 {/* Scrollable Content */}
-                                <div className="flex-1 overflow-y-auto p-6 min-h-0 scroll-smooth overscroll-contain">
+                                <div
+                                    className="flex-1 overflow-y-auto p-6 min-h-0 scroll-smooth"
+                                    style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}
+                                    onTouchMove={(e) => e.stopPropagation()}
+                                >
                                     <AnimatePresence mode="wait">
                                         {groupedPositions.length === 0 ? (
                                             <motion.div

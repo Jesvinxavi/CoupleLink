@@ -133,6 +133,7 @@ export function PostNoteModal({ isOpen, onClose, onFocusChange }: PostNoteModalP
                         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
                         onClick={onClose}
                         style={{ touchAction: 'none' }}
+                        onTouchMove={(e) => e.preventDefault()}
                     />
 
                     {/* Slide-up Panel */}
@@ -148,13 +149,23 @@ export function PostNoteModal({ isOpen, onClose, onFocusChange }: PostNoteModalP
                         transition={{ type: "spring", damping: 35, stiffness: 150, mass: 1 }}
                         onFocus={handleOverlayFocus}
                         onBlur={handleOverlayBlur}
-                        className="fixed inset-x-0 bottom-0 z-[51] outline-none"
+                        className="fixed inset-x-0 bottom-0 z-[51] outline-none overflow-hidden"
+                        style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+                        onTouchMove={(e) => e.preventDefault()}
                     >
                         {/* The Skirt */}
-                        <div className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900" />
+                        <div
+                            className="absolute top-full inset-x-0 h-[100vh] bg-rose-50 dark:bg-gray-900"
+                            style={{ touchAction: 'none' }}
+                            onTouchMove={(e) => e.preventDefault()}
+                        />
 
                         {/* Inner Content Container - Standard Overlay Look */}
-                        <div className="flex flex-col w-full bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] overflow-hidden">
+                        <div
+                            className="flex flex-col w-full bg-rose-50 dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 rounded-t-[32px] overflow-hidden"
+                            style={{ touchAction: 'none' }}
+                            onTouchMove={(e) => e.preventDefault()}
+                        >
 
                             {/* Distinct Header */}
                             <div className="flex items-center justify-between px-6 py-4 border-b border-rose-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 z-10">
@@ -180,11 +191,18 @@ export function PostNoteModal({ isOpen, onClose, onFocusChange }: PostNoteModalP
                             </div>
 
                             {/* Content */}
-                            <div className="p-6 flex flex-col flex-1 bg-rose-50 dark:bg-gray-900 overflow-y-auto">
+                            <div
+                                className="p-6 flex flex-col flex-1 bg-rose-50 dark:bg-gray-900 overflow-hidden"
+                                style={{ touchAction: 'none' }}
+                                onTouchMove={(e) => e.preventDefault()}
+                            >
 
                                 {/* Yellow Sticky Note Card - Embedded */}
-                                {/* Yellow Sticky Note Card - Embedded */}
-                                <div className="bg-[#FEF9C3] dark:bg-yellow-900/20 border-t-8 border-t-yellow-200/50 border-x border-b-4 border-r-4 border-b-black/20 border-r-black/20 dark:border-t-yellow-900/40 dark:border-b-black/40 dark:border-r-black/40 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] rounded-sm p-6 transform rotate-1 hover:rotate-0 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] will-change-transform">
+                                <div
+                                    className="bg-[#FEF9C3] dark:bg-yellow-900/20 border-t-8 border-t-yellow-200/50 border-x border-b-4 border-r-4 border-b-black/20 border-r-black/20 dark:border-t-yellow-900/40 dark:border-b-black/40 dark:border-r-black/40 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] rounded-sm p-6 transform rotate-1 hover:rotate-0 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] will-change-transform"
+                                    style={{ touchAction: 'none' }}
+                                    onTouchMove={(e) => e.preventDefault()}
+                                >
 
                                     {/* Note Header (Visual only since real header is above) */}
                                     <div className="mb-4">
@@ -195,7 +213,11 @@ export function PostNoteModal({ isOpen, onClose, onFocusChange }: PostNoteModalP
                                         value={note}
                                         onChange={(e) => setNote(e.target.value)}
                                         placeholder="Write something sweet..."
-                                        className="w-full h-40 bg-transparent border-none resize-none focus:ring-0 text-gray-800 dark:text-gray-200 placeholder:text-yellow-700/50 dark:placeholder:text-yellow-500/50 font-handwriting text-xl leading-relaxed p-0 scroll-smooth mb-2"
+                                        className="w-full h-40 bg-transparent border-none resize-none focus:ring-0 text-gray-800 dark:text-gray-200 placeholder:text-yellow-700/50 dark:placeholder:text-yellow-500/50 font-handwriting text-xl leading-relaxed p-0 mb-2 overflow-hidden"
+                                        style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+                                        onTouchStart={(e) => e.preventDefault()}
+                                        onTouchMove={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                        onWheel={(e) => e.preventDefault()}
                                         autoFocus
                                     />
 
