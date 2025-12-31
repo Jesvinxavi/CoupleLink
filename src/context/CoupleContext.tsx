@@ -165,8 +165,14 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                     // This handles real-time point updates, streak updates, etc.
                     if (newCouple && newCouple.id === currentCouple?.id) {
                         setCouple(newCouple);
+
+                        // Check if partner just joined (user_two_id changed from null to something)
+                        if (currentCouple?.user_two_id === null && newCouple.user_two_id !== null) {
+                            refreshCoupleData(true); // Fetch partner profile
+                        }
                     } else if (newCouple && (newCouple.user_one_id === user.id || newCouple.user_two_id === user.id)) {
                         setCouple(newCouple);
+                        refreshCoupleData(true); // Ensure all derived state is fresh
                     } else if (payload.eventType === 'DELETE') {
                         // Check if the deleted couple IS our couple
                         if (payload.old && payload.old.id === currentCouple?.id) {

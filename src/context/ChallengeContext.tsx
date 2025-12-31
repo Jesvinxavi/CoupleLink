@@ -142,38 +142,41 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                 ]);
 
                 if (dailyRes.data && dailyRes.data.success) {
+                    const d = dailyRes.data.data;
                     setDaily({
-                        id: dailyRes.data.data.id,
+                        id: d.id,
                         type: 'daily',
-                        title: dailyRes.data.data.title,
-                        description: dailyRes.data.data.description,
-                        durationMinutes: dailyRes.data.data.durationMinutes,
-                        category: dailyRes.data.data.category,
-                        isCompetition: dailyRes.data.data.isCompetition
+                        title: d.content?.title || d.content?.question || 'Daily Challenge',
+                        description: d.content?.description || 'Complete the daily challenge!',
+                        durationMinutes: d.content?.durationMinutes || 0,
+                        category: d.category,
+                        isCompetition: d.content?.isCompetition || false
                     });
                 }
 
                 if (weeklyRes.data && weeklyRes.data.success) {
+                    const w = weeklyRes.data.data;
                     setWeekly({
-                        id: weeklyRes.data.data.id,
+                        id: w.id,
                         type: 'weekly',
-                        title: weeklyRes.data.data.title,
-                        description: weeklyRes.data.data.description,
-                        durationMinutes: weeklyRes.data.data.durationMinutes,
-                        category: weeklyRes.data.data.category,
-                        isCompetition: weeklyRes.data.data.isCompetition
+                        title: w.content?.title || 'Weekly Challenge',
+                        description: w.content?.description || 'Complete the weekly challenge!',
+                        durationMinutes: w.content?.durationMinutes || 0,
+                        category: w.category,
+                        isCompetition: w.content?.isCompetition || false
                     });
                 }
 
                 if (monthlyRes.data && monthlyRes.data.success) {
+                    const m = monthlyRes.data.data;
                     setMonthly({
-                        id: monthlyRes.data.data.id,
+                        id: m.id,
                         type: 'monthly',
-                        title: monthlyRes.data.data.title,
-                        description: monthlyRes.data.data.description,
-                        durationMinutes: monthlyRes.data.data.durationMinutes,
-                        category: monthlyRes.data.data.category,
-                        isCompetition: monthlyRes.data.data.isCompetition
+                        title: m.content?.title || 'Monthly Challenge',
+                        description: m.content?.description || 'Complete the monthly challenge!',
+                        durationMinutes: m.content?.durationMinutes || 0,
+                        category: m.category,
+                        isCompetition: m.content?.isCompetition || false
                     });
                 }
 
