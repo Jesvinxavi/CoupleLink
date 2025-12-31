@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { Copy, Share2, Check } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
@@ -111,16 +112,113 @@ export default function CreateSpace() {
         }
     }, [coupleId, navigate, refreshCoupleData])
 
-    const copyToClipboard = () => {
-        navigator.clipboard.writeText(inviteCode)
+    // Reset copied state if the code changes
+    useEffect(() => {
+        setCopied(false)
+    }, [inviteCode])
+
+    const [copied, setCopied] = useState(false)
+    const [isSharing, setIsSharing] = useState(false)
+
+    const copyToClipboard = async () => {
+        console.log("----------------------------------------")
+        console.log("[CreateSpace] Copy Button Clicked")
+        console.log("[CreateSpace] Invite Code:", inviteCode)
+        console.log("[CreateSpace] Secure Context:", window.isSecureContext)
+        console.log("[CreateSpace] navigator.clipboard:", navigator.clipboard)
+
+        if (!inviteCode) {
+            console.error("[CreateSpace] Abort: No invite code")
+            return
+        }
+
+        try {
+            if (!navigator.clipboard) {
+                console.error("[CreateSpace] navigator.clipboard API missing. Check HTTPS/Localhost.")
+                // Fallback using execCommand for older mobile browsers/http
+                const textArea = document.createElement("textarea")
+                textArea.value = inviteCode
+
+                // Avoid scrolling to bottom
+                textArea.style.top = "0"
+                textArea.style.left = "0"
+                textArea.style.position = "fixed"
+
+                document.body.appendChild(textArea)
+                textArea.focus()
+                textArea.select()
+
+                try {
+                    const successful = document.execCommand('copy')
+                    const msg = successful ? 'successful' : 'unsuccessful'
+                    console.log('[CreateSpace] Fallback execCommand was ' + msg)
+                    if (successful) {
+                        setCopied(true)
+                        // Persistent success state as requested
+                    } else {
+                        throw new Error("execCommand returned false")
+                    }
+                } catch (err) {
+                    console.error('[CreateSpace] Fallback execCommand error', err)
+                }
+
+                document.body.removeChild(textArea)
+                return
+            }
+
+            console.log("[CreateSpace] Attempting navigator.clipboard.writeText...")
+            await navigator.clipboard.writeText(inviteCode)
+            console.log("[CreateSpace] WriteText Promise Resolved - Success")
+
+            setCopied(true)
+            // Persistent success state as requested
+
+        } catch (err) {
+            console.error('[CreateSpace] Failed to copy token:', err)
+            // Try fallback if writeText fails (e.g. mobile permissions)
+            console.log("[CreateSpace] Attempting fallback after writeText failure...")
+            // ... (Same fallback logic potentially, but let's see logs first)
+        }
     }
 
-    const shareCode = () => {
-        if (navigator.share) {
-            navigator.share({
-                title: "Join me on CoupleLink!",
-                text: `Use this code to connect with me: ${inviteCode}`,
-            })
+    const shareCode = async () => {
+        console.log("----------------------------------------")
+        console.log("[CreateSpace] Share Button Clicked")
+        console.log("[CreateSpace] navigator.share supported:", !!navigator.share)
+        console.log("[CreateSpace] navigator.canShare supported:", !!navigator.canShare)
+
+        const shareData = {
+            title: "Join me on CoupleLink!",
+            text: `Use this code to connect with me: ${inviteCode}`,
+            url: window.location.origin
+        }
+
+        console.log("[CreateSpace] Data to share:", shareData)
+
+        if (!navigator.share) {
+            console.warn("[CreateSpace] navigator.share missing")
+            const isSecure = window.isSecureContext
+            const protocol = window.location.protocol
+            alert(`Sharing unavailable.\n\nDebug Info:\nSecure Context: ${isSecure}\nProtocol: ${protocol}\nNavigator.share: ${!!navigator.share}\n\nNote: iOS/Chrome requires HTTPS for sharing.`)
+            return
+        }
+
+        if (navigator.canShare && !navigator.canShare(shareData)) {
+            console.warn("[CreateSpace] navigator.canShare returned false for data")
+            alert("This device doesn't support sharing this specific data.")
+            return
+        }
+
+        setIsSharing(true)
+        try {
+            console.log("[CreateSpace] Calling navigator.share()...")
+            await navigator.share(shareData)
+            console.log("[CreateSpace] navigator.share() completed successfully")
+        } catch (err) {
+            console.error("[CreateSpace] Error sharing:", err)
+            // Don't fallback to copy on error (like user cancellation)
+        } finally {
+            setIsSharing(false)
         }
     }
 
@@ -157,16 +255,25 @@ export default function CreateSpace() {
                     </div>
 
                     <div className="flex gap-2">
-                        <Button className="flex-1" onClick={copyToClipboard}>
-                            <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            Copy
+                        <Button
+                            className={`flex-1 transition-all text-white ${copied ? "bg-green-500 hover:bg-green-600" : "bg-[#EA2831] hover:bg-[#D41F27]"}`}
+                            onClick={copyToClipboard}
+                            disabled={!inviteCode}
+                        >
+                            {copied ? (
+                                <Check className="mr-2 h-4 w-4" />
+                            ) : (
+                                <Copy className="mr-2 h-4 w-4" />
+                            )}
+                            {copied ? "Copied!" : "Copy Code"}
                         </Button>
-                        <Button variant="outline" onClick={shareCode}>
-                            <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                            </svg>
+                        <Button
+                            variant="outline"
+                            onClick={shareCode}
+                            disabled={isSharing || !inviteCode}
+                            className="border-gray-200 hover:bg-gray-50 hover:text-[#EA2831]"
+                        >
+                            <Share2 className="mr-2 h-4 w-4" />
                             Share
                         </Button>
                     </div>
