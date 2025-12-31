@@ -53,7 +53,7 @@ export function useGameProgress(coupleId: string | undefined, spicyMode: boolean
 
                 sessions?.forEach(session => {
                     const type = session.game_type as GameType;
-                    const qIds = session.game_state?.question_ids || [];
+                    const qIds = (session.game_state as any)?.question_ids || [];
                     if (seenIds[type]) {
                         qIds.forEach((id: string) => seenIds[type].add(id));
                     }
@@ -71,6 +71,13 @@ export function useGameProgress(coupleId: string | undefined, spicyMode: boolean
                         case 'draw_and_guess': return drawPrompts;
                         default: return [];
                     }
+                };
+
+                const newProgress: GameProgress = {
+                    'draw_and_guess': 0,
+                    'would_you_rather': 0,
+                    'never_have_i_ever': 0,
+                    'rapid_fire': 0
                 };
 
                 (Object.keys(newProgress) as GameType[]).forEach(key => {

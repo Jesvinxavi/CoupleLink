@@ -34,7 +34,7 @@ export default function GamesPage() {
         getGameLabel
     } = useGameSession();
     const { partner, currentUser, couple } = useCoupleData();
-    const { progress } = useGameProgress(couple?.id, couple?.sexploration_opt_in ?? false);
+    const { progress } = useGameProgress(couple?.id, (couple as any)?.sexploration_opt_in ?? false);
 
     const [showGameOverlay, setShowGameOverlay] = useState(false);
 
