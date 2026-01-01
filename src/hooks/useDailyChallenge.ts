@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Database } from '../types/supabase';
+import type { Database } from '@/lib/database.types';
 
 type Activity = Database['public']['Tables']['activities']['Row'];
 type UserAnswer = Database['public']['Tables']['user_answers']['Row'];

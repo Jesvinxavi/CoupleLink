@@ -3,7 +3,7 @@ import { useEffect, useState, memo } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { useCoupleData } from "@/hooks/useCoupleData"
 import { supabase } from "@/lib/supabase"
-import type { Database } from "@/types/supabase"
+import type { Database } from "@/lib/database.types"
 import { AddEventOverlay, type CalendarEvent } from "../calendar/AddEventOverlay"
 import { UserAvatar } from '../ui/UserAvatar'
 import { differenceInDays, parseISO, setYear, isBefore, addYears, startOfDay, addHours } from "date-fns"

@@ -10,6 +10,7 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Alert, AlertDescription } from "../components/ui/alert"
 import { Image as ImageIcon, BookHeart, Clock, AlertTriangle } from "lucide-react"
+import type { CheckArchivedCoupleResult } from "../types/rpc"
 
 export default function RestoreSpace() {
     const { refreshCoupleData, userProfile } = useCoupleData()
@@ -37,17 +38,18 @@ export default function RestoreSpace() {
 
             if (error) throw error;
 
-            if (data?.found) {
-                if (data.partner_active_couple_id) {
+            const result = data as unknown as CheckArchivedCoupleResult;
+            if (result?.found) {
+                if (result.partner_active_couple_id) {
                     setError("Unable to restore: Your partner is currently in another active space.");
                     return;
                 }
 
-                setRestoreStats(data.stats);
-                setArchivedCoupleId(data.couple_id);
+                setRestoreStats(result.stats);
+                setArchivedCoupleId(result.couple_id ?? null);
                 // Preserve expires_at if available
-                if ((data as any).expires_at) {
-                    setRestoreStats((prev: any) => ({ ...prev, expires_at: (data as any).expires_at }));
+                if (result.expires_at) {
+                    setRestoreStats((prev: any) => ({ ...prev, expires_at: result.expires_at }));
                 }
                 setStep('confirm');
             } else {

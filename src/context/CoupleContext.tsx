@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, ty
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import type { Database } from '../types/supabase';
+import type { Database } from '../lib/database.types';
 import { STORAGE_KEYS } from '../lib/constants';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
