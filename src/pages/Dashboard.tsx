@@ -13,7 +13,7 @@ import { StreakBrokenModal } from "../components/dashboard/StreakBrokenModal"
 import { StatOfTheDayTile } from "../components/dashboard/StatOfTheDayTile"
 import { useRelationshipStats } from "../hooks/useRelationshipStats"
 
-import { OnThisDayTile } from "../components/dashboard/OnThisDayTile"
+import { ThrowbackTile } from "../components/dashboard/ThrowbackTile"
 import { StreakStatsTile } from "../components/dashboard/StreakStatsTile"
 import { MilestoneTrackerTile } from "../components/dashboard/MilestoneTrackerTile"
 import { SexplorationSummaryTile } from "../components/dashboard/SexplorationSummaryTile"
@@ -284,12 +284,12 @@ export default function Dashboard() {
                                         <MilestoneTrackerTile />
                                     </motion.div>
 
-                                    {/* Row 4: Stat of the Day | On This Day | Sexploration Summary */}
+                                    {/* Row 4: Stat of the Day | Throwback | Sexploration Summary */}
                                     <motion.div variants={item} className="md:col-span-4 h-full">
                                         <StatOfTheDayTile stats={relationshipStats} />
                                     </motion.div>
                                     <motion.div variants={item} className="md:col-span-4 h-full">
-                                        <OnThisDayTile />
+                                        <ThrowbackTile />
                                     </motion.div>
                                     {couple?.spicy_mode && (
                                         <motion.div variants={item} className="md:col-span-4 h-full">
