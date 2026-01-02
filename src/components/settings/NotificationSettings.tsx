@@ -226,7 +226,7 @@ export function NotificationSettings() {
         );
     }
 
-    if (!isSubscribed && preferences.master_toggle) {
+    if (!isSubscribed && preferences.master_toggle && !isLoading) {
         return (
             <Card>
                 <CardHeader>
