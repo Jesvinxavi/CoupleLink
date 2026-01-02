@@ -173,6 +173,19 @@ export function ThrowbackTile() {
         return null;
     }
 
+    // DEBUG: Log item details for troubleshooting
+    console.log('[ThrowbackTile] Rendering item:', {
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        content: item.content,
+        media_urls: item.media_urls,
+        hasMediaUrls: item.media_urls && item.media_urls.length > 0,
+        coverImage: item.media_urls?.[0] || null,
+        created_at: item.created_at,
+        uploader_id: item.uploader_id
+    });
+
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -249,7 +262,7 @@ export function ThrowbackTile() {
             <motion.div
                 layoutId={`memory-${item.id}`}
                 onClick={() => setIsExpanded(true)}
-                className="group relative overflow-hidden rounded-2xl bg-white shadow-sm border border-gray-100 transition-all md:hover:shadow-md active:shadow-md cursor-pointer flex flex-col"
+                className={`group relative overflow-hidden rounded-2xl bg-white shadow-sm border border-gray-100 transition-all md:hover:shadow-md active:shadow-md cursor-pointer flex flex-col ${item.type === 'photo' && coverImage ? 'min-h-[220px]' : ''}`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -273,7 +286,7 @@ export function ThrowbackTile() {
                             <div className={`shrink-0 ${item.type === 'photo' ? 'p-1.5 rounded-full bg-white/20 backdrop-blur-sm' : 'mt-1'}`}>
                                 {getIcon()}
                             </div>
-                            <div className="flex flex-col min-w-0">
+                            <div className={`flex flex-col min-w-0 ${item.type === 'photo' && coverImage ? 'bg-black/40 backdrop-blur-md rounded-lg px-2 py-1 ml-1' : ''}`}>
                                 <div className="flex items-center gap-2">
                                     <h3 className={`text-lg font-bold ${item.type === 'photo' ? 'text-white' : 'text-heading-dark'}`}>
                                         {getLabel()}
@@ -293,10 +306,10 @@ export function ThrowbackTile() {
                     {/* Content Preview */}
                     <div className={`flex flex-col ${item.type === 'photo' && coverImage ? 'flex-1 min-h-[140px] justify-end' : 'justify-start'}`}>
                         {item.type === 'photo' ? (
-                            <div className={`space-y-1 ${coverImage ? 'mt-auto' : ''}`}>
-                                {/* Show type badge if no cover image */}
-                                {item.title && !coverImage && (
-                                    <h4 className="font-bold text-heading-dark text-base line-clamp-1">
+                            <div className={`space-y-1 ${coverImage ? 'mt-auto bg-black/40 backdrop-blur-md rounded-xl p-3' : ''}`}>
+                                {/* Show title if no cover image */}
+                                {item.title && (
+                                    <h4 className={`font-bold text-base line-clamp-1 ${coverImage ? 'text-white drop-shadow-sm' : 'text-heading-dark'}`}>
                                         {item.title}
                                     </h4>
                                 )}
@@ -305,10 +318,10 @@ export function ThrowbackTile() {
                                         {coverImage ? `"${item.content}"` : item.content}
                                     </p>
                                 )}
-                                {!item.content && !item.title && !coverImage && (
-                                    <p className="text-xs text-gray-400">Photo memory</p>
+                                {!item.content && !item.title && (
+                                    <p className={`text-xs ${coverImage ? 'text-white/70' : 'text-gray-400'}`}>Photo memory</p>
                                 )}
-                                <div className="flex items-center gap-2 pt-2 text-[10px] text-white/90 font-medium">
+                                <div className={`flex items-center gap-2 pt-2 text-[10px] font-medium ${coverImage ? 'text-white/90' : 'text-gray-500'}`}>
                                     <UserAvatar
                                         user={getUser(item.uploader_id)}
                                         className="w-4 h-4 border-none"
@@ -552,7 +565,7 @@ export function ThrowbackTile() {
                                             </div>
                                         )}
 
-                                        <div className="px-6 py-3 space-y-6">
+                                        <div className={`px-6 py-3 ${item.type === 'photo' ? 'space-y-2' : 'space-y-6'}`}>
                                             {item.type === 'challenge' ? (
                                                 <>
                                                     <h3 className="text-xl font-bold text-heading-dark">
@@ -747,7 +760,7 @@ export function ThrowbackTile() {
                                                         </div>
                                                     )}
 
-                                                    <div className="flex items-center gap-2 pt-4 border-t border-gray-100 mt-4 text-xs text-gray-500 font-medium">
+                                                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-1 text-xs text-gray-500 font-medium">
                                                         <UserAvatar
                                                             user={getUser(item.uploader_id)}
                                                             className="w-5 h-5 border-none"

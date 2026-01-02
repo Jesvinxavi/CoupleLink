@@ -663,7 +663,7 @@ BEGIN
 END;
 $$;
 
-DROP FUNCTION IF EXISTS check_and_award_competition_points();
+DROP FUNCTION IF EXISTS check_and_award_competition_points() CASCADE;
 CREATE OR REPLACE FUNCTION check_and_award_competition_points()
 RETURNS TRIGGER
 LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -933,7 +933,7 @@ END;
 $$;
 
 -- handle_competition_points_update: Trigger to auto-award vouchers
-DROP FUNCTION IF EXISTS handle_competition_points_update();
+DROP FUNCTION IF EXISTS handle_competition_points_update() CASCADE;
 CREATE OR REPLACE FUNCTION handle_competition_points_update()
 RETURNS TRIGGER AS $$
 BEGIN
