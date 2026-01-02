@@ -32,15 +32,14 @@ interface MemoryItem {
     event_color?: string | null;
 }
 
-export function OnThisDayTile() {
+export function ThrowbackTile() {
     const { couple, currentUser, partner, userProfile } = useCoupleData();
     const [item, setItem] = useState<MemoryItem | null>(null);
     const [loading, setLoading] = useState(true);
-    const [isThrowback, setIsThrowback] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
     useEffect(() => {
-        const fetchOnThisDay = async () => {
+        const fetchThrowback = async () => {
             if (!couple || !currentUser) {
                 setLoading(false);
                 return;
@@ -80,14 +79,11 @@ export function OnThisDayTile() {
                 };
 
                 let selectedItem: OnThisDayItem | null = null;
-                let isThrowbackItem = false;
 
                 if (onThisDayData && onThisDayData.length > 0) {
                     // Pick random item from "On This Day" using consistent daily seed
                     const index = seed % onThisDayData.length;
                     selectedItem = onThisDayData[index];
-                    isThrowbackItem = false;
-                    isThrowbackItem = false;
                 } else {
 
                     // 2. Fallback: "Throwback" via RPC
@@ -113,7 +109,6 @@ export function OnThisDayTile() {
 
                     if (throwbackData && throwbackData.length > 0) {
                         selectedItem = throwbackData[0];
-                        isThrowbackItem = true;
                     }
                 }
 
@@ -151,7 +146,6 @@ export function OnThisDayTile() {
                         activity_question: selectedItem.extra_data?.activity_question,
                         ...challengeAnswers
                     });
-                    setIsThrowback(isThrowbackItem);
                 } else {
                     setItem(null);
                 }
@@ -164,7 +158,7 @@ export function OnThisDayTile() {
             }
         };
 
-        fetchOnThisDay();
+        fetchThrowback();
     }, [couple?.id, currentUser?.id, userProfile?.timezone]);
 
     if (loading) {
@@ -176,28 +170,7 @@ export function OnThisDayTile() {
     }
 
     if (!item) {
-        // Empty state - maybe encourage them to create memories?
-        // Or just return null to hide tile? 
-        // Let's show a placeholder encouraging action.
-        return (
-            <div
-                className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-50 to-white p-6 shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center h-full min-h-[160px]"
-            >
-                <div className="relative z-10 flex flex-col items-center">
-                    <div className="mb-3 rounded-full bg-white p-3 shadow-sm">
-                        <Calendar className="w-6 h-6 text-rose-500" />
-                    </div>
-                    <h3 className="font-semibold text-heading-dark">Start Your Journey</h3>
-                    <p className="text-sm text-body-soft mt-1">Create memories today to see them here next year!</p>
-                </div>
-
-                {/* Decorative background element for 3D effect */}
-                <div className="absolute -right-6 -bottom-6 opacity-5 transform rotate-12 pointer-events-none">
-                    <Calendar className="w-32 h-32 text-rose-500" />
-                </div>
-            </div>
-        );
-
+        return null;
     }
 
     const formatDate = (dateString: string) => {
@@ -249,8 +222,7 @@ export function OnThisDayTile() {
     const position = item.type === 'position' ? positions.find(p => p.name === item.title || p.id === item.id) : null;
 
     const getLabel = () => {
-        if (isThrowback) return "Throwback";
-        return "On This Day";
+        return "Throwback";
     };
 
     // Helper for dynamic attribution labels
