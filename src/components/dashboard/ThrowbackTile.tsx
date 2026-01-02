@@ -328,39 +328,25 @@ export function ThrowbackTile() {
                             </div>
 
                         ) : item.type === 'journal' ? (
-                            <div className="space-y-4 pt-1">
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <DateBadge
-                                            date={new Date(item.created_at)}
-                                            className="w-10 h-11 shrink-0 scale-90 origin-left"
-                                        />
-
-                                        <UserAvatar
-                                            user={getUser(item.uploader_id)}
-                                            className="h-10 w-10 shadow-sm border border-gray-100 dark:border-gray-700"
-                                        />
-                                        {item.location && (
-                                            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                                                <MapPin className="w-3 h-3" />
-                                                <span className="truncate max-w-[120px]">{item.location}</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="min-w-0 w-full mt-1">
-                                        {item.title ? (
-                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight break-words line-clamp-2">
-                                                {item.title}
-                                            </h3>
-                                        ) : (
-                                            <span className="text-gray-400 italic">Untitled Memory</span>
-                                        )}
-                                    </div>
-                                </div>
-
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 space-y-2 min-w-[75%] mx-auto">
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Posted by {getAuthorLabel(item.uploader_id)}
+                                    {item.location && (
+                                        <span className="inline-flex items-center gap-1 ml-2">
+                                            <MapPin className="w-3 h-3 inline" />
+                                            <span className="truncate max-w-[100px]">{item.location}</span>
+                                        </span>
+                                    )}
+                                </p>
+                                {item.title ? (
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight break-words line-clamp-2">
+                                        {item.title}
+                                    </h3>
+                                ) : (
+                                    <span className="text-gray-400 italic">Untitled Memory</span>
+                                )}
                                 {item.content && (
-                                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed px-1 line-clamp-3 text-sm">
+                                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed line-clamp-3 text-sm">
                                         {item.content}
                                     </p>
                                 )}
@@ -681,54 +667,58 @@ export function ThrowbackTile() {
 
                                             ) : item.type === 'journal' ? (
                                                 <>
-                                                    <div className="space-y-4">
-                                                        <div className="flex flex-col gap-2">
-                                                            <div className="flex items-center gap-3">
-                                                                <DateBadge
-                                                                    date={new Date(item.created_at)}
-                                                                    className="w-10 h-11 shrink-0 scale-90 origin-left"
-                                                                />
-
-                                                                <UserAvatar
-                                                                    user={getUser(item.uploader_id)}
-                                                                    className="h-10 w-10 shadow-sm border border-gray-100 dark:border-gray-700"
-                                                                />
-                                                                {item.location && (
-                                                                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                                                                        <MapPin className="w-3 h-3" />
-                                                                        <span className="truncate max-w-[150px]">{item.location}</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="min-w-0 w-full mt-1">
-                                                                {item.title ? (
-                                                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-tight break-words">
-                                                                        {item.title}
-                                                                    </h3>
-                                                                ) : (
-                                                                    <span className="text-gray-400 italic">Untitled Memory</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        {item.content && (
-                                                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed text-base">
-                                                                {item.content}
-                                                            </p>
-                                                        )}
-
-                                                        {/* Image Carousel - Only Show in Modal */}
-                                                        {item.media_urls && item.media_urls.length > 0 && (
-                                                            <div className="w-full mt-4">
-                                                                <div className="relative aspect-video w-full bg-gray-100 dark:bg-gray-900 rounded-xl overflow-hidden shadow-sm">
-                                                                    <ImageCarousel
-                                                                        images={item.media_urls}
-                                                                        className="h-full w-full object-cover"
+                                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                                                        <div className="p-5 space-y-2">
+                                                            {/* Header: Date | Avatar Row */}
+                                                            <div className="flex flex-col gap-2">
+                                                                <div className="flex items-center gap-3">
+                                                                    <DateBadge
+                                                                        date={new Date(item.created_at)}
+                                                                        className="w-10 h-11 shrink-0 scale-90 origin-left"
                                                                     />
+
+                                                                    <UserAvatar
+                                                                        user={getUser(item.uploader_id)}
+                                                                        className="h-10 w-10 shadow-sm border border-gray-100 dark:border-gray-700"
+                                                                    />
+                                                                    {item.location && (
+                                                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                                                            <MapPin className="w-3 h-3" />
+                                                                            <span className="truncate max-w-[150px]">{item.location}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="min-w-0 w-full">
+                                                                    {item.title ? (
+                                                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight break-words">
+                                                                            {item.title}
+                                                                        </h3>
+                                                                    ) : (
+                                                                        <span className="text-gray-400 italic">Untitled Memory</span>
+                                                                    )}
                                                                 </div>
                                                             </div>
-                                                        )}
+
+                                                            {/* Caption */}
+                                                            {item.content && (
+                                                                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                                                    {item.content}
+                                                                </p>
+                                                            )}
+
+                                                            {/* Image Carousel */}
+                                                            {item.media_urls && item.media_urls.length > 0 && (
+                                                                <div className="w-full mt-4">
+                                                                    <div className="relative aspect-video w-full bg-gray-100 dark:bg-gray-900 rounded-xl overflow-hidden shadow-sm">
+                                                                        <ImageCarousel
+                                                                            images={item.media_urls}
+                                                                            className="h-full w-full object-cover"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </>
                                             ) : item.type === 'photo' ? (
