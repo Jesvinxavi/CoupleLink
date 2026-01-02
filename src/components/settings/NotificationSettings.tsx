@@ -272,19 +272,19 @@ export function NotificationSettings() {
                 </div>
 
                 {/* Sections */}
-                <div className={`space-y-3 transition-opacity ${!preferences.master_toggle ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className={`space-y-1 transition-opacity ${!preferences.master_toggle ? 'opacity-50 pointer-events-none' : ''}`}>
                     {SECTIONS.map((section) => {
                         const isExpanded = expandedSections.includes(section.key);
                         const sectionEnabled = preferences.sections[section.key as keyof typeof preferences.sections];
 
                         return (
-                            <div key={section.key} className="border rounded-lg border-gray-200 dark:border-gray-700 overflow-hidden">
+                            <div key={section.key} className="overflow-hidden">
                                 {/* Section Header */}
                                 <div
-                                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 cursor-pointer"
+                                    className="flex items-center justify-between py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded transition-colors"
                                     onClick={() => toggleSection(section.key)}
                                 >
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 pl-4">
                                         <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">
                                             {section.icon}
                                         </span>
@@ -304,31 +304,33 @@ export function NotificationSettings() {
                                 </div>
 
                                 {/* Section Types */}
-                                {isExpanded && (
-                                    <div className={`divide-y divide-gray-100 dark:divide-gray-800 ${!sectionEnabled ? 'opacity-50' : ''}`}>
-                                        {section.types.map((type) => (
-                                            <div
-                                                key={type.key}
-                                                className="flex items-center justify-between px-4 py-3 pl-12"
-                                            >
-                                                <div>
-                                                    <Label className="text-sm">{type.label}</Label>
-                                                    <p className="text-xs text-muted-foreground">{type.description}</p>
+                                {
+                                    isExpanded && (
+                                        <div className={`divide-y divide-gray-100 dark:divide-gray-800 ${!sectionEnabled ? 'opacity-50' : ''}`}>
+                                            {section.types.map((type) => (
+                                                <div
+                                                    key={type.key}
+                                                    className="flex items-center justify-between px-4 py-3 pl-14"
+                                                >
+                                                    <div>
+                                                        <Label className="text-sm">{type.label}</Label>
+                                                        <p className="text-xs text-muted-foreground">{type.description}</p>
+                                                    </div>
+                                                    <Switch
+                                                        checked={preferences.types[type.key as keyof typeof preferences.types]}
+                                                        onCheckedChange={(checked) => handleTypeToggle(type.key, checked)}
+                                                        disabled={isSaving || !preferences.master_toggle || !sectionEnabled}
+                                                    />
                                                 </div>
-                                                <Switch
-                                                    checked={preferences.types[type.key as keyof typeof preferences.types]}
-                                                    onCheckedChange={(checked) => handleTypeToggle(type.key, checked)}
-                                                    disabled={isSaving || !preferences.master_toggle || !sectionEnabled}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            ))}
+                                        </div>
+                                    )
+                                }
                             </div>
                         );
                     })}
                 </div>
             </CardContent>
-        </Card>
+        </Card >
     );
 }
