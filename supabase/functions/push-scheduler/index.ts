@@ -7,6 +7,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { format as formatZoned } from 'npm:date-fns-tz';
 import { addDays, addHours, differenceInHours } from 'npm:date-fns';
+import webPush from 'npm:web-push';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -176,7 +177,7 @@ Deno.serve(async (req) => {
                                     type,
                                     title: '🎂 Happy Birthday!',
                                     body: `It's ${partner.first_name}'s special day! Make it memorable.`,
-                                    url: '/dashboard'
+                                    url: '#/dashboard'
                                 });
                             }
                         }
@@ -191,7 +192,7 @@ Deno.serve(async (req) => {
                                     type,
                                     title: '📅 Birthday Reminder',
                                     body: `${partner.first_name}'s birthday is in 1 week! Start planning!`,
-                                    url: '/dashboard'
+                                    url: '#/dashboard'
                                 });
                             }
                         }
@@ -211,7 +212,7 @@ Deno.serve(async (req) => {
                                     type,
                                     title: '🎉 Happy Birthday!',
                                     body: `Happy Birthday, ${profile.first_name}! Wishing you the best day ever!`,
-                                    url: '/dashboard'
+                                    url: '#/dashboard'
                                 });
                             }
                         }
@@ -240,7 +241,7 @@ Deno.serve(async (req) => {
                                     type,
                                     title: '💕 Happy Anniversary!',
                                     body: `Today marks another year of love! Celebrate your journey together.`,
-                                    url: '/dashboard'
+                                    url: '#/dashboard'
                                 });
                             }
                         }
@@ -255,7 +256,7 @@ Deno.serve(async (req) => {
                                     type,
                                     title: '📅 Anniversary Reminder',
                                     body: `Your anniversary is in 1 week! Time to plan something special!`,
-                                    url: '/dashboard'
+                                    url: '#/dashboard'
                                 });
                             }
                         }
@@ -326,7 +327,7 @@ Deno.serve(async (req) => {
                                             type,
                                             title: '⏰ Daily Challenge',
                                             body: `${partner?.first_name} completed it! Finish yours before midnight!`,
-                                            url: '/challenges'
+                                            url: '#/challenges'
                                         });
                                     } else {
                                         notifications.push({
@@ -334,7 +335,7 @@ Deno.serve(async (req) => {
                                             type,
                                             title: '⏰ Daily Challenge',
                                             body: `1 hour left! Complete today's challenge together!`,
-                                            url: '/challenges'
+                                            url: '#/challenges'
                                         });
                                     }
                                 }
@@ -351,7 +352,7 @@ Deno.serve(async (req) => {
                                         type,
                                         title: '🔥 Streak At Risk!',
                                         body: `Your ${couple.streak_count}-day streak expires in 1 hour!`,
-                                        url: '/challenges'
+                                        url: '#/challenges'
                                     });
                                 }
                             }
@@ -388,7 +389,7 @@ Deno.serve(async (req) => {
                                     type,
                                     title: '📅 Weekly Challenge',
                                     body: `Weekly challenge expires tomorrow! Complete it this weekend!`,
-                                    url: '/challenges'
+                                    url: '#/challenges'
                                 });
                             }
                         }
@@ -427,7 +428,7 @@ Deno.serve(async (req) => {
                                         type,
                                         title: '🗓️ Monthly Challenge',
                                         body: `5 days left for the Monthly Challenge! Don't miss out!`,
-                                        url: '/challenges'
+                                        url: '#/challenges'
                                     });
                                 }
                             }
@@ -475,11 +476,26 @@ Deno.serve(async (req) => {
 
             for (const sub of subscriptions) {
                 try {
-                    // TODO: In production, import web-push and uncomment:
-                    // await webPush.sendNotification(sub, payload, { VAPID_DETAILS });
+                    // Send real notification
+                    // Construct the subscription object in the format web-push expects
+                    const pushSubscription = {
+                        endpoint: sub.endpoint,
+                        keys: {
+                            p256dh: sub.keys_p256dh,
+                            auth: sub.keys_auth
+                        }
+                    };
 
-                    // Mock send
-                    console.log(`[PUSH LOG] To: ${notification.user_id} | Title: ${notification.title} | URL: ${notification.url}`);
+                    await webPush.sendNotification(pushSubscription, payload, {
+                        vapidDetails: {
+                            subject: 'mailto:support@couplelink.io', // Replace with real email
+                            publicKey: Deno.env.get('VAPID_PUBLIC_KEY')!,
+                            privateKey: Deno.env.get('VAPID_PRIVATE_KEY')!
+                        }
+                    });
+
+                    // Log success
+                    console.log(`[PUSH SUCCESS] To: ${notification.user_id} | Title: ${notification.title}`);
                     sent++;
                 } catch (error: any) {
                     console.error(`Push failed for ${sub.endpoint}:`, error);
