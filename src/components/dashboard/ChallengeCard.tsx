@@ -3,7 +3,7 @@ import confetti from 'canvas-confetti';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Lock } from 'lucide-react';
-import type { Database } from '../../types/supabase';
+import type { Database } from '@/lib/database.types';
 
 type Activity = Database['public']['Tables']['activities']['Row'];
 type UserAnswer = Database['public']['Tables']['user_answers']['Row'];

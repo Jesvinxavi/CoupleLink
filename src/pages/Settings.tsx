@@ -13,6 +13,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal"
 import { useCoupleData } from '@/hooks/useCoupleData';
 import { STORAGE_KEYS } from "@/lib/constants";
+import { NotificationSettings } from "@/components/settings/NotificationSettings";
+
 
 
 export default function Settings() {
@@ -371,6 +373,9 @@ export default function Settings() {
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {/* Notification Settings */}
+                            <NotificationSettings />
 
                             <Card>
                                 <CardHeader>

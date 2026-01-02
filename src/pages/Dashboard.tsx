@@ -25,6 +25,7 @@ import { supabase } from "../lib/supabase"
 import { FoundArchivedSpaceModal } from "../components/ui/FoundArchivedSpaceModal"
 import { PaywallModal } from "../components/ui/PaywallModal"
 import { STORAGE_KEYS } from "../lib/constants"
+import type { CheckExistingArchiveResult } from "../types/rpc"
 
 const container = {
     hidden: { opacity: 0 },
@@ -71,27 +72,30 @@ export default function Dashboard() {
             const { data, error } = await supabase.rpc('check_existing_archive_for_pair');
             if (error) throw error;
 
-            if (data?.found) {
-                setFoundArchiveStats(data.stats);
-                setFoundArchiveId(data.archived_couple_id);
-                // Also store expires_at properly (add it to stats or separate state? stats is simpler)
-                setFoundArchiveStats(() => ({ ...data.stats, expires_at: (data as any).expires_at }));
+            if (data) {
+                const result = data as unknown as CheckExistingArchiveResult;
+                if (result?.found) {
+                    setFoundArchiveStats(result.stats);
+                    setFoundArchiveId(result.archived_couple_id ?? null);
+                    // Also store expires_at properly
+                    setFoundArchiveStats(() => ({ ...result.stats, expires_at: result.expires_at }));
 
-                // Check if user has already dismissed it? 
-                // For now, always show on load if found, as per requirement "pops up for both users when they first load"
-                const dismissedId = sessionStorage.getItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL);
+                    // Check if user has already dismissed it? 
+                    // For now, always show on load if found, as per requirement "pops up for both users when they first load"
+                    const dismissedId = sessionStorage.getItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL);
 
-                if (dismissedId !== data.archived_couple_id) {
-                    setShowArchiveModal(true);
+                    if (dismissedId !== result.archived_couple_id) {
+                        setShowArchiveModal(true);
+                    }
+                } else {
+                    // Not found (maybe already restored or expired). Clear the dismissed flag so it doesn't persist inappropriately.
+                    // Useful if we just restored: Found becomes false.
+                    sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL);
+                    // Dispatch event explicitly so Sidebar knows to check again and hide the pill
+                    window.dispatchEvent(new Event('restore_modal_dismissed'));
+
+                    setShowArchiveModal(false);
                 }
-            } else {
-                // Not found (maybe already restored or expired). Clear the dismissed flag so it doesn't persist inappropriately.
-                // Useful if we just restored: Found becomes false.
-                sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL);
-                // Dispatch event explicitly so Sidebar knows to check again and hide the pill
-                window.dispatchEvent(new Event('restore_modal_dismissed'));
-
-                setShowArchiveModal(false);
             }
         } catch (err) {
             console.error('Error checking archive:', err);

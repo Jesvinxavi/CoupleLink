@@ -1,5 +1,5 @@
 import { useEffect, useState, memo } from "react"
-import type { Database } from "@/types/supabase"
+import type { Database } from "@/lib/database.types"
 import { format, addHours, differenceInMinutes } from "date-fns"
 import { usePartnerNotes } from "@/hooks/usePartnerNotes"
 

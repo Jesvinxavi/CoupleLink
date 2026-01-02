@@ -11,6 +11,7 @@ import { Label } from "../components/ui/label"
 import { Alert, AlertDescription } from "../components/ui/alert"
 
 import { PaywallModal } from "../components/ui/PaywallModal"
+import type { JoinCoupleResult } from "../types/rpc"
 
 
 export default function JoinPartner() {
@@ -51,9 +52,10 @@ export default function JoinPartner() {
                 throw error
             }
 
-            if (!data?.success) {
+            const result = data as unknown as JoinCoupleResult;
+            if (!result?.success) {
                 // Legacy check removed. Standard error handling.
-                throw new Error(data?.message || 'Failed to join')
+                throw new Error(result?.message || 'Failed to join')
             }
             // Refresh couple data to ensure context is updated before redirect
             await refreshCoupleData()
