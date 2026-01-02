@@ -174,31 +174,23 @@ export function NotificationListener() {
                     filter: `couple_id=eq.${couple.id}`
                 },
                 (payload) => {
-                    console.log('[NotificationListener] Memory Insert Payload:', payload);
                     // Only notify if the uploader is NOT the current user
                     if (payload.new.uploader_id !== user.id) {
                         const memoryType = payload.new.type;
-                        console.log('[NotificationListener] Processing type:', memoryType);
 
                         if (memoryType === 'journal') {
                             if (shouldNotify('new_journal_post', userPreferences)) {
-                                console.log('[NotificationListener] Showing Journal Notification');
                                 showNotification('new_journal_post');
                             }
                         } else if (memoryType === 'sticky_note') {
                             if (shouldNotify('new_sticky_note', userPreferences)) {
-                                console.log('[NotificationListener] Showing Sticky Note Notification');
                                 showNotification('new_sticky_note');
-                            } else {
-                                console.log('[NotificationListener] Sticky Note filtered by preferences');
                             }
                         } else if (memoryType === 'challenge') {
                             if (shouldNotify('challenge_completion', userPreferences)) {
                                 showNotification('challenge_completion');
                             }
                         }
-                    } else {
-                        console.log('[NotificationListener] Ignoring own upload');
                     }
                 }
             )
