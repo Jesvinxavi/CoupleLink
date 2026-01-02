@@ -245,7 +245,7 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                                         })}
                                                     </div>
                                                 ) : (
-                                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                                    <div className="flex flex-col items-center justify-center pt-0 pb-6 text-center">
                                                         <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
                                                             <Ticket className="w-10 h-10 text-gray-300 dark:text-gray-600" />
                                                         </div>
@@ -279,7 +279,7 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                                    <div className="flex flex-col items-center justify-center pt-0 pb-6 text-center">
                                                         <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/10 rounded-full flex items-center justify-center mb-4">
                                                             <Zap className="w-10 h-10 text-amber-200 dark:text-amber-700" />
                                                         </div>
