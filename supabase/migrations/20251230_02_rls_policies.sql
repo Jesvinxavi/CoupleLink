@@ -162,3 +162,77 @@ USING (
         AND (c.user_one_id = auth.uid() OR c.user_two_id = auth.uid())
     )
 );
+
+
+-- 6. MISSING DELETE POLICIES
+
+CREATE POLICY "Users can delete their couple's sex count"
+ON sex_counter FOR DELETE
+USING (
+    EXISTS (
+        SELECT 1 FROM couples
+        WHERE id = sex_counter.couple_id
+        AND (user_one_id = auth.uid() OR user_two_id = auth.uid())
+    )
+);
+
+CREATE POLICY "Users can delete positions"
+ON completed_positions FOR DELETE
+USING (
+    EXISTS (
+        SELECT 1 FROM couples
+        WHERE id = completed_positions.couple_id
+        AND (user_one_id = auth.uid() OR user_two_id = auth.uid())
+    )
+);
+
+CREATE POLICY "Users can delete from fantasy list"
+ON fantasy_bucket_list FOR DELETE
+USING (
+    EXISTS (
+        SELECT 1 FROM couples
+        WHERE id = fantasy_bucket_list.couple_id
+        AND (user_one_id = auth.uid() OR user_two_id = auth.uid())
+    )
+);
+
+CREATE POLICY "Users can delete their coupons"
+ON coupons FOR DELETE
+USING (
+    EXISTS (
+        SELECT 1 FROM couples c
+        WHERE c.id = coupons.couple_id
+        AND (c.user_one_id = auth.uid() OR c.user_two_id = auth.uid())
+    )
+);
+
+
+-- 7. USER ANSWERS RLS POLICIES
+
+ALTER TABLE user_answers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their couple's answers"
+ON user_answers FOR SELECT
+USING (
+    auth.uid() IN (
+        SELECT user_one_id FROM couples WHERE id = couple_id
+        UNION
+        SELECT user_two_id FROM couples WHERE id = couple_id
+    )
+);
+
+CREATE POLICY "Users can insert their own answers"
+ON user_answers FOR INSERT
+WITH CHECK (
+    auth.uid() = user_id AND
+    auth.uid() IN (
+        SELECT user_one_id FROM couples WHERE id = couple_id
+        UNION
+        SELECT user_two_id FROM couples WHERE id = couple_id
+    )
+);
+
+CREATE POLICY "Users can update their own answers"
+ON user_answers FOR UPDATE
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);

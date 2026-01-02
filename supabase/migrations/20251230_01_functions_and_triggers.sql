@@ -2,7 +2,7 @@
 -- Consolidates all RPC functions and triggers, resolving version conflicts.
 
 -- 1. STREAK MANAGEMENT
--- Updated to robust version using challenge_id (Matches 20251225_robust_streak_update.sql)
+-- Robust version using challenge_id matching for partner verification
 DROP FUNCTION IF EXISTS check_and_update_streak(UUID);
 CREATE OR REPLACE FUNCTION check_and_update_streak(p_couple_id UUID)
 RETURNS JSONB
@@ -10,102 +10,86 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    v_streak INTEGER;
-    v_last_activity TIMESTAMP WITH TIME ZONE;
-    v_today DATE := CURRENT_DATE; -- UTC date
-    v_yesterday DATE := v_today - 1;
-    v_streak_start_date DATE;
-    v_partner_1 UUID;
-    v_partner_2 UUID;
-    v_has_p1_activity BOOLEAN;
-    v_has_p2_activity BOOLEAN;
-    v_current_challenge_id TEXT;
-    v_new_streak INTEGER;
-    v_couple_created_at DATE;
+    v_user_one_id UUID;
+    v_user_two_id UUID;
+    v_last_activity_date DATE;
+    v_current_streak INTEGER;
     v_longest_streak INTEGER;
+    v_q_count INTEGER;
+    v_c_count INTEGER;
+    v_today DATE := CURRENT_DATE;
+    v_yesterday DATE := CURRENT_DATE - 1;
+    v_streak_updated BOOLEAN := FALSE;
 BEGIN
-    SELECT current_streak, last_activity_date, user_one_id, user_two_id, longest_streak
-    INTO v_streak, v_last_activity, v_partner_1, v_partner_2, v_longest_streak
+    SELECT user_one_id, user_two_id, last_activity_date::DATE, current_streak, longest_streak
+    INTO v_user_one_id, v_user_two_id, v_last_activity_date, v_current_streak, v_longest_streak
     FROM couples
     WHERE id = p_couple_id;
 
-    -- If no streak data, initialize
-    IF v_streak IS NULL THEN v_streak := 0; END IF;
+    IF v_current_streak IS NULL THEN v_current_streak := 0; END IF;
     IF v_longest_streak IS NULL THEN v_longest_streak := 0; END IF;
 
-    -- Check if BOTH partners completed a challenge TODAY (UTC)
-    -- We can get the active challenge ID for today if needed, or check generic 'finish'
-    -- Ideally, we check if there are memories for TODAY for BOTH users with type='challenge_completion' or similar?
-    -- The robust logic checked for matching challenge_id explicitly.
-    
-    -- Check Partner 1
-    SELECT EXISTS (
-        SELECT 1 FROM memories 
-        WHERE couple_id = p_couple_id 
-        AND user_id = v_partner_1
-        AND type = 'challenge'
-        AND date(created_at) = v_today
-    ) INTO v_has_p1_activity;
+    -- 1. Check if both partners answered today's question
+    SELECT COUNT(DISTINCT user_id) INTO v_q_count
+    FROM user_answers ua
+    JOIN activities a ON ua.activity_id = a.id
+    WHERE ua.couple_id = p_couple_id
+    AND ua.created_at::DATE = v_today
+    AND a.type IN ('quiz', 'draw');
 
-    -- Check Partner 2
-    SELECT EXISTS (
-        SELECT 1 FROM memories 
-        WHERE couple_id = p_couple_id 
-        AND user_id = v_partner_2
-        AND type = 'challenge'
-        AND date(created_at) = v_today
-    ) INTO v_has_p2_activity;
+    -- 2. Check if challenge was completed by BOTH partners (using challenge_id matching)
+    SELECT COUNT(*) INTO v_c_count
+    FROM memories m
+    WHERE m.couple_id = p_couple_id
+    AND m.type = 'challenge'
+    AND m.created_at::DATE = v_today
+    AND EXISTS (
+        SELECT 1 FROM memories partner_m
+        WHERE partner_m.couple_id = m.couple_id
+        AND partner_m.type = 'challenge'
+        AND partner_m.uploader_id != m.uploader_id
+        AND (
+            -- Robust match: Both have the same non-null challenge_id
+            (m.challenge_id IS NOT NULL AND partner_m.challenge_id = m.challenge_id)
+            OR 
+            -- Fallback match: If ID missing, match by Title
+            (m.challenge_id IS NULL AND partner_m.title = m.title)
+        )
+    );
 
-    -- LOGIC:
-    -- If BOTH did it today: Increment streak (if not already incremented)
-    -- If one did it, or neither: check if we missed yesterday.
-    
-    -- NOTE: This effectively runs "on open" or "on complete".
-    -- If last_activity_date was TODAY, we don't increment again.
-    
-    IF v_has_p1_activity AND v_has_p2_activity THEN
-        IF date(v_last_activity) = v_today THEN
-            -- Already counted for today
-            RETURN jsonb_build_object('status', 'already_updated', 'streak', v_streak);
-        ELSIF date(v_last_activity) = v_yesterday THEN
-            -- Perfect continuation
-            v_new_streak := v_streak + 1;
+    -- Requirements: Both answered (count=2) OR at least one completed challenge (count>=1)
+    IF v_q_count >= 2 OR v_c_count >= 1 THEN
+        -- Requirements met!
+        
+        -- Check if already updated today
+        IF v_last_activity_date IS NULL OR v_last_activity_date < v_today THEN
             
-            -- Update Longest Streak
-            IF v_new_streak > v_longest_streak THEN v_longest_streak := v_new_streak; END IF;
+            IF v_last_activity_date = v_yesterday THEN
+                v_current_streak := v_current_streak + 1;
+            ELSE
+                -- Streak broken or new, start at 1
+                v_current_streak := 1;
+            END IF;
 
-            UPDATE couples 
-            SET current_streak = v_new_streak,
+            -- Update longest streak
+            IF v_current_streak > v_longest_streak THEN
+                v_longest_streak := v_current_streak;
+            END IF;
+
+            UPDATE couples
+            SET current_streak = v_current_streak,
                 longest_streak = v_longest_streak,
-                last_activity_date = now()
+                last_activity_date = v_today
             WHERE id = p_couple_id;
             
-            RETURN jsonb_build_object('status', 'incremented', 'streak', v_new_streak);
-        ELSE
-             -- Missed a day (or more), but completed today. 
-             -- Streak resets to 1.
-             v_new_streak := 1;
-             UPDATE couples 
-             SET current_streak = v_new_streak, 
-                 last_activity_date = now(),
-                 previous_streak = v_streak -- Store old streak
-             WHERE id = p_couple_id;
-             RETURN jsonb_build_object('status', 'reset_started', 'streak', v_new_streak);
+            v_streak_updated := TRUE;
         END IF;
-    ELSE
-        -- Criteria not met yet for today.
-        -- Check if we already broke the streak by missing yesterday.
-        IF date(v_last_activity) < v_yesterday THEN
-             -- We missed yesterday completely. Reset to 0.
-             UPDATE couples
-             SET previous_streak = current_streak,
-                 current_streak = 0
-             WHERE id = p_couple_id;
-             RETURN jsonb_build_object('status', 'broken_missing_yesterday', 'streak', 0);
-        END IF;
-        
-        RETURN jsonb_build_object('status', 'waiting_for_partner', 'streak', v_streak);
     END IF;
+
+    RETURN jsonb_build_object(
+        'streak_updated', v_streak_updated,
+        'current_streak', v_current_streak
+    );
 END;
 $$;
 
@@ -413,6 +397,7 @@ END;
 $$;
 
 -- get_active_challenge
+-- Probability-based deterministic selection for challenge sync between partners
 DROP FUNCTION IF EXISTS get_active_challenge(UUID, TEXT);
 CREATE OR REPLACE FUNCTION get_active_challenge(couple_id_input UUID, frequency_input TEXT)
 RETURNS JSONB
@@ -420,35 +405,249 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    v_challenge_data JSONB;
+    v_activity_data JSONB;
+    v_count INTEGER;
+    v_offset INTEGER;
+    v_seed INTEGER;
+    v_date_factor INTEGER;
+    v_roll DOUBLE PRECISION;
+    v_is_competition BOOLEAN;
+    v_is_online_game BOOLEAN;
+    v_is_spicy BOOLEAN;
     v_spicy_mode BOOLEAN;
 BEGIN
+    -- Get Spicy Mode setting
     SELECT spicy_mode INTO v_spicy_mode FROM couples WHERE id = couple_id_input;
     IF v_spicy_mode IS NULL THEN v_spicy_mode := FALSE; END IF;
 
-    -- Standard random selection
-    SELECT jsonb_build_object('id', id, 'category', category, 'type', type, 'content', content)
-    INTO v_challenge_data
+    -- Calculate date factor based on frequency for deterministic seeding
+    IF frequency_input = 'daily' THEN
+        v_date_factor := (EXTRACT(YEAR FROM CURRENT_DATE) * 1000 + EXTRACT(DOY FROM CURRENT_DATE))::INTEGER;
+    ELSIF frequency_input = 'weekly' THEN
+        v_date_factor := (EXTRACT(ISOYEAR FROM CURRENT_DATE) * 100 + EXTRACT(WEEK FROM CURRENT_DATE))::INTEGER;
+    ELSIF frequency_input = 'monthly' THEN
+        v_date_factor := (EXTRACT(YEAR FROM CURRENT_DATE) * 100 + EXTRACT(MONTH FROM CURRENT_DATE))::INTEGER;
+    ELSE
+        v_date_factor := (EXTRACT(YEAR FROM CURRENT_DATE) * 1000 + EXTRACT(DOY FROM CURRENT_DATE))::INTEGER;
+    END IF;
+
+    -- Generate deterministic seed and roll value (0-1)
+    v_seed := ABS(hashtext(couple_id_input::TEXT || frequency_input || v_date_factor::TEXT));
+    v_roll := (v_seed % 1000) / 1000.0;
+
+    -- Initialize bucket flags
+    v_is_competition := NULL;
+    v_is_online_game := FALSE;
+    v_is_spicy := FALSE;
+
+    -- Spicy Mode bucket logic
+    IF v_spicy_mode THEN
+        DECLARE
+            v_spicy_prob DOUBLE PRECISION := 0.0;
+        BEGIN
+            IF frequency_input = 'daily' THEN
+                v_spicy_prob := 0.12;  -- 12% spicy for daily
+            ELSIF frequency_input = 'weekly' THEN
+                v_spicy_prob := 0.15;  -- 15% spicy for weekly
+            ELSIF frequency_input = 'monthly' THEN
+                v_spicy_prob := 0.0;   -- No spicy monthly challenges
+            END IF;
+
+            IF v_roll < v_spicy_prob THEN
+                v_is_spicy := TRUE;
+            ELSE
+                -- Rescale roll for remaining percentage
+                IF v_spicy_prob > 0 THEN
+                    v_roll := (v_roll - v_spicy_prob) / (1.0 - v_spicy_prob);
+                END IF;
+            END IF;
+        END;
+    END IF;
+
+    -- Standard bucket logic (if NOT spicy selected)
+    IF NOT v_is_spicy THEN
+        IF frequency_input = 'daily' THEN
+            -- Daily: 20% Competitive, 80% Normal
+            IF v_roll < 0.20 THEN v_is_competition := TRUE; ELSE v_is_competition := FALSE; END IF;
+        ELSIF frequency_input = 'weekly' THEN
+            -- Weekly: 20% Online Game, 33% Competitive, 47% Normal
+            IF v_roll < 0.20 THEN
+                v_is_online_game := TRUE; v_is_competition := TRUE;
+            ELSIF v_roll < 0.53 THEN
+                v_is_competition := TRUE;
+            ELSE
+                v_is_competition := FALSE;
+            END IF;
+        ELSIF frequency_input = 'monthly' THEN
+            -- Monthly: 33% Competitive, 67% Normal
+            IF v_roll < 0.33 THEN v_is_competition := TRUE; ELSE v_is_competition := FALSE; END IF;
+        END IF;
+    END IF;
+
+    -- Count matching challenges
+    SELECT COUNT(*) INTO v_count 
+    FROM activities 
+    WHERE type = 'challenge' 
+    AND content->>'frequency' = frequency_input
+    -- Spicy Filter
+    AND (
+        (v_spicy_mode = FALSE AND (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
+        OR
+        (v_spicy_mode = TRUE AND (
+            (v_is_spicy = TRUE AND (content->>'isSpicy')::BOOLEAN = TRUE) 
+            OR 
+            (v_is_spicy = FALSE AND (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
+        ))
+    )
+    -- Competition/Online filters (only if NOT spicy bucket)
+    AND (
+        v_is_spicy = TRUE 
+        OR 
+        (
+            (v_is_competition IS NULL OR (content->>'isCompetition')::BOOLEAN = v_is_competition)
+            AND
+            (NOT v_is_online_game OR content->>'title' ILIKE '%Online Game%')
+            AND
+            (v_is_online_game OR content->>'title' NOT ILIKE '%Online Game%')
+        )
+    );
+
+    -- Fallback: If no challenge found in specific bucket, use any matching frequency
+    IF v_count = 0 THEN
+        SELECT COUNT(*) INTO v_count 
+        FROM activities 
+        WHERE type = 'challenge' 
+        AND content->>'frequency' = frequency_input
+        AND (v_spicy_mode = TRUE OR (content->>'isSpicy')::BOOLEAN IS NOT TRUE);
+        
+        -- Reset strict filters
+        v_is_spicy := FALSE; 
+        v_is_competition := NULL; 
+        v_is_online_game := FALSE;
+    END IF;
+
+    IF v_count = 0 THEN
+        RETURN jsonb_build_object('success', false, 'message', 'No challenges found');
+    END IF;
+
+    -- Deterministic offset selection
+    v_offset := v_seed % v_count;
+    
+    -- Select the challenge
+    SELECT jsonb_build_object(
+        'id', id,
+        'category', category,
+        'type', content->>'frequency',
+        'title', content->>'title',
+        'description', content->>'description',
+        'durationMinutes', (content->>'durationMinutes')::INTEGER,
+        'isCompetition', (content->>'isCompetition')::BOOLEAN,
+        'isSpicy', (content->>'isSpicy')::BOOLEAN
+    )
+    INTO v_activity_data
     FROM activities
     WHERE type = 'challenge'
     AND content->>'frequency' = frequency_input
-    AND (v_spicy_mode = TRUE OR (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
-    ORDER BY random()
-    LIMIT 1;
+    AND (
+        (v_spicy_mode = FALSE AND (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
+        OR
+        (v_spicy_mode = TRUE AND v_is_spicy = TRUE AND (content->>'isSpicy')::BOOLEAN = TRUE)
+        OR
+        (v_spicy_mode = TRUE AND v_is_spicy = FALSE AND (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
+        OR 
+        (v_spicy_mode = TRUE AND v_is_competition IS NULL AND v_is_online_game = FALSE) 
+    )
+    AND (
+        v_is_spicy = TRUE
+        OR
+        (
+            (v_is_competition IS NULL OR (content->>'isCompetition')::BOOLEAN = v_is_competition)
+            AND
+            (NOT v_is_online_game OR content->>'title' ILIKE '%Online Game%')
+            AND
+            (v_is_online_game OR content->>'title' NOT ILIKE '%Online Game%')
+        )
+    )
+    ORDER BY id
+    LIMIT 1 OFFSET v_offset;
 
-    IF v_challenge_data IS NULL THEN RETURN jsonb_build_object('success', false); END IF;
-    RETURN jsonb_build_object('success', true, 'data', v_challenge_data);
+    RETURN jsonb_build_object('success', true, 'data', v_activity_data);
 END;
 $$;
 
 
 -- 5. POINTS & REWARDS
 
+-- Full version with token generation (10 pts = 1 token)
 DROP FUNCTION IF EXISTS add_love_action_points(UUID, INTEGER);
 CREATE OR REPLACE FUNCTION add_love_action_points(p_couple_id UUID, p_points INTEGER)
-RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_current_points INTEGER;
+    v_tokens INTEGER;
+    v_new_tokens INTEGER := 0;
+    v_total_points INTEGER;
+    v_total_lifetime_points INTEGER;
 BEGIN
-    UPDATE couples SET total_love_points = total_love_points + p_points WHERE id = p_couple_id;
+    SELECT action_points, rain_check_tokens, total_love_points 
+    INTO v_current_points, v_tokens, v_total_lifetime_points
+    FROM couples
+    WHERE id = p_couple_id;
+
+    -- Handle nulls
+    IF v_current_points IS NULL THEN v_current_points := 0; END IF;
+    IF v_tokens IS NULL THEN v_tokens := 0; END IF;
+    IF v_total_lifetime_points IS NULL THEN v_total_lifetime_points := 0; END IF;
+
+    -- Calculate temporary total for token logic
+    v_total_points := v_current_points + p_points;
+    
+    -- POSITIVE POINTS
+    IF p_points > 0 THEN
+        -- Add to lifetime counter
+        v_total_lifetime_points := v_total_lifetime_points + p_points;
+
+        -- Calculate new tokens (10 points = 1 token)
+        IF v_total_points >= 10 THEN
+            v_new_tokens := v_total_points / 10;
+            v_total_points := v_total_points % 10;
+        END IF;
+        
+        v_tokens := v_tokens + v_new_tokens;
+        
+    -- NEGATIVE POINTS (e.g., undoing an action)
+    ELSE
+        -- Reduce from lifetime counter
+        v_total_lifetime_points := v_total_lifetime_points + p_points;
+        IF v_total_lifetime_points < 0 THEN v_total_lifetime_points := 0; END IF;
+
+        -- If points go below 0, use tokens to cover the debt
+        WHILE v_total_points < 0 AND v_tokens > 0 LOOP
+            v_tokens := v_tokens - 1;
+            v_total_points := v_total_points + 10;
+        END LOOP;
+        
+        -- Clamp to 0 if still negative
+        IF v_total_points < 0 THEN
+            v_total_points := 0;
+        END IF;
+    END IF;
+
+    UPDATE couples
+    SET action_points = v_total_points,
+        rain_check_tokens = v_tokens,
+        total_love_points = v_total_lifetime_points
+    WHERE id = p_couple_id;
+
+    RETURN jsonb_build_object(
+        'new_points', v_total_points,
+        'tokens_awarded', v_new_tokens,
+        'total_tokens', v_tokens,
+        'total_love_points', v_total_lifetime_points
+    );
 END;
 $$;
 
@@ -469,40 +668,286 @@ CREATE OR REPLACE FUNCTION check_and_award_competition_points()
 RETURNS TRIGGER
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-  v_challenge_is_competition BOOLEAN;
-  v_winner_id TEXT;
-  v_partner_id UUID;
-  v_existing_points_awarded BOOLEAN;
-  v_partner_memory_id UUID;
+    partner_mem RECORD;
+    my_selection TEXT;
+    partner_selection TEXT;
+    winner_id UUID;
+    points_to_award INTEGER;
 BEGIN
-  -- Only care about challenges
-  IF NEW.type <> 'challenge' THEN RETURN NEW; END IF;
+    -- Only care about challenges
+    IF NEW.type <> 'challenge' THEN RETURN NEW; END IF;
+    
+    -- Check if competition
+    IF (NEW.metadata->>'is_competition')::BOOLEAN IS NOT TRUE THEN RETURN NEW; END IF;
+    
+    -- Check if already awarded
+    IF (NEW.metadata->>'points_awarded')::BOOLEAN IS TRUE THEN RETURN NEW; END IF;
+    
+    -- Check if winner_selection is present
+    IF NEW.metadata->>'winner_selection' IS NULL THEN RETURN NEW; END IF;
 
-  -- Check if already awarded (metadata flag)
-  IF (NEW.metadata->>'points_awarded')::boolean IS TRUE THEN RETURN NEW; END IF;
+    -- Find partner memory for same challenge
+    SELECT * INTO partner_mem
+    FROM memories
+    WHERE couple_id = NEW.couple_id
+      AND title = NEW.title
+      AND type = 'challenge'
+      AND uploader_id != NEW.uploader_id
+    LIMIT 1;
 
-  -- Check challenge type
-  v_challenge_is_competition := (NEW.metadata->>'isCompetition')::boolean;
-  IF v_challenge_is_competition IS NOT TRUE THEN RETURN NEW; END IF;
+    IF NOT FOUND THEN RETURN NEW; END IF;
 
-  v_winner_id := NEW.metadata->>'winner';
-  
-  -- If we have a winner declared
-  IF v_winner_id IS NOT NULL THEN
-      IF v_winner_id = 'tie' THEN
-          PERFORM add_competition_points(NEW.user_id, 10);
-      ELSIF v_winner_id = NEW.user_id::text THEN
-          PERFORM add_competition_points(NEW.user_id, 20);
-      END IF;
+    -- Check if partner already handled it
+    IF (partner_mem.metadata->>'points_awarded')::BOOLEAN IS TRUE THEN
+        RETURN NEW;
+    END IF;
 
-      NEW.metadata := jsonb_set(NEW.metadata, '{points_awarded}', 'true');
-  END IF;
+    partner_selection := partner_mem.metadata->>'winner_selection';
+    my_selection := NEW.metadata->>'winner_selection';
 
-  RETURN NEW;
+    IF partner_selection IS NULL THEN
+        RETURN NEW; -- Partner hasn't selected yet
+    END IF;
+
+    winner_id := NULL;
+    points_to_award := 0;
+
+    -- Determine Outcome
+    -- My 'me' means I think I won. Partner's 'partner' means they think I won.
+    IF my_selection = 'me' AND partner_selection = 'partner' THEN
+        winner_id := NEW.uploader_id;
+        points_to_award := 3;
+    ELSIF my_selection = 'partner' AND partner_selection = 'me' THEN
+        winner_id := partner_mem.uploader_id;
+        points_to_award := 3;
+    ELSIF my_selection = 'tie' AND partner_selection = 'tie' THEN
+        points_to_award := 1; -- For BOTH
+        winner_id := NULL; -- Tie flag
+    ELSE
+        RETURN NEW; -- Disagreement, no points
+    END IF;
+
+    -- Award Points
+    IF winner_id IS NOT NULL THEN
+        UPDATE profiles SET competition_points = COALESCE(competition_points, 0) + points_to_award 
+        WHERE id = winner_id;
+    ELSE
+        -- TIE: Update both
+        UPDATE profiles SET competition_points = COALESCE(competition_points, 0) + points_to_award 
+        WHERE id IN (NEW.uploader_id, partner_mem.uploader_id);
+    END IF;
+
+    -- Mark Partner Memory as awarded
+    UPDATE memories 
+    SET metadata = jsonb_set(metadata, '{points_awarded}', 'true'::jsonb)
+    WHERE id = partner_mem.id;
+
+    -- Mark My Memory (NEW)
+    NEW.metadata := jsonb_set(NEW.metadata, '{points_awarded}', 'true'::jsonb);
+
+    RETURN NEW;
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_memory_competition_completion ON memories;
 CREATE TRIGGER on_memory_competition_completion
     BEFORE INSERT OR UPDATE ON memories
     FOR EACH ROW
     EXECUTE FUNCTION check_and_award_competition_points();
+
+
+-- 6. MISSING FUNCTIONS
+
+-- check_streak_broken: Checks if streak is broken on load
+DROP FUNCTION IF EXISTS check_streak_broken(UUID);
+CREATE OR REPLACE FUNCTION check_streak_broken(p_couple_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_last_activity_date DATE;
+    v_current_streak INTEGER;
+    v_yesterday DATE := CURRENT_DATE - 1;
+    v_is_broken BOOLEAN := FALSE;
+    v_previous_streak INTEGER;
+BEGIN
+    SELECT last_activity_date::DATE, current_streak, previous_streak
+    INTO v_last_activity_date, v_current_streak, v_previous_streak
+    FROM couples WHERE id = p_couple_id;
+
+    IF v_current_streak IS NULL THEN v_current_streak := 0; END IF;
+
+    -- Broken if last activity before yesterday AND streak > 0
+    IF (v_last_activity_date IS NULL OR v_last_activity_date < v_yesterday) 
+       AND v_current_streak > 0 THEN
+        UPDATE couples
+        SET previous_streak = v_current_streak, current_streak = 0
+        WHERE id = p_couple_id;
+        
+        v_is_broken := TRUE;
+        v_previous_streak := v_current_streak;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'is_broken', v_is_broken,
+        'previous_streak', v_previous_streak
+    );
+END;
+$$;
+
+-- restore_streak: Uses token to restore broken streak
+DROP FUNCTION IF EXISTS restore_streak(UUID);
+CREATE OR REPLACE FUNCTION restore_streak(p_couple_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_tokens INTEGER;
+    v_prev_streak INTEGER;
+BEGIN
+    SELECT rain_check_tokens, previous_streak 
+    INTO v_tokens, v_prev_streak
+    FROM couples WHERE id = p_couple_id;
+
+    IF v_tokens > 0 AND v_prev_streak > 0 THEN
+        UPDATE couples
+        SET rain_check_tokens = v_tokens - 1,
+            current_streak = v_prev_streak,
+            last_activity_date = CURRENT_DATE - 1
+        WHERE id = p_couple_id;
+        RETURN TRUE;
+    END IF;
+    RETURN FALSE;
+END;
+$$;
+
+-- use_rain_check_token: Deduct 1 token
+DROP FUNCTION IF EXISTS use_rain_check_token(UUID);
+CREATE OR REPLACE FUNCTION use_rain_check_token(p_couple_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_tokens INTEGER;
+BEGIN
+    SELECT rain_check_tokens INTO v_tokens FROM couples WHERE id = p_couple_id;
+    IF v_tokens IS NULL THEN v_tokens := 0; END IF;
+
+    IF v_tokens > 0 THEN
+        UPDATE couples SET rain_check_tokens = v_tokens - 1 WHERE id = p_couple_id;
+        RETURN TRUE;
+    END IF;
+    RETURN FALSE;
+END;
+$$;
+
+-- refund_rain_check_token: Add 1 token back
+DROP FUNCTION IF EXISTS refund_rain_check_token(UUID);
+CREATE OR REPLACE FUNCTION refund_rain_check_token(p_couple_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    UPDATE couples SET rain_check_tokens = rain_check_tokens + 1 
+    WHERE id = p_couple_id;
+    RETURN TRUE;
+END;
+$$;
+
+-- unskip_challenge: Delete skipped memory + refund token
+DROP FUNCTION IF EXISTS unskip_challenge(UUID, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ);
+CREATE OR REPLACE FUNCTION unskip_challenge(
+    p_couple_id UUID, 
+    p_title TEXT, 
+    p_type TEXT, 
+    p_start_date TIMESTAMPTZ, 
+    p_end_date TIMESTAMPTZ
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_deleted_count INTEGER;
+BEGIN
+    -- Touch record first for Realtime event
+    UPDATE memories SET created_at = created_at
+    WHERE couple_id = p_couple_id
+      AND type = 'challenge'
+      AND title = p_title
+      AND (metadata->>'skipped')::boolean = true
+      AND (metadata->>'challenge_type') = p_type
+      AND created_at BETWEEN p_start_date AND p_end_date;
+
+    -- Delete skipped memory
+    WITH deleted AS (
+        DELETE FROM memories
+        WHERE couple_id = p_couple_id
+          AND type = 'challenge'
+          AND title = p_title
+          AND (metadata->>'skipped')::boolean = true
+          AND (metadata->>'challenge_type') = p_type
+          AND created_at BETWEEN p_start_date AND p_end_date
+        RETURNING *
+    )
+    SELECT COUNT(*) INTO v_deleted_count FROM deleted;
+
+    -- Refund token if deleted
+    IF v_deleted_count > 0 THEN
+        UPDATE couples SET rain_check_tokens = rain_check_tokens + 1
+        WHERE id = p_couple_id;
+        RETURN TRUE;
+    END IF;
+    RETURN FALSE;
+END;
+$$;
+
+-- restore_couple: Simple restore without deleting current
+DROP FUNCTION IF EXISTS restore_couple(UUID);
+CREATE OR REPLACE FUNCTION restore_couple(target_couple_id UUID)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    current_user_id uuid;
+    couple_record record;
+BEGIN
+    current_user_id := auth.uid();
+
+    SELECT * INTO couple_record FROM couples
+    WHERE id = target_couple_id
+      AND (user_one_id = current_user_id OR user_two_id = current_user_id)
+      AND status = 'archived';
+
+    IF couple_record IS NULL THEN
+        RAISE EXCEPTION 'Archived couple not found or permission denied';
+    END IF;
+
+    UPDATE couples SET status = 'active', archived_at = NULL
+    WHERE id = target_couple_id;
+
+    UPDATE profiles SET couple_id = target_couple_id
+    WHERE id IN (couple_record.user_one_id, couple_record.user_two_id);
+END;
+$$;
+
+-- upgrade_to_premium: Mock RPC for premium upgrade
+DROP FUNCTION IF EXISTS upgrade_to_premium();
+CREATE OR REPLACE FUNCTION upgrade_to_premium()
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    UPDATE profiles SET is_premium = TRUE WHERE id = auth.uid();
+END;
+$$;
+
+-- handle_competition_points_update: Trigger to auto-award vouchers
+DROP FUNCTION IF EXISTS handle_competition_points_update();
+CREATE OR REPLACE FUNCTION handle_competition_points_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Award voucher for every 10 points crossed
+    IF FLOOR(NEW.competition_points / 10) > FLOOR(COALESCE(OLD.competition_points, 0) / 10) THEN
+        NEW.unclaimed_vouchers := COALESCE(NEW.unclaimed_vouchers, 0) + 
+            (FLOOR(NEW.competition_points / 10) - FLOOR(COALESCE(OLD.competition_points, 0) / 10));
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS on_competition_points_change ON profiles;
+CREATE TRIGGER on_competition_points_change
+    BEFORE UPDATE OF competition_points ON profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_competition_points_update();
