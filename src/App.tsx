@@ -18,6 +18,7 @@ import { GlobalModalQueueProvider } from "@/context/GlobalModalQueueContext"
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary"
 import { DebugConsole } from "@/components/debug/DebugConsole"
 import { ScrollToTop } from "@/components/ScrollToTop"
+import { DeveloperProvider } from "@/context/DeveloperContext"
 
 
 function App() {
@@ -26,35 +27,37 @@ function App() {
       <ScrollToTop />
       <GlobalErrorBoundary>
         <AuthProvider>
-          <CoupleProvider>
-            <PartnerNotesProvider>
-              <JournalProvider>
-                <CalendarProvider>
-                  <FantasyBucketListProvider>
-                    <CouponsProvider>
-                      <GameSessionProvider>
-                        <GlobalModalQueueProvider>
-                          <SexplorationModalProvider>
-                            <JournalModalProvider>
-                              <ChallengeProvider>
-                                <ChallengeModalProvider>
-                                  <NotificationListener />
-                                  {/* PERMANENT DEV TOOL - DO NOT DELETE - Mobile debug console for development */}
-                                  <DebugConsole />
-                                  <GlobalCouponListener />
-                                  <AnimatedRoutes />
-                                </ChallengeModalProvider>
-                              </ChallengeProvider>
-                            </JournalModalProvider>
-                          </SexplorationModalProvider>
-                        </GlobalModalQueueProvider>
-                      </GameSessionProvider>
-                    </CouponsProvider>
-                  </FantasyBucketListProvider>
-                </CalendarProvider>
-              </JournalProvider>
-            </PartnerNotesProvider>
-          </CoupleProvider>
+          <DeveloperProvider>
+            <CoupleProvider>
+              <PartnerNotesProvider>
+                <JournalProvider>
+                  <CalendarProvider>
+                    <FantasyBucketListProvider>
+                      <CouponsProvider>
+                        <GameSessionProvider>
+                          <GlobalModalQueueProvider>
+                            <SexplorationModalProvider>
+                              <JournalModalProvider>
+                                <ChallengeProvider>
+                                  <ChallengeModalProvider>
+                                    <NotificationListener />
+                                    {/* PERMANENT DEV TOOL - DO NOT DELETE - Mobile debug console for development */}
+                                    <DebugConsole />
+                                    <GlobalCouponListener />
+                                    <AnimatedRoutes />
+                                  </ChallengeModalProvider>
+                                </ChallengeProvider>
+                              </JournalModalProvider>
+                            </SexplorationModalProvider>
+                          </GlobalModalQueueProvider>
+                        </GameSessionProvider>
+                      </CouponsProvider>
+                    </FantasyBucketListProvider>
+                  </CalendarProvider>
+                </JournalProvider>
+              </PartnerNotesProvider>
+            </CoupleProvider>
+          </DeveloperProvider>
         </AuthProvider>
       </GlobalErrorBoundary>
     </Router>

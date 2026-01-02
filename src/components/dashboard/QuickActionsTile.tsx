@@ -2,7 +2,7 @@ import { useState, useEffect, memo } from 'react';
 import { useJournalModals } from '../../context/JournalModalContext';
 
 import { PenLine, StickyNote } from "lucide-react";
-import { PostNoteModal } from './PostNoteModal';
+import { PostNoteOverlay } from './PostNoteOverlay';
 
 const JOURNAL_PROMPTS = [
     "how you're feeling",
@@ -79,7 +79,7 @@ export const QuickActionsTile = memo(function QuickActionsTile({ onFocusChange }
                 </button>
             </div>
 
-            <PostNoteModal
+            <PostNoteOverlay
                 isOpen={isNoteModalOpen}
                 onClose={() => setIsNoteModalOpen(false)}
                 onFocusChange={onFocusChange}

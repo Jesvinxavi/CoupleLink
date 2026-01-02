@@ -6,13 +6,13 @@ import { Loader2, Send, X, StickyNote } from "lucide-react";
 import { useCoupleData } from '../../hooks/useCoupleData';
 import { usePartnerNotes } from '../../hooks/usePartnerNotes';
 
-interface PostNoteModalProps {
+interface PostNoteOverlayProps {
     isOpen: boolean;
     onClose: () => void;
     onFocusChange?: (isFocused: boolean) => void;
 }
 
-export function PostNoteModal({ isOpen, onClose, onFocusChange }: PostNoteModalProps) {
+export function PostNoteOverlay({ isOpen, onClose, onFocusChange }: PostNoteOverlayProps) {
     const { couple, partner } = useCoupleData();
     const { sendNote } = usePartnerNotes();
     const [note, setNote] = useState("");

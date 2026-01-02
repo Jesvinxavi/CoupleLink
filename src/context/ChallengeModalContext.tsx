@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { ChallengeModal } from '../components/dashboard/ChallengeModal';
+import { ChallengeOverlay } from '../components/dashboard/ChallengeOverlay';
 import { useChallenges } from '../hooks/useChallenges';
 import { useChallengePoints } from '../hooks/useChallengePoints';
 import { useCoupleData } from '../hooks/useCoupleData';
@@ -127,7 +127,7 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
 
             {/* Global Modal - persists across page navigation */}
             {selectedChallenge && challengeData?.challenge && (
-                <ChallengeModal
+                <ChallengeOverlay
                     isOpen={!!selectedChallenge}
                     onClose={handleClose}
                     challenge={challengeData.challenge}

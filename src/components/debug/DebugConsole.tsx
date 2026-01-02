@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useDeveloperSettings } from '../../context/DeveloperContext';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Trash2, ChevronUp, ChevronDown, Bug } from 'lucide-react';
@@ -94,17 +95,23 @@ export function DebugConsole() {
         }
     };
 
+    const { showDebugConsole } = useDeveloperSettings();
+
+    if (!showDebugConsole) return null;
+
     return createPortal(
         <>
             {/* Toggle Button - Always visible */}
             {!isOpen && (
-                <button
+                <motion.button
+                    drag
+                    dragMomentum={false}
+                    whileDrag={{ scale: 1.1 }}
                     onClick={() => setIsOpen(true)}
-                    className="fixed bottom-4 left-4 z-[9999] w-12 h-12 rounded-full bg-gray-900 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-                    style={{ touchAction: 'manipulation' }}
+                    className="fixed bottom-4 left-4 z-[9999] w-12 h-12 rounded-full bg-gray-900 text-white shadow-lg flex items-center justify-center active:scale-95 touch-none"
                 >
                     <Bug className="w-6 h-6" />
-                </button>
+                </motion.button>
             )}
 
             {/* Console Panel */}

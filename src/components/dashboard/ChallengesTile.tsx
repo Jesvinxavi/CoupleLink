@@ -4,7 +4,7 @@ import { motion, useAnimation } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { type ChallengeStatus } from '../../hooks/useChallenges';
 import { useChallengePoints } from '../../hooks/useChallengePoints';
-import { ChallengeModal } from './ChallengeModal';
+import { ChallengeOverlay } from './ChallengeOverlay';
 
 const container = {
     hidden: { opacity: 0 },
@@ -368,7 +368,7 @@ export function ChallengesTile({
             </motion.div>
 
             {selectedChallenge && (
-                <ChallengeModal
+                <ChallengeOverlay
                     isOpen={!!selectedChallenge}
                     onClose={handleClose}
                     challenge={selectedChallenge.data}

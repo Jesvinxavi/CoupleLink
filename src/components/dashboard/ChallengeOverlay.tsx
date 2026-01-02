@@ -22,7 +22,7 @@ interface ChallengeModalProps {
     initialSelection?: 'me' | 'partner' | 'tie'
 }
 
-export function ChallengeModal({
+export function ChallengeOverlay({
     isOpen,
     onClose,
     challenge,

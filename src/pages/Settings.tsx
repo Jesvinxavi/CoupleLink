@@ -14,6 +14,7 @@ import { ConfirmationModal } from "@/components/ui/ConfirmationModal"
 import { useCoupleData } from '@/hooks/useCoupleData';
 import { STORAGE_KEYS } from "@/lib/constants";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { useDeveloperSettings } from "@/context/DeveloperContext";
 
 
 
@@ -32,6 +33,7 @@ export default function Settings() {
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
     const [showUnpairModal, setShowUnpairModal] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const { showDebugConsole, toggleDebugConsole } = useDeveloperSettings()
 
     useEffect(() => {
         if (user) {
@@ -380,6 +382,8 @@ export default function Settings() {
                                 </CardContent>
                             </Card>
 
+
+
                             {/* Notification Settings */}
                             <NotificationSettings />
 
@@ -406,6 +410,27 @@ export default function Settings() {
                                         <Button variant="destructive" size="sm" onClick={() => setShowDeleteModal(true)} disabled={loading}>
                                             Delete
                                         </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Developer Settings</CardTitle>
+                                    <CardDescription>Tools for development and debugging</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <Label>Debug Console</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Show the on-screen debug console
+                                            </p>
+                                        </div>
+                                        <Switch
+                                            checked={showDebugConsole}
+                                            onCheckedChange={toggleDebugConsole}
+                                        />
                                     </div>
                                 </CardContent>
                             </Card>
