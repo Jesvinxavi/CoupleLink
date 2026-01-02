@@ -527,7 +527,7 @@ export function ThrowbackTile() {
                                     className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden pointer-events-auto max-h-[85vh] flex flex-col"
                                 >
                                     {/* Header Section - Always at top */}
-                                    <div className="flex items-start justify-between p-6 border-b border-gray-50 shrink-0 bg-white">
+                                    <div className="flex items-start justify-between px-6 py-3 border-b border-gray-50 shrink-0 bg-white">
                                         <div className="flex items-start gap-3">
                                             <div className="shrink-0 mt-1">
                                                 {getIcon()}
@@ -565,7 +565,7 @@ export function ThrowbackTile() {
                                             </div>
                                         )}
 
-                                        <div className={`px-6 py-3 ${item.type === 'photo' ? 'space-y-2' : 'space-y-6'}`}>
+                                        <div className={`px-6 ${item.type === 'event' ? 'pt-2 pb-5' : 'py-3'} ${item.type === 'photo' ? 'space-y-2' : 'space-y-6'}`}>
                                             {item.type === 'challenge' ? (
                                                 <>
                                                     <h3 className="text-xl font-bold text-heading-dark">
