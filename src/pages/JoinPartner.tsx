@@ -79,6 +79,10 @@ export default function JoinPartner() {
 
             // Small delay to let confetti show before redirect
             setTimeout(() => {
+                if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                }
+                window.scrollTo(0, 0);
                 navigate("/")
             }, 1000)
 

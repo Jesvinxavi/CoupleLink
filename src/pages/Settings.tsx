@@ -231,6 +231,12 @@ export default function Settings() {
 
             sessionStorage.removeItem('dismissed_restore_modal');
 
+            // Force scroll reset and blur to prevent keyboard viewport issues on mobile
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
+            window.scrollTo(0, 0);
+
             await signOut()
             navigate("/")
         } catch (error: any) {

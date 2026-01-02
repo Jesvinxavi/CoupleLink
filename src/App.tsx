@@ -17,11 +17,13 @@ import { GlobalCouponListener } from "@/components/GlobalCouponListener"
 import { GlobalModalQueueProvider } from "@/context/GlobalModalQueueContext"
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary"
 import { DebugConsole } from "@/components/debug/DebugConsole"
+import { ScrollToTop } from "@/components/ScrollToTop"
 
 
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <GlobalErrorBoundary>
         <AuthProvider>
           <CoupleProvider>
