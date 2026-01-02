@@ -104,6 +104,7 @@ export function NotificationSettings() {
     const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
     const [expandedSections, setExpandedSections] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [isProcessingToggle, setIsProcessingToggle] = useState(false);
 
     // Fetch preferences on mount
     useEffect(() => {
@@ -149,13 +150,22 @@ export function NotificationSettings() {
     }, [user]);
 
     const handleMasterToggle = async (checked: boolean) => {
+        // Prevent flash by setting processing state if we might need to subscribe
+        if (checked && !isSubscribed) {
+            setIsProcessingToggle(true);
+        }
+
         const newPrefs = { ...preferences, master_toggle: checked };
         setPreferences(newPrefs);
         await savePreferences(newPrefs);
 
         // Also manage push subscription based on master toggle
         if (checked && !isSubscribed) {
-            await subscribe();
+            try {
+                await subscribe();
+            } finally {
+                setIsProcessingToggle(false);
+            }
         } else if (!checked && isSubscribed) {
             await unsubscribe();
         }
@@ -226,7 +236,7 @@ export function NotificationSettings() {
         );
     }
 
-    if (!isSubscribed && preferences.master_toggle && !isLoading) {
+    if (!isSubscribed && preferences.master_toggle && !isLoading && !isProcessingToggle) {
         return (
             <Card>
                 <CardHeader>
