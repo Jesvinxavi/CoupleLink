@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSexplorationModals } from '@/context/SexplorationModalContext';
 import { createPortal } from 'react-dom';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -45,6 +46,25 @@ export function FantasyBucketListOverlay({
     const [isSending, setIsSending] = useState(false);
     const [activeTab, setActiveTab] = useState<'approved' | 'pending' | 'completed'>('approved');
     const [slideDirection, setSlideDirection] = useState(1);
+
+    // Seen Logic
+    const {
+        lastSeenFantasyPending,
+        lastSeenFantasyApproved,
+        lastSeenFantasyCompleted,
+        markFantasiesSeen
+    } = useSexplorationModals();
+
+    const hasUnseenPending = fantasies.some(f => f.status === 'pending' && new Date(f.created_at || 0).getTime() > lastSeenFantasyPending);
+    const hasUnseenApproved = fantasies.some(f => f.status === 'approved' && new Date(f.responded_at || f.created_at || 0).getTime() > lastSeenFantasyApproved);
+    const hasUnseenCompleted = fantasies.some(f => f.status === 'completed' && new Date(f.completed_at || 0).getTime() > lastSeenFantasyCompleted);
+
+    // Mark current tab as seen on open or change
+    useEffect(() => {
+        if (isOpen) {
+            markFantasiesSeen(activeTab);
+        }
+    }, [isOpen, activeTab]);
 
     // Mobile Viewport Logic
     const overlayRef = useRef<HTMLDivElement>(null);
@@ -261,6 +281,9 @@ export function FantasyBucketListOverlay({
                                                     {approvedCount}
                                                 </span>
                                                 <span>Approved</span>
+                                                {hasUnseenApproved && activeTab !== 'approved' && (
+                                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                                                )}
                                             </button>
                                             <button
                                                 onClick={() => handleTabChange('pending')}
@@ -273,6 +296,9 @@ export function FantasyBucketListOverlay({
                                                     {pendingCount}
                                                 </span>
                                                 <span>Pending</span>
+                                                {hasUnseenPending && activeTab !== 'pending' && (
+                                                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                                                )}
                                             </button>
                                             <button
                                                 onClick={() => handleTabChange('completed')}
@@ -285,6 +311,9 @@ export function FantasyBucketListOverlay({
                                                     {completedCount}
                                                 </span>
                                                 <span>Completed</span>
+                                                {hasUnseenCompleted && activeTab !== 'completed' && (
+                                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                                                )}
                                             </button>
                                         </div>
                                     </div>

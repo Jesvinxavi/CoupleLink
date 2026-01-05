@@ -16,7 +16,7 @@ interface PleasureCouponsTileProps {
 export function PleasureCouponsTile({ initialOpenWallet = false }: PleasureCouponsTileProps) {
     const { coupons, refreshCoupons, claimCoupon } = useCoupons();
     const { userProfile } = useCoupleContext();
-    const { openWallet, openGiftCoupon } = useSexplorationModals();
+    const { openWallet, openGiftCoupon, lastSeenCoupons } = useSexplorationModals();
 
     // Modal States
     const [showEarnedModal, setShowEarnedModal] = useState(false);
@@ -38,6 +38,12 @@ export function PleasureCouponsTile({ initialOpenWallet = false }: PleasureCoupo
     );
     const activeCount = activeCoupons.length;
     const unclaimedCoupons = (userProfile as any)?.unclaimed_vouchers || 0;
+
+    // Check for unseen vouchers (created after last viewed wallet)
+    const hasUnseenVouchers = coupons.some(c =>
+        ((c.status === 'active' || !c.status) && !c.redeemed_at) &&
+        new Date(c.created_at).getTime() > lastSeenCoupons
+    );
 
     return (
         <>
@@ -64,10 +70,9 @@ export function PleasureCouponsTile({ initialOpenWallet = false }: PleasureCoupo
                     >
                         <div className="mb-2 relative">
                             <Wallet className="w-6 h-6 text-gray-400 group-hover:text-pink-500 transition-colors" />
-                            {activeCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-pink-500"></span>
+                            {hasUnseenVouchers && (
+                                <span className="absolute -top-2 -right-2 flex h-2.5 w-2.5">
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-pink-500"></span>
                                 </span>
                             )}
                         </div>

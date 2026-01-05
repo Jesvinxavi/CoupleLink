@@ -7,10 +7,22 @@ import { Ticket } from 'lucide-react';
 import { useSexplorationModals } from '@/context/SexplorationModalContext';
 
 export function SexplorationSummaryTile() {
-    const { approvedCount, pendingCount, completedCount } = useFantasyBucketList();
+    const { openWallet, openPositions, openFantasies, lastSeenFantasyPending, lastSeenFantasyApproved, lastSeenFantasyCompleted, lastSeenCoupons } = useSexplorationModals();
+    const { approvedCount, pendingCount, completedCount, fantasies } = useFantasyBucketList();
     const { coupons } = useCoupons();
-    const { openWallet, openPositions, openFantasies } = useSexplorationModals();
     const positionOfTheWeek = getPositionOfTheWeek();
+
+    // Check for unseen items
+    const hasUnseenPending = fantasies.some(f => f.status === 'pending' && new Date(f.created_at || 0).getTime() > lastSeenFantasyPending);
+    // For approved/completed, we might want to check updated_at or completed_at
+    const hasUnseenApproved = fantasies.some(f => f.status === 'approved' && new Date(f.responded_at || f.created_at || 0).getTime() > lastSeenFantasyApproved);
+    const hasUnseenCompleted = fantasies.some(f => f.status === 'completed' && new Date(f.completed_at || 0).getTime() > lastSeenFantasyCompleted);
+
+    // For coupons (vouchers available)
+    const hasUnseenVouchers = coupons.some(c =>
+        ((c.status === 'active' || !c.status) && !c.redeemed_at) &&
+        new Date(c.created_at).getTime() > lastSeenCoupons
+    );
 
     // Count active (available) coupons
     const availableVouchers = coupons.filter(c =>
@@ -44,6 +56,9 @@ export function SexplorationSummaryTile() {
                                     <span className="text-2xl font-bold text-pink-500 dark:text-pink-400">
                                         {availableVouchers}
                                     </span>
+                                    {hasUnseenVouchers && (
+                                        <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-pink-500 rounded-full" />
+                                    )}
                                 </div>
                                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">
                                     Available
@@ -83,7 +98,9 @@ export function SexplorationSummaryTile() {
                                     <span className="text-2xl font-bold text-amber-500 dark:text-amber-400">
                                         {pendingCount}
                                     </span>
-                                    <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                                    {hasUnseenPending && (
+                                        <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                                    )}
                                 </div>
                                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">
                                     Pending
@@ -95,7 +112,9 @@ export function SexplorationSummaryTile() {
                                     <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                                         {approvedCount}
                                     </span>
-                                    <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                    {hasUnseenApproved && (
+                                        <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-green-500 rounded-full" />
+                                    )}
                                 </div>
                                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">
                                     Approved
@@ -103,9 +122,14 @@ export function SexplorationSummaryTile() {
                             </>
                         ) : completedCount > 0 ? (
                             <>
-                                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                                    {completedCount}
-                                </span>
+                                <div className="relative">
+                                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                        {completedCount}
+                                    </span>
+                                    {hasUnseenCompleted && (
+                                        <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                                    )}
+                                </div>
                                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">
                                     Completed
                                 </p>
