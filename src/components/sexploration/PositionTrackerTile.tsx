@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useSexploration } from '../../hooks/useSexploration';
 import { useSexplorationModals } from '@/context/SexplorationModalContext';
 import { positions, getPositionOfTheWeek } from '../../data/positionsData';
 import { PositionSVG } from './PositionSVG';
@@ -10,8 +9,13 @@ interface PositionTrackerTileProps {
 }
 
 export function PositionTrackerTile({ initialOpenModal = false }: PositionTrackerTileProps) {
-    const { completedPositions, togglePositionComplete, isPositionCompleted, loading } = useSexploration();
-    const { openPositions } = useSexplorationModals();
+    const {
+        openPositions,
+        completedPositions,
+        togglePositionComplete,
+        isPositionCompleted,
+        isExplorationLoading
+    } = useSexplorationModals();
 
     const positionOfTheWeek = getPositionOfTheWeek();
     const isCompleted = isPositionCompleted(positionOfTheWeek.id);
@@ -73,7 +77,7 @@ export function PositionTrackerTile({ initialOpenModal = false }: PositionTracke
                     <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={handleComplete}
-                        disabled={loading}
+                        disabled={isExplorationLoading}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${isCompleted
                             ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                             : 'bg-gradient-to-r from-rose-500 to-pink-500 text-white hover:from-rose-600 hover:to-pink-600'

@@ -23,6 +23,12 @@ interface SexplorationModalContextType {
     lastSeenFantasyCompleted: number;
     lastSeenCoupons: number;
     markFantasiesSeen: (status: 'pending' | 'approved' | 'completed') => void;
+
+    // Sexploration Data Sharing
+    completedPositions: string[];
+    togglePositionComplete: (id: string) => Promise<void>;
+    isPositionCompleted: (id: string) => boolean;
+    isExplorationLoading: boolean;
 }
 
 const SexplorationModalContext = createContext<SexplorationModalContextType | null>(null);
@@ -104,7 +110,7 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
     };
 
     // Data for modals
-    const { isPositionCompleted, togglePositionComplete } = useSexploration();
+    const { isPositionCompleted, togglePositionComplete, completedPositions, loading: explorationLoading } = useSexploration();
     const {
         fantasies,
         pendingCount,
@@ -167,7 +173,11 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
             lastSeenFantasyApproved,
             lastSeenFantasyCompleted,
             lastSeenCoupons,
-            markFantasiesSeen
+            markFantasiesSeen,
+            completedPositions,
+            togglePositionComplete,
+            isPositionCompleted,
+            isExplorationLoading: explorationLoading
         }}>
             {children}
 
