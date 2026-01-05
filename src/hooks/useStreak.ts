@@ -82,10 +82,18 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
         }
 
         if (currentTokens > prevTokensRef.current) {
+            console.log('[useStreak] Tokens increased:', {
+                current: currentTokens,
+                prev: prevTokensRef.current,
+                lastSeen,
+                isRefunding: isRefundingRef.current
+            });
+
             if (!isRefundingRef.current) {
-                if (currentTokens > lastSeen) {
-                    enqueueModal('raincheck');
-                }
+                console.log('[useStreak] Enqueueing Rain Check modal');
+                enqueueModal('raincheck');
+            } else {
+                console.log('[useStreak] Token increase ignored due to refund state');
             }
         }
 
@@ -109,6 +117,25 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
             }
         }
     };
+
+    // Self-healing: If currents tokens are LESS than last seen (e.g. spent tokens), 
+    // update last_seen silently so the NEXT earn counts as an increase.
+    useEffect(() => {
+        if (!couple || !userProfile || !enableTokenCheck) return;
+        const currentTokens = couple.rain_check_tokens || 0;
+        const lastSeen = userProfile.last_seen_rain_check_tokens || 0;
+
+        if (currentTokens < lastSeen) {
+            console.log('[useStreak] Current tokens < last seen. Syncing baseline.', { currentTokens, lastSeen });
+            supabase
+                .from('profiles')
+                .update({ last_seen_rain_check_tokens: currentTokens } as any)
+                .eq('id', userProfile.id)
+                .then(({ error }) => {
+                    if (error) console.error('[useStreak] Failed to silent-sync last_seen', error);
+                });
+        }
+    }, [couple?.rain_check_tokens, userProfile?.last_seen_rain_check_tokens, userProfile?.id]);
 
     const handleCloseStreakBroken = () => {
         ackModal('streak_broken');
