@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '../ui/input';
 
 import { Textarea } from '../ui/textarea';
-import { Plus, Image as ImageIcon, Folder, FolderPlus, ChevronLeft, Trash2, Pencil } from 'lucide-react';
+import { Plus, Image as ImageIcon, Folder, FolderPlus, ChevronLeft, Trash2, Pencil, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
@@ -386,6 +386,13 @@ export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
                                             className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors text-red-500"
                                         >
                                             <Trash2 className="w-4 h-4" />
+                                        </button>
+                                        <div className="h-3 w-px bg-gray-300 dark:bg-gray-600 shrink-0" />
+                                        <button
+                                            onClick={() => setSelectedMoment(null)}
+                                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-700 dark:text-gray-200"
+                                        >
+                                            <X className="w-4 h-4" />
                                         </button>
                                     </motion.div>
 

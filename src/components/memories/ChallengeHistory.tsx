@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Calendar, User, Heart, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, User, Heart, Trophy, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCoupleData } from '../../hooks/useCoupleData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -52,25 +53,39 @@ const ChallengeCarousel = ({ items, onOpenDetails }: { items: HistoryItem[], onO
                 <div className="transition-all duration-300 ease-in-out">
                     <HistoryCard
                         item={currentItem}
-                        onNext={items.length > 1 ? next : undefined}
-                        onPrev={items.length > 1 ? prev : undefined}
                         onClick={() => onOpenDetails(currentItem)}
                     />
                 </div>
             </div>
 
-            {/* Dots */}
+            {/* Navigation & Dots */}
             {items.length > 1 && (
-                <div className="flex justify-center gap-1.5 mt-4">
-                    {items.map((_, idx) => (
-                        <div
-                            key={idx}
-                            className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentIndex
-                                ? 'bg-rose-500'
-                                : 'bg-gray-300 dark:bg-gray-700'
-                                }`}
-                        />
-                    ))}
+                <div className="flex items-center justify-center gap-3 mt-2">
+                    <button
+                        onClick={prev}
+                        className="p-1 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                    </button>
+
+                    <div className="flex justify-center gap-1.5">
+                        {items.map((_, idx) => (
+                            <div
+                                key={idx}
+                                className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentIndex
+                                    ? 'bg-rose-500'
+                                    : 'bg-gray-300 dark:bg-gray-700'
+                                    }`}
+                            />
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={next}
+                        className="p-1 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"
+                    >
+                        <ChevronRight className="w-5 h-5" />
+                    </button>
                 </div>
             )}
 
@@ -84,13 +99,13 @@ const ChallengeCarousel = ({ items, onOpenDetails }: { items: HistoryItem[], onO
     );
 };
 
-const HistoryCard = ({ item, onNext, onPrev, onClick }: { item: HistoryItem; onNext?: (e: React.MouseEvent) => void; onPrev?: (e: React.MouseEvent) => void; onClick?: () => void }) => {
+const HistoryCard = ({ item, onClick }: { item: HistoryItem; onClick?: () => void }) => {
     return (
         <Card
             onClick={onClick}
             className={`overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow h-full w-full ${onClick ? 'cursor-pointer' : ''}`}
         >
-            <CardHeader className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 pb-4">
+            <CardHeader className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 p-4">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3 mb-2">
                         <span className={`text-xs font-medium px-2 py-1 rounded-full capitalize
@@ -105,24 +120,6 @@ const HistoryCard = ({ item, onNext, onPrev, onClick }: { item: HistoryItem; onN
                             })}
                         </div>
                     </div>
-
-                    {/* Navigation Arrows */}
-                    {onNext && onPrev && (
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={onPrev}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                                <ChevronLeft className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={onNext}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                                <ChevronRight className="w-5 h-5" />
-                            </button>
-                        </div>
-                    )}
                 </div>
                 <CardTitle className="text-lg font-medium text-gray-900 dark:text-white">
                     {item.title}
@@ -181,6 +178,37 @@ export function ChallengeHistory() {
     const [groupedHistory, setGroupedHistory] = useState<GroupedHistory>({});
     const [loading, setLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
+    const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [expandedYears, setExpandedYears] = useState<string[]>([]);
+
+    const sortedMonths = Object.keys(groupedHistory).sort((a, b) =>
+        new Date(b).getTime() - new Date(a).getTime()
+    );
+
+    // Group months by year
+    const monthsByYear = sortedMonths.reduce((acc, monthYear) => {
+        const year = monthYear.split(' ')[1];
+        if (!acc[year]) acc[year] = [];
+        acc[year].push(monthYear);
+        return acc;
+    }, {} as Record<string, string[]>);
+
+    const sortedYears = Object.keys(monthsByYear).sort((a, b) => Number(b) - Number(a));
+
+    useEffect(() => {
+        if (sortedYears.length > 0) {
+            // Default to expanding the current year (first one)
+            setExpandedYears([sortedYears[0]]);
+        }
+    }, [sortedYears.length]);
+
+    const toggleYear = (year: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setExpandedYears(prev =>
+            prev.includes(year) ? [] : [year]
+        );
+    };
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -368,73 +396,197 @@ export function ChallengeHistory() {
 
     return (
         <div className="space-y-6">
-            {Object.entries(groupedHistory).map(([monthYear, categories]) => (
-                <div key={monthYear} className="space-y-6 bg-gray-50 dark:bg-gray-800 rounded-2xl p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                        {monthYear}
-                    </h2>
+            {/* Month Navigation & Display */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 min-h-[600px]">
+                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
+                    <div className="relative">
+                        <h2
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer transition-colors select-none"
+                        >
+                            {sortedMonths[currentMonthIndex]}
+                            <motion.div
+                                animate={{ rotate: isDropdownOpen ? 180 : 0 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <ChevronDown className="w-6 h-6 text-gray-400" />
+                            </motion.div>
+                        </h2>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-y-0 lg:gap-8">
-                        {/* Challenges Section */}
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                                <Trophy className="w-5 h-5 text-amber-500" />
-                                Challenges
-                            </h3>
+                        {/* Dropdown Menu */}
+                        <AnimatePresence>
+                            {isDropdownOpen && (
+                                <>
+                                    {/* Backdrop for clicking outside */}
+                                    <div
+                                        className="fixed inset-0 z-30"
+                                        onClick={() => setIsDropdownOpen(false)}
+                                    />
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0, y: -10 }}
+                                        animate={{ opacity: 1, height: 'auto', y: 0 }}
+                                        exit={{ opacity: 0, height: 0, y: -10 }}
+                                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                                        className="absolute top-full left-0 mt-2 z-40 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 overflow-hidden min-w-[180px]"
+                                    >
+                                        <div className="max-h-[400px] overflow-y-auto">
+                                            {sortedYears.map((year) => {
+                                                const isExpanded = expandedYears.includes(year);
+                                                return (
+                                                    <div key={year}>
+                                                        <div
+                                                            onClick={(e) => toggleYear(year, e)}
+                                                            className={`px-4 py-2 flex items-center justify-between cursor-pointer transition-colors
+                                                                ${isExpanded
+                                                                    ? 'bg-rose-500 text-white'
+                                                                    : 'text-gray-900 dark:text-white active:bg-gray-50 dark:active:bg-gray-600/50 md:hover:bg-gray-50 md:dark:hover:bg-gray-600/50'
+                                                                }
+                                                            `}
+                                                        >
+                                                            <span className="text-sm font-bold">{year}</span>
+                                                            {isExpanded ?
+                                                                <ChevronUp className="w-4 h-4 text-white" /> :
+                                                                <ChevronDown className="w-4 h-4 text-gray-400" />
+                                                            }
+                                                        </div>
 
-                            <Tabs defaultValue="daily" className="w-full">
-                                <TabsList className="grid w-full grid-cols-3 mb-4">
-                                    <TabsTrigger value="daily">Daily</TabsTrigger>
-                                    <TabsTrigger value="weekly">Weekly</TabsTrigger>
-                                    <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                                </TabsList>
+                                                        <AnimatePresence>
+                                                            {isExpanded && (
+                                                                <motion.div
+                                                                    initial={{ height: 0, opacity: 0 }}
+                                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                                    exit={{ height: 0, opacity: 0 }}
+                                                                    className="overflow-hidden bg-gray-50 dark:bg-gray-800/50"
+                                                                >
+                                                                    {monthsByYear[year].map((month) => {
+                                                                        const globalIdx = sortedMonths.indexOf(month);
+                                                                        const isSelected = currentMonthIndex === globalIdx;
 
-                                <TabsContent value="daily" className="space-y-4">
-                                    {categories.daily.length > 0 ? (
-                                        <ChallengeCarousel items={categories.daily} onOpenDetails={setSelectedItem} />
-                                    ) : (
-                                        <p className="text-center text-gray-500 py-8">No daily challenges completed this month.</p>
-                                    )}
-                                </TabsContent>
-
-                                <TabsContent value="weekly" className="space-y-4">
-                                    {categories.weekly.length > 0 ? (
-                                        <ChallengeCarousel items={categories.weekly} onOpenDetails={setSelectedItem} />
-                                    ) : (
-                                        <p className="text-center text-gray-500 py-8">No weekly challenges completed this month.</p>
-                                    )}
-                                </TabsContent>
-
-                                <TabsContent value="monthly" className="space-y-4">
-                                    {categories.monthly.length > 0 ? (
-                                        <div className="grid gap-4">
-                                            {categories.monthly.map(item => (
-                                                <HistoryCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
-                                            ))}
+                                                                        return (
+                                                                            <button
+                                                                                key={month}
+                                                                                onClick={() => {
+                                                                                    setCurrentMonthIndex(globalIdx);
+                                                                                    setIsDropdownOpen(false);
+                                                                                }}
+                                                                                className={`w-full text-left px-4 py-2 text-sm transition-colors pl-6
+                                                                                    ${isSelected
+                                                                                        ? 'font-bold text-gray-900 dark:text-white bg-rose-50 dark:bg-rose-900/20'
+                                                                                        : 'text-gray-700 dark:text-gray-200 active:bg-gray-100 dark:active:bg-gray-700/50 md:hover:bg-gray-100 md:dark:hover:bg-gray-700/50'
+                                                                                    }
+                                                                                `}
+                                                                            >
+                                                                                {month.split(' ')[0]} {/* Show only month name inside year group */}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    ) : (
-                                        <p className="text-center text-gray-500 py-8">No monthly challenges completed this month.</p>
-                                    )}
-                                </TabsContent>
-                            </Tabs>
-                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
-                        {/* Sexploration History Section */}
-                        <div className="h-full">
-                            <SexplorationHistorySection monthYear={monthYear} />
-                        </div>
+                    {/* Navigation Arrows */}
+                    <div className="flex items-center gap-1 bg-white dark:bg-gray-700 rounded-lg p-1 border border-gray-200 dark:border-gray-600">
+                        <button
+                            onClick={() => setCurrentMonthIndex(prev => Math.min(prev + 1, sortedMonths.length - 1))}
+                            disabled={currentMonthIndex >= sortedMonths.length - 1}
+                            className="p-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md transition-colors"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <div className="w-px h-4 bg-gray-200 dark:bg-gray-600" />
+                        <button
+                            onClick={() => setCurrentMonthIndex(prev => Math.max(prev - 1, 0))}
+                            disabled={currentMonthIndex <= 0}
+                            className="p-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md transition-colors"
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
-            ))}
+
+                {(() => {
+                    const monthYear = sortedMonths[currentMonthIndex];
+                    const categories = groupedHistory[monthYear];
+
+                    if (!categories) return null;
+
+                    return (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-y-2 lg:gap-8">
+                            {/* Challenges Section */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <Trophy className="w-5 h-5 text-amber-500" />
+                                    Challenges
+                                </h3>
+
+                                <Tabs defaultValue="daily" className="w-full">
+                                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                                        <TabsTrigger value="daily" className="text-xs sm:text-sm data-[state=active]:text-rose-500 dark:data-[state=active]:text-rose-400">Daily</TabsTrigger>
+                                        <TabsTrigger value="weekly" className="text-xs sm:text-sm data-[state=active]:text-rose-500 dark:data-[state=active]:text-rose-400">Weekly</TabsTrigger>
+                                        <TabsTrigger value="monthly" className="text-xs sm:text-sm data-[state=active]:text-rose-500 dark:data-[state=active]:text-rose-400">Monthly</TabsTrigger>
+                                    </TabsList>
+
+                                    <TabsContent value="daily" className="space-y-4">
+                                        {categories.daily.length > 0 ? (
+                                            <ChallengeCarousel items={categories.daily} onOpenDetails={setSelectedItem} />
+                                        ) : (
+                                            <p className="text-center text-gray-500 py-8">No daily challenges completed this month.</p>
+                                        )}
+                                    </TabsContent>
+
+                                    <TabsContent value="weekly" className="space-y-4">
+                                        {categories.weekly.length > 0 ? (
+                                            <ChallengeCarousel items={categories.weekly} onOpenDetails={setSelectedItem} />
+                                        ) : (
+                                            <p className="text-center text-gray-500 py-8">No weekly challenges completed this month.</p>
+                                        )}
+                                    </TabsContent>
+
+                                    <TabsContent value="monthly" className="space-y-4">
+                                        {categories.monthly.length > 0 ? (
+                                            <div className="grid gap-4">
+                                                {categories.monthly.map(item => (
+                                                    <HistoryCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-center text-gray-500 py-8">No monthly challenges completed this month.</p>
+                                        )}
+                                    </TabsContent>
+                                </Tabs>
+                            </div>
+
+                            {/* Sexploration History Section */}
+                            <div className="h-full">
+                                <SexplorationHistorySection monthYear={monthYear} />
+                            </div>
+                        </div>
+                    );
+                })()}
+            </div>
 
             {/* Challenge Details Modal */}
             <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-                <DialogContent className="w-[90%] sm:max-w-lg rounded-xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[90%] sm:max-w-lg rounded-xl max-h-[90vh] overflow-y-auto p-4 gap-0">
                     <DialogHeader className="text-left space-y-0">
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                            <Calendar className="w-4 h-4" />
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize shrink-0
+                                ${selectedItem?.type === 'question' ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'}
+                            `}>
+                                {selectedItem?.type}
+                            </span>
+                            <Calendar className="w-3.5 h-3.5" />
                             {selectedItem && new Date(selectedItem.date).toLocaleDateString(undefined, {
-                                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                                year: 'numeric', month: 'long', day: 'numeric'
                             })}
                         </div>
                         <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white mb-1">
