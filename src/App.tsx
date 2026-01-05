@@ -21,6 +21,7 @@ import { ScrollToTop } from "@/components/ScrollToTop"
 import { DeveloperProvider } from "@/context/DeveloperContext"
 
 
+// Main App component
 function App() {
   return (
     <Router>

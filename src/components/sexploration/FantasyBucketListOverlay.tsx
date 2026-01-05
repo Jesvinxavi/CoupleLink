@@ -235,7 +235,7 @@ export function FantasyBucketListOverlay({
                                     </div>
 
                                     {/* Tabs Section - Pink (matches body) */}
-                                    <div className="px-6 pt-6 pb-2 bg-rose-50 dark:bg-gray-900 flex justify-center">
+                                    <div className="px-6 pt-3 pb-1 bg-rose-50 dark:bg-gray-900 flex justify-center">
                                         <div className="relative flex bg-gray-100 dark:bg-gray-700 rounded-full p-1 w-fit min-w-[280px]">
                                             {/* Sliding background */}
                                             <motion.div
@@ -296,7 +296,7 @@ export function FantasyBucketListOverlay({
                                     style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}
                                     onTouchMove={(e) => e.stopPropagation()}
                                 >
-                                    <div className="p-6 pb-20">
+                                    <div className="p-6 pb-6">
                                         <AnimatePresence mode="popLayout" initial={false} custom={slideDirection}>
                                             <motion.div
                                                 key={activeTab}
@@ -312,7 +312,7 @@ export function FantasyBucketListOverlay({
                                                         <Loader2 className="w-8 h-8 text-rose-400 animate-spin" />
                                                     </div>
                                                 ) : filteredFantasies.length === 0 ? (
-                                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                                    <div className="flex flex-col items-center justify-center pt-0 pb-0 text-center">
                                                         <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">
                                                             {activeTab === 'pending' ? 'lightbulb' : activeTab === 'approved' ? 'check_circle' : 'task_alt'}
                                                         </span>
@@ -328,34 +328,36 @@ export function FantasyBucketListOverlay({
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    filteredFantasies.map((fantasy, index) => (
-                                                        <motion.button
-                                                            key={fantasy.id}
-                                                            initial={index === 0 && fantasy.id.startsWith('temp-') ? { opacity: 0, y: -20 } : false}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            onClick={() => setSelectedFantasy(fantasy)}
-                                                            className={`w-full text-left p-4 rounded-2xl transition-all shadow-sm ${fantasy.status === 'approved'
-                                                                ? 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800'
-                                                                : fantasy.status === 'completed'
-                                                                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800'
-                                                                    : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800'
-                                                                }`}
-                                                        >
-                                                            <div className="flex items-start justify-between gap-2">
-                                                                <div className="flex-1">
-                                                                    <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-medium">
-                                                                        {fantasy.fantasy_text}
-                                                                    </p>
-                                                                    <p className="text-xs text-gray-400 mt-1">
-                                                                        {fantasy.status === 'approved' || fantasy.status === 'completed' ? 'Suggested by' : 'Requested by'} {fantasy.requester_name}
-                                                                    </p>
+                                                    <div className="space-y-3">
+                                                        {filteredFantasies.map((fantasy, index) => (
+                                                            <motion.button
+                                                                key={fantasy.id}
+                                                                initial={index === 0 && fantasy.id.startsWith('temp-') ? { opacity: 0, y: -20 } : false}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                onClick={() => setSelectedFantasy(fantasy)}
+                                                                className={`w-full text-left p-4 rounded-2xl transition-all shadow-sm ${fantasy.status === 'approved'
+                                                                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800'
+                                                                    : fantasy.status === 'completed'
+                                                                        ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800'
+                                                                        : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <div className="flex-1">
+                                                                        <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-medium">
+                                                                            {fantasy.fantasy_text}
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-400 mt-1">
+                                                                            {fantasy.status === 'approved' || fantasy.status === 'completed' ? 'Suggested by' : 'Requested by'} {fantasy.requester_name}
+                                                                        </p>
+                                                                    </div>
+                                                                    <span className="material-symbols-outlined text-lg text-gray-300">
+                                                                        arrow_forward_ios
+                                                                    </span>
                                                                 </div>
-                                                                <span className="material-symbols-outlined text-lg text-gray-300">
-                                                                    arrow_forward_ios
-                                                                </span>
-                                                            </div>
-                                                        </motion.button>
-                                                    ))
+                                                            </motion.button>
+                                                        ))}
+                                                    </div>
                                                 )}
                                             </motion.div>
                                         </AnimatePresence>

@@ -30,7 +30,7 @@ export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucke
             whileHover={{ scale: 1.01 }}
         >
             {/* Header */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-6">
                 <span className="material-symbols-outlined text-lg text-pink-500 bg-pink-100 dark:bg-pink-900/30 w-8 h-8 flex items-center justify-center rounded-xl">
                     auto_awesome
                 </span>
@@ -40,7 +40,7 @@ export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucke
             </div>
 
             {/* Stats with filled circle counters - compressed */}
-            <div className="flex gap-3 items-center justify-center mb-2 px-2">
+            <div className="flex gap-3 items-center justify-center mb-6 px-2">
                 <div className="flex items-center gap-1">
                     <span className="w-6 h-6 rounded-full bg-green-500 text-white text-[12px] font-bold flex items-center justify-center">
                         {loading ? '—' : approvedCount}
