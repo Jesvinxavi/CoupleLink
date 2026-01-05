@@ -22,7 +22,7 @@ const CATEGORIES = [
     {
         key: 'dailyChallenges' as const,
         label: 'Daily Challenges',
-        icon: 'local_fire_department',
+        icon: 'trophy',
         color: 'from-orange-400 to-orange-500',
         bgColor: 'bg-orange-50 dark:bg-orange-900/20',
         textColor: 'text-orange-500',
@@ -33,7 +33,7 @@ const CATEGORIES = [
     {
         key: 'weeklyChallenges' as const,
         label: 'Weekly Challenges',
-        icon: 'calendar_view_week',
+        icon: 'trophy',
         color: 'from-blue-400 to-blue-500',
         bgColor: 'bg-blue-50 dark:bg-blue-900/20',
         textColor: 'text-blue-500',
@@ -44,7 +44,7 @@ const CATEGORIES = [
     {
         key: 'monthlyChallenges' as const,
         label: 'Monthly Challenges',
-        icon: 'calendar_month',
+        icon: 'trophy',
         color: 'from-purple-400 to-purple-500',
         bgColor: 'bg-purple-50 dark:bg-purple-900/20',
         textColor: 'text-purple-500',
