@@ -19,10 +19,17 @@ export interface PoolStatus {
     monthly: PoolStatusItem;
 }
 
+export interface SeenBefore {
+    daily: boolean;
+    weekly: boolean;
+    monthly: boolean;
+}
+
 export interface ChallengeState {
     daily: Challenge | null;
     weekly: Challenge | null;
     monthly: Challenge | null;
+    seenBefore: SeenBefore;
     dailyTimeLeft: string;
     weeklyTimeLeft: string;
     monthlyTimeLeft: string;
@@ -91,6 +98,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
     const [isCompleting, setIsCompleting] = useState(false);
     const [isUndoing, setIsUndoing] = useState(false);
     const [poolStatus, setPoolStatus] = useState<PoolStatus | null>(null);
+    const [seenBefore, setSeenBefore] = useState<SeenBefore>({ daily: false, weekly: false, monthly: false });
 
     const [winnerAgreement, setWinnerAgreement] = useState<{
         daily: 'agreed' | 'disagreed' | 'pending' | 'none';
@@ -169,6 +177,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         category: d.category,
                         isCompetition: d.content?.isCompetition || false
                     });
+                    setSeenBefore(prev => ({ ...prev, daily: dailyRes.data.seenBefore || false }));
                 }
 
                 if (weeklyRes.data && weeklyRes.data.success) {
@@ -182,6 +191,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         category: w.category,
                         isCompetition: w.content?.isCompetition || false
                     });
+                    setSeenBefore(prev => ({ ...prev, weekly: weeklyRes.data.seenBefore || false }));
                 }
 
                 if (monthlyRes.data && monthlyRes.data.success) {
@@ -195,6 +205,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         category: m.category,
                         isCompetition: m.content?.isCompetition || false
                     });
+                    setSeenBefore(prev => ({ ...prev, monthly: monthlyRes.data.seenBefore || false }));
                 }
 
                 // Fetch pool status for "all shown" UI
@@ -908,7 +919,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         markChallengeConfettiSeen,
         couple, refreshCoupleData,
         loadingChallenges,
-        poolStatus, resetCycle,
+        poolStatus, resetCycle, seenBefore,
         isCompleting, isUndoing
     };
 

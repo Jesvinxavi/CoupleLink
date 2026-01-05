@@ -106,7 +106,8 @@ ALTER TABLE public.couples
     ADD COLUMN IF NOT EXISTS spicy_mode BOOLEAN DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS previous_streak INTEGER DEFAULT 0,
     ADD COLUMN IF NOT EXISTS rain_check_tokens INTEGER DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS total_love_points INTEGER DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS total_love_points INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS challenge_resets JSONB DEFAULT '{}'::jsonb;
 
 -- Profiles Table Additions
 ALTER TABLE public.profiles

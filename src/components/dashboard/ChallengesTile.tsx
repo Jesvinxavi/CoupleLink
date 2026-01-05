@@ -39,6 +39,7 @@ interface ChallengesTileProps {
     userProfile: any;
     poolStatus: PoolStatus | null;
     resetCycle: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
+    seenBefore: { daily: boolean; weekly: boolean; monthly: boolean };
     /**
      * When true, the internal grid will run its "hidden -> show" stagger animation.
      * When false, the grid will stay in "hidden" state (useful when the page is still behind a spinner).
@@ -58,6 +59,7 @@ function ChallengeFrequencyCard({
     agreement,
     onOpen,
     allShown,
+    seenBefore,
     onReset,
     onUpgrade
 }: {
@@ -72,6 +74,7 @@ function ChallengeFrequencyCard({
     agreement: 'agreed' | 'disagreed' | 'pending' | 'none';
     onOpen: (t: ChallengeFrequency) => void;
     allShown?: boolean;
+    seenBefore?: boolean;
     onReset?: () => void;
     onUpgrade?: () => void;
 }) {
@@ -126,7 +129,7 @@ function ChallengeFrequencyCard({
                     <span className="text-xs font-bold uppercase tracking-wider mb-1 text-gray-400">{title}</span>
                     <p className="text-xs text-gray-400">Loading...</p>
                 </div>
-            ) : allShown ? (
+            ) : (allShown && seenBefore) ? (
                 <div className="flex flex-col h-full items-center justify-center text-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-purple-600">{title}</span>
                     <p className="text-xs text-purple-600 mb-2">All challenges explored!</p>
@@ -227,6 +230,7 @@ export function ChallengesTile({
     userProfile,
     poolStatus,
     resetCycle,
+    seenBefore,
     animateIn = true
 }: ChallengesTileProps) {
 
@@ -375,6 +379,7 @@ export function ChallengesTile({
                     agreement={winnerAgreement.daily}
                     onOpen={handleOpen}
                     allShown={poolStatus?.daily?.allShown}
+                    seenBefore={seenBefore.daily}
                     onReset={() => resetCycle('daily')}
                     onUpgrade={() => setShowPaywall(true)}
                 />
@@ -390,6 +395,7 @@ export function ChallengesTile({
                     agreement={winnerAgreement.weekly}
                     onOpen={handleOpen}
                     allShown={poolStatus?.weekly?.allShown}
+                    seenBefore={seenBefore.weekly}
                     onReset={() => resetCycle('weekly')}
                     onUpgrade={() => setShowPaywall(true)}
                 />
@@ -405,6 +411,7 @@ export function ChallengesTile({
                     agreement={winnerAgreement.monthly}
                     onOpen={handleOpen}
                     allShown={poolStatus?.monthly?.allShown}
+                    seenBefore={seenBefore.monthly}
                     onReset={() => resetCycle('monthly')}
                     onUpgrade={() => setShowPaywall(true)}
                 />
