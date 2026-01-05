@@ -50,3 +50,22 @@ export const getDateRange = (type: 'daily' | 'weekly' | 'monthly') => {
     }
     return { start: start.toISOString(), end: end.toISOString() };
 };
+
+/**
+ * Generate a period key for challenge_history tracking
+ * Daily: "2026-01-05", Weekly: "2026-W01", Monthly: "2026-01"
+ */
+export function getPeriodKey(type: 'daily' | 'weekly' | 'monthly' | 'question', date: Date = new Date()): string {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+
+    if (type === 'daily' || type === 'question') {
+        return `${year}-${month}-${day}`;
+    } else if (type === 'weekly') {
+        const week = String(getWeekNumber(date)).padStart(2, '0');
+        return `${year}-W${week}`;
+    } else {
+        return `${year}-${month}`;
+    }
+}

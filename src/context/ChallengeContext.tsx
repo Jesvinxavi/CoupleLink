@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useCoupleData } from '../hooks/useCoupleData';
 import type { Challenge } from '../types/challenge';
-import { formatTime, getWeekNumber, getDateRange } from '../utils/dateUtils';
+import { formatTime, getWeekNumber, getDateRange, getPeriodKey } from '../utils/dateUtils';
 
 export type ChallengeStatus = 'locked' | 'active' | 'completed' | 'skipped' | 'waiting_for_partner' | 'pending_agreement';
 
@@ -190,18 +190,31 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         fetchChallenges();
     }, [couple, currentUser]);
 
-    // Seen Count Logic
+    // Run backfill and expiry check on mount
+    useEffect(() => {
+        if (!couple?.id) return;
+
+        import('../utils/challengeHistory').then(({ checkExpiredChallenges, backfillChallengeHistoryFromMemories }) => {
+            // Backfill historical data if needed
+            backfillChallengeHistoryFromMemories(couple.id);
+            // Check for expired challenges
+            checkExpiredChallenges(couple.id);
+        });
+    }, [couple?.id]);
+
+    // Seen Count Logic + Challenge History Tracking
     const seenUpdateRef = useRef<{ daily: string | null, weekly: string | null, monthly: string | null }>({ daily: null, weekly: null, monthly: null });
 
     useEffect(() => {
-        if (!couple || !couple.challenge_stats) return;
+        if (!couple) return;
 
         const updateSeen = async () => {
             const stats = (couple.challenge_stats as any) || {};
             const updates: any = {};
             let needsUpdate = false;
+            const historyInserts: Array<{ couple_id: string; challenge_type: string; activity_id: string; period_key: string }> = [];
 
-            const checkType = (type: 'daily' | 'weekly' | 'monthly', currentChallenge: Challenge | null, seedDateStr: string) => {
+            const checkType = async (type: 'daily' | 'weekly' | 'monthly', currentChallenge: Challenge | null, seedDateStr: string) => {
                 if (!currentChallenge) return;
 
                 if (seenUpdateRef.current[type] === seedDateStr) return;
@@ -232,16 +245,34 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                     };
                     needsUpdate = true;
                     seenUpdateRef.current[type] = seedDateStr;
+
+                    // Queue for challenge_history tracking
+                    historyInserts.push({
+                        couple_id: couple.id,
+                        challenge_type: type,
+                        activity_id: currentChallenge.id,
+                        period_key: getPeriodKey(type, now)
+                    });
                 }
             };
 
-            checkType('daily', daily, new Date().toDateString());
-            checkType('weekly', weekly, `W${getWeekNumber(new Date())} `);
-            checkType('monthly', monthly, `M${new Date().getMonth()} `);
+            await checkType('daily', daily, new Date().toDateString());
+            await checkType('weekly', weekly, `W${getWeekNumber(new Date())} `);
+            await checkType('monthly', monthly, `M${new Date().getMonth()} `);
 
+            // Update legacy challenge_stats (for backwards compatibility)
             if (needsUpdate) {
                 const newStats = { ...stats, ...updates };
                 await supabase.from('couples').update({ challenge_stats: newStats }).eq('id', couple.id);
+            }
+
+            // Insert into challenge_history (upsert to handle conflicts)
+            if (historyInserts.length > 0) {
+                for (const insert of historyInserts) {
+                    await supabase
+                        .from('challenge_history')
+                        .upsert(insert, { onConflict: 'couple_id,challenge_type,period_key', ignoreDuplicates: true });
+                }
             }
         };
 
@@ -627,6 +658,19 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                             payload: { type: type, action: 'complete', timestamp: Date.now() }
                         });
                     }
+
+                    // Update challenge_history to mark as completed
+                    const periodKey = getPeriodKey(type, new Date());
+                    await supabase
+                        .from('challenge_history')
+                        .upsert({
+                            couple_id: couple.id,
+                            challenge_type: type,
+                            activity_id: challenge.id,
+                            period_key: periodKey,
+                            status: 'completed',
+                            completed_at: new Date().toISOString()
+                        }, { onConflict: 'couple_id,challenge_type,period_key' });
 
                     // Immediately check partner status in case we missed an event
                     checkPartnerCompletion();

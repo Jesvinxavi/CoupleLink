@@ -76,6 +76,25 @@ CREATE TABLE IF NOT EXISTS public.coupons (
     template_id UUID REFERENCES public.coupon_templates(id) ON DELETE SET NULL
 );
 
+-- Challenge History (Tracks shown/completed/expired challenges)
+CREATE TABLE IF NOT EXISTS public.challenge_history (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    couple_id UUID NOT NULL REFERENCES public.couples(id) ON DELETE CASCADE,
+    challenge_type TEXT NOT NULL CHECK (challenge_type IN ('daily', 'weekly', 'monthly', 'question')),
+    activity_id UUID REFERENCES public.activities(id) ON DELETE SET NULL,
+    period_key TEXT NOT NULL, -- e.g., '2026-01-05' for daily, '2026-W01' for weekly
+    status TEXT DEFAULT 'shown' CHECK (status IN ('shown', 'completed', 'expired')),
+    shown_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(couple_id, challenge_type, period_key)
+);
+
+-- Index for efficient querying
+CREATE INDEX IF NOT EXISTS idx_challenge_history_couple_type ON public.challenge_history(couple_id, challenge_type);
+CREATE INDEX IF NOT EXISTS idx_challenge_history_status ON public.challenge_history(status);
+
+
 -- 2. ALTERATIONS to Existing Core Tables
 
 -- Couples Table Additions

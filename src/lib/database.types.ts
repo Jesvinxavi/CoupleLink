@@ -798,7 +798,7 @@ export type Database = {
       }
       add_love_action_points: {
         Args: { p_couple_id: string; p_points: number }
-        Returns: undefined
+        Returns: Json
       }
       add_monthly_rain_check: { Args: never; Returns: undefined }
       calculate_streak: {
@@ -857,6 +857,10 @@ export type Database = {
       }
       initialize_notification_preferences: { Args: never; Returns: undefined }
       join_couple: { Args: { invite_code_input: string }; Returns: Json }
+      refund_rain_check_token: {
+        Args: { p_couple_id: string }
+        Returns: boolean
+      }
       reset_profile: { Args: never; Returns: undefined }
       restore_archived_and_delete_current: {
         Args: { archived_id: string }

@@ -93,7 +93,7 @@ export function useRelationshipStats() {
             // Questions (User Answers)
             const { data: userAnswers, error: answersError } = await supabase
                 .from('user_answers')
-                .select('activity_id, created_at')
+                .select('activity_id, created_at, user_id')
                 .eq('couple_id', couple.id)
 
             if (answersError) throw answersError
@@ -227,50 +227,80 @@ export function useRelationshipStats() {
                 }
             });
 
-            // Use challenge_stats from couple record for "Possible" counts
-            const challengeStats = (couple as any).challenge_stats || { daily: { count: 0 }, weekly: { count: 0 }, monthly: { count: 0 } }
+            // Fetch challenge_history data for accurate "possible" counts
+            const { data: challengeHistory } = await supabase
+                .from('challenge_history')
+                .select('challenge_type, status, shown_at')
+                .eq('couple_id', couple.id);
 
-            // Ensure possible is at least the completed count (to handle legacy data or sync issues)
-            const possibleDaily = Math.max(completedDaily, challengeStats.daily?.count || 0)
-            const possibleWeekly = Math.max(completedWeekly, challengeStats.weekly?.count || 0)
-            const possibleMonthly = Math.max(completedMonthly, challengeStats.monthly?.count || 0)
+            // Calculate All-Time stats from challenge_history
+            const historyByType = { daily: { possible: 0, completed: 0 }, weekly: { possible: 0, completed: 0 }, monthly: { possible: 0, completed: 0 } };
+
+            if (challengeHistory) {
+                challengeHistory.forEach((entry: any) => {
+                    const type = entry.challenge_type as 'daily' | 'weekly' | 'monthly';
+                    if (historyByType[type]) {
+                        historyByType[type].possible++;
+                        if (entry.status === 'completed') {
+                            historyByType[type].completed++;
+                        }
+                    }
+                });
+            }
+
+            // Use challenge_history if available, otherwise fallback to legacy calculation
+            const hasHistoryData = challengeHistory && challengeHistory.length > 0;
+
+            // Fallback to legacy challenge_stats if no history data
+            const challengeStats = (couple as any).challenge_stats || { daily: { count: 0 }, weekly: { count: 0 }, monthly: { count: 0 } };
+
+            // For All-Time: prefer history data, fallback to legacy
+            const possibleDaily = hasHistoryData ? historyByType.daily.possible : Math.max(completedDaily, challengeStats.daily?.count || 0);
+            const possibleWeekly = hasHistoryData ? historyByType.weekly.possible : Math.max(completedWeekly, challengeStats.weekly?.count || 0);
+            const possibleMonthly = hasHistoryData ? historyByType.monthly.possible : Math.max(completedMonthly, challengeStats.monthly?.count || 0);
 
             const challengeCompletion = {
                 questions: { completed: uniqueQuestionsAnswered, possible: possibleQuestions, percentage: Math.min(100, Math.round((uniqueQuestionsAnswered / possibleQuestions) * 100)) },
-                daily: { completed: completedDaily, possible: possibleDaily, percentage: possibleDaily > 0 ? Math.min(100, Math.round((completedDaily / possibleDaily) * 100)) : 0 },
-                weekly: { completed: completedWeekly, possible: possibleWeekly, percentage: possibleWeekly > 0 ? Math.min(100, Math.round((completedWeekly / possibleWeekly) * 100)) : 0 },
-                monthly: { completed: completedMonthly, possible: possibleMonthly, percentage: possibleMonthly > 0 ? Math.min(100, Math.round((completedMonthly / possibleMonthly) * 100)) : 0 }
+                daily: { completed: completedDaily, possible: Math.max(completedDaily, possibleDaily), percentage: possibleDaily > 0 ? Math.min(100, Math.round((completedDaily / possibleDaily) * 100)) : 0 },
+                weekly: { completed: completedWeekly, possible: Math.max(completedWeekly, possibleWeekly), percentage: possibleWeekly > 0 ? Math.min(100, Math.round((completedWeekly / possibleWeekly) * 100)) : 0 },
+                monthly: { completed: completedMonthly, possible: Math.max(completedMonthly, possibleMonthly), percentage: possibleMonthly > 0 ? Math.min(100, Math.round((completedMonthly / possibleMonthly) * 100)) : 0 }
             }
 
-            // 90 Day Logic
-            // Calculate effective window size (min of 90 days or days since relationship start)
-
-            // Cast couple to any to access created_at which might be missing from the generated type but present in DB
+            // 90 Day Logic - Use challenge_history filtered by date
             const coupleCreatedAt = (couple as any).created_at;
-
             const daysSinceStart = coupleCreatedAt
                 ? Math.floor((new Date().getTime() - new Date(coupleCreatedAt).getTime()) / (1000 * 60 * 60 * 24))
-                : daysTogether; // Fallback to anniversary based daysTogether if created_at missing, though created_at is strictly system start
-
-            // Ideally use created_at for system availability, but daysTogether (anniversary) for relationship depth.
-            // For challenges, it's about system usage. Assuming couple.created_at is available.
+                : daysTogether;
 
             const windowDays = Math.min(90, Math.max(1, daysSinceStart));
 
-            // Determine "Possible" counts for the 90 day window
-            // This is an approximation: 1 daily per day, 1 weekly per week, etc.
-            // But bounded by the 'x/90' user request.
+            // Calculate 90-day stats from challenge_history
+            const history90ByType = { daily: { possible: 0, completed: 0 }, weekly: { possible: 0, completed: 0 }, monthly: { possible: 0, completed: 0 } };
 
-            const possibleDaily90 = windowDays;
-            const possibleWeekly90 = Math.ceil(windowDays / 7);
-            const possibleMonthly90 = Math.ceil(windowDays / 30);
-            const possibleQuestions90 = windowDays; // Assuming 1 question per day availability
+            if (challengeHistory) {
+                challengeHistory.forEach((entry: any) => {
+                    const type = entry.challenge_type as 'daily' | 'weekly' | 'monthly';
+                    const shownAt = new Date(entry.shown_at);
+                    if (shownAt.getTime() > ninetyDaysAgoTime && history90ByType[type]) {
+                        history90ByType[type].possible++;
+                        if (entry.status === 'completed') {
+                            history90ByType[type].completed++;
+                        }
+                    }
+                });
+            }
+
+            // For 90-day: prefer history data, fallback to calendar-based approximation
+            const possibleDaily90 = hasHistoryData ? history90ByType.daily.possible : windowDays;
+            const possibleWeekly90 = hasHistoryData ? history90ByType.weekly.possible : Math.ceil(windowDays / 7);
+            const possibleMonthly90 = hasHistoryData ? history90ByType.monthly.possible : Math.ceil(windowDays / 30);
+            const possibleQuestions90 = windowDays; // Keep calendar-based for questions
 
             const challengeCompletion90 = {
                 questions: { completed: uniqueQuestionsAnswered90, possible: possibleQuestions90, percentage: Math.min(100, Math.round((uniqueQuestionsAnswered90 / possibleQuestions90) * 100)) },
-                daily: { completed: completedDaily90, possible: possibleDaily90, percentage: possibleDaily90 > 0 ? Math.min(100, Math.round((completedDaily90 / possibleDaily90) * 100)) : 0 },
-                weekly: { completed: completedWeekly90, possible: possibleWeekly90, percentage: possibleWeekly90 > 0 ? Math.min(100, Math.round((completedWeekly90 / possibleWeekly90) * 100)) : 0 },
-                monthly: { completed: completedMonthly90, possible: possibleMonthly90, percentage: possibleMonthly90 > 0 ? Math.min(100, Math.round((completedMonthly90 / possibleMonthly90) * 100)) : 0 }
+                daily: { completed: completedDaily90, possible: Math.max(completedDaily90, possibleDaily90), percentage: possibleDaily90 > 0 ? Math.min(100, Math.round((completedDaily90 / possibleDaily90) * 100)) : 0 },
+                weekly: { completed: completedWeekly90, possible: Math.max(completedWeekly90, possibleWeekly90), percentage: possibleWeekly90 > 0 ? Math.min(100, Math.round((completedWeekly90 / possibleWeekly90) * 100)) : 0 },
+                monthly: { completed: completedMonthly90, possible: Math.max(completedMonthly90, possibleMonthly90), percentage: possibleMonthly90 > 0 ? Math.min(100, Math.round((completedMonthly90 / possibleMonthly90) * 100)) : 0 }
             }
 
             // 4. Travel Stats (Enhanced)

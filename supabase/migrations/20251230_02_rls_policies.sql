@@ -236,3 +236,38 @@ CREATE POLICY "Users can update their own answers"
 ON user_answers FOR UPDATE
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
+
+
+-- 8. CHALLENGE HISTORY RLS POLICIES
+
+ALTER TABLE challenge_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their couple's challenge history"
+ON challenge_history FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM couples c
+        WHERE c.id = challenge_history.couple_id
+        AND (c.user_one_id = auth.uid() OR c.user_two_id = auth.uid())
+    )
+);
+
+CREATE POLICY "Users can insert challenge history"
+ON challenge_history FOR INSERT
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM couples c
+        WHERE c.id = challenge_history.couple_id
+        AND (c.user_one_id = auth.uid() OR c.user_two_id = auth.uid())
+    )
+);
+
+CREATE POLICY "Users can update challenge history"
+ON challenge_history FOR UPDATE
+USING (
+    EXISTS (
+        SELECT 1 FROM couples c
+        WHERE c.id = challenge_history.couple_id
+        AND (c.user_one_id = auth.uid() OR c.user_two_id = auth.uid())
+    )
+);
