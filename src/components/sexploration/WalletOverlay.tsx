@@ -90,7 +90,7 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
                             onClick={onClose}
                             style={{ touchAction: 'none' }}
                             onTouchMove={(e) => e.preventDefault()}
@@ -98,12 +98,11 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
 
                         {/* Slide-up Panel */}
                         <motion.div
-                            layout
                             initial={{ y: '100%' }}
                             animate={{ y: 0 }}
                             exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 30, stiffness: 200, mass: 0.8 }}
-                            className="fixed inset-x-0 bottom-0 z-50 outline-none overflow-hidden"
+                            className="fixed inset-x-0 bottom-0 z-[61] outline-none overflow-hidden"
                             style={{ touchAction: 'none', overscrollBehavior: 'none' }}
                             onTouchMove={(e) => e.preventDefault()}
                         >
@@ -185,7 +184,7 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                                 transition={{ duration: 0.5, ease: 'easeInOut' }}
                                             >
                                                 {availableCoupons.length > 0 ? (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
                                                         {availableCoupons.map(coupon => {
                                                             const isSelected = selectedCoupon?.id === coupon.id;
 
@@ -266,7 +265,7 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                                 className="space-y-4"
                                             >
                                                 {activatedCoupons.length > 0 ? (
-                                                    <div className="space-y-4 pb-20">
+                                                    <div className="space-y-4 pb-4">
                                                         {activatedCoupons.map(coupon => (
                                                             <div key={coupon.id} onClick={() => handleConvert(coupon)} className="cursor-pointer">
                                                                 <Coupon

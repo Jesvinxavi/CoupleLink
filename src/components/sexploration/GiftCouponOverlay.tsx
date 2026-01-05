@@ -417,7 +417,7 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
                                                     className="sticky bottom-0 pt-4"
                                                 >
                                                     <Button
-                                                        className="w-full h-14 text-lg font-bold rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-500/25"
+                                                        className="w-full h-14 text-lg font-bold text-white rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-500/25"
                                                         onClick={executeSend}
                                                         disabled={isSending}
                                                     >
@@ -428,7 +428,7 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Send className="w-5 h-5 mr-2" />
+                                                                <Send className="w-5 h-5 mr-2 text-white" />
                                                                 Send Gift Now
                                                             </>
                                                         )}
@@ -466,7 +466,7 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
                                             {selectedTemplate && (
                                                 <div className="sticky bottom-0 pt-4 bg-gradient-to-t from-rose-50 via-rose-50 to-transparent dark:from-gray-900 dark:via-gray-900 pb-4">
                                                     <Button
-                                                        className="w-full h-14 text-lg font-bold rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-500/25"
+                                                        className="w-full h-14 text-lg font-bold text-white rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-500/25"
                                                         onClick={executeSend}
                                                         disabled={isSending}
                                                     >
@@ -477,7 +477,7 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Send className="w-5 h-5 mr-2" />
+                                                                <Send className="w-5 h-5 mr-2 text-white" />
                                                                 Send This Coupon
                                                             </>
                                                         )}
@@ -532,7 +532,7 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
                                             {!isFocused && ( // Hide footer when focused
                                                 <div className="sticky bottom-0 pt-4 bg-gradient-to-t from-rose-50 via-rose-50 to-transparent dark:from-gray-900 dark:via-gray-900 pb-4">
                                                     <Button
-                                                        className="w-full h-14 text-lg font-bold rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-500/25"
+                                                        className="w-full h-14 text-lg font-bold text-white rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-lg shadow-rose-500/25"
                                                         onClick={executeSend}
                                                         disabled={isSending || !customData.title || !customData.description}
                                                     >
@@ -543,7 +543,7 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Send className="w-5 h-5 mr-2" />
+                                                                <Send className="w-5 h-5 mr-2 text-white" />
                                                                 Create & Send
                                                             </>
                                                         )}
