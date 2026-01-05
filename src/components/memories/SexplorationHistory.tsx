@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Calendar, ChevronLeft, ChevronRight, Ticket, Sparkles, Heart } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Ticket, Sparkles, Heart, Flame } from 'lucide-react';
 import { useCoupleData } from '../../hooks/useCoupleData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -56,26 +56,40 @@ const SexplorationCarousel = ({
                 <div className="transition-all duration-300 ease-in-out">
                     <SexplorationCard
                         item={currentItem}
-                        onNext={items.length > 1 ? next : undefined}
-                        onPrev={items.length > 1 ? prev : undefined}
                         onClick={() => onOpenDetails(currentItem)}
                         type={type}
                     />
                 </div>
             </div>
 
-            {/* Dots */}
+            {/* Navigation & Dots */}
             {items.length > 1 && (
-                <div className="flex justify-center gap-1.5 mt-4">
-                    {items.map((_, idx) => (
-                        <div
-                            key={idx}
-                            className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentIndex
-                                ? 'bg-pink-500'
-                                : 'bg-gray-300 dark:bg-gray-700'
-                                }`}
-                        />
-                    ))}
+                <div className="flex items-center justify-center gap-3 mt-2">
+                    <button
+                        onClick={prev}
+                        className="p-1 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                    </button>
+
+                    <div className="flex justify-center gap-1.5">
+                        {items.map((_, idx) => (
+                            <div
+                                key={idx}
+                                className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentIndex
+                                    ? 'bg-pink-500'
+                                    : 'bg-gray-300 dark:bg-gray-700'
+                                    }`}
+                            />
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={next}
+                        className="p-1 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"
+                    >
+                        <ChevronRight className="w-5 h-5" />
+                    </button>
                 </div>
             )}
 
@@ -91,14 +105,10 @@ const SexplorationCarousel = ({
 
 const SexplorationCard = ({
     item,
-    onNext,
-    onPrev,
     onClick,
     type
 }: {
     item: SexplorationHistoryItem;
-    onNext?: (e: React.MouseEvent) => void;
-    onPrev?: (e: React.MouseEvent) => void;
     onClick?: () => void;
     type: 'voucher' | 'fantasy' | 'position';
 }) => {
@@ -106,7 +116,9 @@ const SexplorationCard = ({
         switch (type) {
             case 'voucher': return <Ticket className="w-4 h-4 text-pink-500" />;
             case 'fantasy': return <Sparkles className="w-4 h-4 text-amber-500" />;
-            case 'position': return <Heart className="w-4 h-4 text-rose-500" />;
+            case 'position':
+                if (position) return <PositionSVG position={position} size="xs" className="!bg-transparent" />; // Use xs size and transparent bg for icon usage
+                return <Heart className="w-4 h-4 text-rose-500" />;
         }
     };
 
@@ -125,7 +137,7 @@ const SexplorationCard = ({
             onClick={onClick}
             className={`overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow h-full w-full ${onClick ? 'cursor-pointer' : ''}`}
         >
-            <CardHeader className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 pb-4">
+            <CardHeader className={`bg-white dark:bg-gray-800 p-4 ${type !== 'position' ? 'border-b border-gray-100 dark:border-gray-700' : ''}`}>
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3 mb-2">
                         <span className={`text-xs font-medium px-2 py-1 rounded-full capitalize ${getBgColor()}`}>
@@ -138,49 +150,26 @@ const SexplorationCard = ({
                             })}
                         </div>
                     </div>
-
-                    {/* Navigation Arrows */}
-                    {onNext && onPrev && (
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={onPrev}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                                <ChevronLeft className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={onNext}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                                <ChevronRight className="w-5 h-5" />
-                            </button>
-                        </div>
-                    )}
                 </div>
                 <CardTitle className="text-lg font-medium text-gray-900 dark:text-white flex items-center gap-2">
                     {getIcon()}
                     {item.title}
                 </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 bg-white dark:bg-gray-800">
-                {type === 'position' && position ? (
-                    <div className="flex items-center gap-4">
-                        <PositionSVG position={position} size="md" />
-                        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
-                            {position.description}
+            {type !== 'position' && (
+                <CardContent className="p-4 bg-white dark:bg-gray-800">
+                    {item.description ? (
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                            {item.description}
                         </p>
-                    </div>
-                ) : item.description ? (
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                        {item.description}
-                    </p>
-                ) : (
-                    <div className="flex items-center gap-2 text-green-600 bg-green-50 px-2 py-1 rounded-md w-fit">
-                        <Heart className="w-3 h-3" />
-                        <span className="text-xs font-medium">Completed</span>
-                    </div>
-                )}
-            </CardContent>
+                    ) : (
+                        <div className="flex items-center gap-2 text-green-600 bg-green-50 px-2 py-1 rounded-md w-fit">
+                            <Heart className="w-3 h-3" />
+                            <span className="text-xs font-medium">Completed</span>
+                        </div>
+                    )}
+                </CardContent>
+            )}
         </Card>
     );
 };
@@ -295,21 +284,21 @@ export function SexplorationHistorySection({ monthYear }: SexplorationHistoryPro
 
     return (
         <>
-            <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 lg:mt-0 lg:pt-0 lg:border-t-0">
+            <div className="mt-0 pt-4 border-t border-gray-200 dark:border-gray-700 lg:mt-0 lg:pt-0 lg:border-t-0">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-pink-500">local_fire_department</span>
+                    <Flame className="w-5 h-5 text-pink-500" />
                     Sexploration
                 </h3>
 
                 <Tabs defaultValue="positions" className="w-full">
                     <TabsList className="grid w-full grid-cols-3 mb-4">
-                        <TabsTrigger value="positions" className="text-xs sm:text-sm">
+                        <TabsTrigger value="positions" className="text-xs sm:text-sm data-[state=active]:text-rose-500 dark:data-[state=active]:text-rose-400">
                             Positions
                         </TabsTrigger>
-                        <TabsTrigger value="fantasies" className="text-xs sm:text-sm">
+                        <TabsTrigger value="fantasies" className="text-xs sm:text-sm data-[state=active]:text-rose-500 dark:data-[state=active]:text-rose-400">
                             Fantasies
                         </TabsTrigger>
-                        <TabsTrigger value="vouchers" className="text-xs sm:text-sm">
+                        <TabsTrigger value="vouchers" className="text-xs sm:text-sm data-[state=active]:text-rose-500 dark:data-[state=active]:text-rose-400">
                             Vouchers
                         </TabsTrigger>
                     </TabsList>
@@ -342,16 +331,28 @@ export function SexplorationHistorySection({ monthYear }: SexplorationHistoryPro
 
             {/* Details Modal */}
             <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-                <DialogContent className="w-[90%] sm:max-w-lg rounded-xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[90%] sm:max-w-lg rounded-xl max-h-[90vh] overflow-y-auto p-4 gap-0">
                     <DialogHeader className="text-left space-y-0">
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                            <Calendar className="w-4 h-4" />
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize shrink-0
+                                ${selectedItem?.type === 'voucher' ? 'bg-pink-100 text-pink-600' :
+                                    selectedItem?.type === 'fantasy' ? 'bg-amber-100 text-amber-600' :
+                                        'bg-rose-100 text-rose-600'}
+                            `}>
+                                {selectedItem?.type}
+                            </span>
+                            <Calendar className="w-3.5 h-3.5" />
                             {selectedItem && new Date(selectedItem.date).toLocaleDateString(undefined, {
                                 year: 'numeric', month: 'long', day: 'numeric'
                             })}
                         </div>
-                        <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                        <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
                             {selectedItem?.title}
+                            {selectedItem?.type === 'position' && position?.category && (
+                                <span className="inline-block px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-xs font-medium capitalize shrink-0">
+                                    {position.category}
+                                </span>
+                            )}
                         </DialogTitle>
                     </DialogHeader>
 
@@ -360,9 +361,6 @@ export function SexplorationHistorySection({ monthYear }: SexplorationHistoryPro
                             <div className="flex flex-col items-center gap-4">
                                 <PositionSVG position={position} size="lg" />
                                 <div className="text-center">
-                                    <span className="inline-block px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-xs font-medium capitalize mb-2">
-                                        {position.category}
-                                    </span>
                                     <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
                                         {position.description}
                                     </p>
