@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.challenge_history (
 -- Index for efficient querying
 CREATE INDEX IF NOT EXISTS idx_challenge_history_couple_type ON public.challenge_history(couple_id, challenge_type);
 CREATE INDEX IF NOT EXISTS idx_challenge_history_status ON public.challenge_history(status);
+CREATE INDEX IF NOT EXISTS idx_challenge_history_lookup ON public.challenge_history(couple_id, challenge_type, status, activity_id);
 
 
 -- 2. ALTERATIONS to Existing Core Tables

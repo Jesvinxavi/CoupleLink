@@ -85,6 +85,57 @@ export type Database = {
           },
         ]
       }
+      challenge_history: {
+        Row: {
+          activity_id: string | null
+          challenge_type: string
+          completed_at: string | null
+          couple_id: string
+          created_at: string
+          id: string
+          period_key: string
+          shown_at: string
+          status: string | null
+        }
+        Insert: {
+          activity_id?: string | null
+          challenge_type: string
+          completed_at?: string | null
+          couple_id: string
+          created_at?: string
+          id?: string
+          period_key: string
+          shown_at?: string
+          status?: string | null
+        }
+        Update: {
+          activity_id?: string | null
+          challenge_type?: string
+          completed_at?: string | null
+          couple_id?: string
+          created_at?: string
+          id?: string
+          period_key?: string
+          shown_at?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_history_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_history_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       completed_positions: {
         Row: {
           completed_at: string | null

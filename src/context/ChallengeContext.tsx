@@ -7,6 +7,18 @@ import { formatTime, getWeekNumber, getDateRange, getPeriodKey } from '../utils/
 
 export type ChallengeStatus = 'locked' | 'active' | 'completed' | 'skipped' | 'waiting_for_partner' | 'pending_agreement';
 
+export interface PoolStatusItem {
+    total: number;
+    shown: number;
+    allShown: boolean;
+}
+
+export interface PoolStatus {
+    daily: PoolStatusItem;
+    weekly: PoolStatusItem;
+    monthly: PoolStatusItem;
+}
+
 export interface ChallengeState {
     daily: Challenge | null;
     weekly: Challenge | null;
@@ -46,6 +58,10 @@ export interface ChallengeState {
     refreshCoupleData: () => Promise<void>;
     loadingChallenges: boolean;
 
+    // Pool status for "all shown" UI
+    poolStatus: PoolStatus | null;
+    resetCycle: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
+
     // Operation states
     isCompleting: boolean;
     isUndoing: boolean;
@@ -74,6 +90,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
     const [loadingChallenges, setLoadingChallenges] = useState(true);
     const [isCompleting, setIsCompleting] = useState(false);
     const [isUndoing, setIsUndoing] = useState(false);
+    const [poolStatus, setPoolStatus] = useState<PoolStatus | null>(null);
 
     const [winnerAgreement, setWinnerAgreement] = useState<{
         daily: 'agreed' | 'disagreed' | 'pending' | 'none';
@@ -178,6 +195,12 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         category: m.category,
                         isCompetition: m.content?.isCompetition || false
                     });
+                }
+
+                // Fetch pool status for "all shown" UI
+                const { data: poolData } = await (supabase.rpc as any)('get_challenge_pool_status', { couple_id_input: couple.id });
+                if (poolData?.success && poolData.data) {
+                    setPoolStatus(poolData.data as PoolStatus);
                 }
 
             } catch (error) {
@@ -817,6 +840,28 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         }
     };
 
+    // Reset challenge cycle (clears cooloff for a frequency)
+    const resetCycle = async (type: 'daily' | 'weekly' | 'monthly') => {
+        if (!couple) return;
+        try {
+            const { data } = await (supabase.rpc as any)('reset_challenge_cycle', {
+                couple_id_input: couple.id,
+                frequency_input: type
+            });
+            if (data?.success) {
+                // Refetch pool status
+                const { data: poolData } = await (supabase.rpc as any)('get_challenge_pool_status', { couple_id_input: couple.id });
+                if (poolData?.success && poolData.data) {
+                    setPoolStatus(poolData.data as PoolStatus);
+                }
+                // Trigger refetch of challenges by refreshing couple data
+                await refreshCoupleData();
+            }
+        } catch (error) {
+            console.error('Error resetting challenge cycle:', error);
+        }
+    };
+
     useEffect(() => {
         const timer = setInterval(() => {
             const now = new Date();
@@ -863,6 +908,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         markChallengeConfettiSeen,
         couple, refreshCoupleData,
         loadingChallenges,
+        poolStatus, resetCycle,
         isCompleting, isUndoing
     };
 
