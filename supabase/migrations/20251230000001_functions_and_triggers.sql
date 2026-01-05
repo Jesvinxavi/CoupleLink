@@ -415,10 +415,17 @@ DECLARE
     v_is_online_game BOOLEAN;
     v_is_spicy BOOLEAN;
     v_spicy_mode BOOLEAN;
+    v_reset_time TIMESTAMP;
+    v_seen_before BOOLEAN := FALSE;
+    v_challenge_id UUID;
 BEGIN
-    -- Get Spicy Mode setting
-    SELECT spicy_mode INTO v_spicy_mode FROM couples WHERE id = couple_id_input;
+    -- Get Spicy Mode and Reset Time settings
+    SELECT spicy_mode, 
+           COALESCE((challenge_resets->>frequency_input)::TIMESTAMP, '1970-01-01'::TIMESTAMP)
+    INTO v_spicy_mode, v_reset_time 
+    FROM couples WHERE id = couple_id_input;
     IF v_spicy_mode IS NULL THEN v_spicy_mode := FALSE; END IF;
+    IF v_reset_time IS NULL THEN v_reset_time := '1970-01-01'::TIMESTAMP; END IF;
 
     -- Calculate date factor based on frequency for deterministic seeding
     IF frequency_input = 'daily' THEN
@@ -484,11 +491,33 @@ BEGIN
         END IF;
     END IF;
 
-    -- Count matching challenges
+    -- Count matching challenges (excluding completed and within cooloff)
     SELECT COUNT(*) INTO v_count 
     FROM activities 
     WHERE type = 'challenge' 
     AND content->>'frequency' = frequency_input
+    -- Exclude challenges based on cooloff (or reset eligibility)
+    AND id NOT IN (
+        SELECT activity_id FROM challenge_history 
+        WHERE couple_id = couple_id_input 
+        AND challenge_type = frequency_input 
+        AND activity_id IS NOT NULL
+        AND shown_at > v_reset_time  -- Challenges shown before reset are eligible again
+        AND (
+            -- Exclude completed challenges (shown after last reset)
+            status = 'completed'
+            OR (
+                -- Exclude uncompleted within cooloff period
+                status IN ('shown', 'expired') AND
+                shown_at > NOW() - CASE frequency_input
+                    WHEN 'daily' THEN INTERVAL '14 days'
+                    WHEN 'weekly' THEN INTERVAL '4 weeks'
+                    WHEN 'monthly' THEN INTERVAL '3 months'
+                    ELSE INTERVAL '14 days'
+                END
+            )
+        )
+    )
     -- Spicy Filter
     AND (
         (v_spicy_mode = FALSE AND (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
@@ -511,6 +540,34 @@ BEGIN
             (v_is_online_game OR content->>'title' NOT ILIKE '%Online Game%')
         )
     );
+    
+    -- If all challenges are completed, reset by allowing all (cycle complete)
+    IF v_count = 0 THEN
+        SELECT COUNT(*) INTO v_count 
+        FROM activities 
+        WHERE type = 'challenge' 
+        AND content->>'frequency' = frequency_input
+        AND (
+            (v_spicy_mode = FALSE AND (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
+            OR
+            (v_spicy_mode = TRUE AND (
+                (v_is_spicy = TRUE AND (content->>'isSpicy')::BOOLEAN = TRUE) 
+                OR 
+                (v_is_spicy = FALSE AND (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
+            ))
+        )
+        AND (
+            v_is_spicy = TRUE 
+            OR 
+            (
+                (v_is_competition IS NULL OR (content->>'isCompetition')::BOOLEAN = v_is_competition)
+                AND
+                (NOT v_is_online_game OR content->>'title' ILIKE '%Online Game%')
+                AND
+                (v_is_online_game OR content->>'title' NOT ILIKE '%Online Game%')
+            )
+        );
+    END IF;
 
     -- Fallback: If no challenge found in specific bucket, use any matching frequency
     IF v_count = 0 THEN
@@ -533,7 +590,7 @@ BEGIN
     -- Deterministic offset selection
     v_offset := v_seed % v_count;
     
-    -- Select the challenge
+    -- Select the challenge (with same filters as COUNT)
     SELECT jsonb_build_object(
         'id', id,
         'category', category,
@@ -548,6 +605,52 @@ BEGIN
     FROM activities
     WHERE type = 'challenge'
     AND content->>'frequency' = frequency_input
+    -- Exclude completed and within-cooloff challenges (same filter as COUNT, unless pool exhausted)
+    AND (
+        id NOT IN (
+            SELECT activity_id FROM challenge_history 
+            WHERE couple_id = couple_id_input 
+            AND challenge_type = frequency_input 
+            AND activity_id IS NOT NULL
+            AND shown_at > v_reset_time
+            AND (
+                status = 'completed'
+                OR (
+                    status IN ('shown', 'expired') AND
+                    shown_at > NOW() - CASE frequency_input
+                        WHEN 'daily' THEN INTERVAL '14 days'
+                        WHEN 'weekly' THEN INTERVAL '4 weeks'
+                        WHEN 'monthly' THEN INTERVAL '3 months'
+                        ELSE INTERVAL '14 days'
+                    END
+                )
+            )
+        )
+        OR NOT EXISTS (
+            SELECT 1 FROM activities a2
+            WHERE a2.type = 'challenge'
+            AND a2.content->>'frequency' = frequency_input
+            AND a2.id NOT IN (
+                SELECT activity_id FROM challenge_history 
+                WHERE couple_id = couple_id_input 
+                AND challenge_type = frequency_input 
+                AND activity_id IS NOT NULL
+                AND shown_at > v_reset_time
+                AND (
+                    status = 'completed'
+                    OR (
+                        status IN ('shown', 'expired') AND
+                        shown_at > NOW() - CASE frequency_input
+                            WHEN 'daily' THEN INTERVAL '14 days'
+                            WHEN 'weekly' THEN INTERVAL '4 weeks'
+                            WHEN 'monthly' THEN INTERVAL '3 months'
+                            ELSE INTERVAL '14 days'
+                        END
+                    )
+                )
+            )
+        )
+    )
     AND (
         (v_spicy_mode = FALSE AND (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
         OR
@@ -571,7 +674,110 @@ BEGIN
     ORDER BY id
     LIMIT 1 OFFSET v_offset;
 
-    RETURN jsonb_build_object('success', true, 'data', v_activity_data);
+    -- Check if this challenge was seen before (by this couple, ever)
+    IF v_activity_data IS NOT NULL THEN
+        v_challenge_id := (v_activity_data->>'id')::UUID;
+        SELECT EXISTS (
+            SELECT 1 FROM challenge_history 
+            WHERE couple_id = couple_id_input 
+            AND activity_id = v_challenge_id
+        ) INTO v_seen_before;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true, 
+        'data', v_activity_data,
+        'seenBefore', v_seen_before
+    );
+END;
+$$;
+
+
+-- 4b. CHALLENGE POOL STATUS & RESET
+
+-- Get challenge pool status (total vs shown for each frequency)
+DROP FUNCTION IF EXISTS get_challenge_pool_status(UUID);
+CREATE OR REPLACE FUNCTION get_challenge_pool_status(couple_id_input UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_spicy_mode BOOLEAN;
+    v_challenge_resets JSONB;
+    v_result JSONB := '{}';
+    v_frequency TEXT;
+    v_total INTEGER;
+    v_shown INTEGER;
+    v_reset_time TIMESTAMP;
+BEGIN
+    -- Get Spicy Mode and Reset Times
+    SELECT spicy_mode, COALESCE(challenge_resets, '{}'::jsonb)
+    INTO v_spicy_mode, v_challenge_resets 
+    FROM couples WHERE id = couple_id_input;
+    IF v_spicy_mode IS NULL THEN v_spicy_mode := FALSE; END IF;
+    IF v_challenge_resets IS NULL THEN v_challenge_resets := '{}'::jsonb; END IF;
+
+    -- Calculate for each frequency
+    FOR v_frequency IN SELECT unnest(ARRAY['daily', 'weekly', 'monthly']) LOOP
+        -- Get reset time for this frequency
+        v_reset_time := COALESCE((v_challenge_resets->>v_frequency)::TIMESTAMP, '1970-01-01'::TIMESTAMP);
+
+        -- Count total challenges available (matching spicy mode)
+        SELECT COUNT(*) INTO v_total
+        FROM activities
+        WHERE type = 'challenge'
+        AND content->>'frequency' = v_frequency
+        AND (
+            (v_spicy_mode = FALSE AND (content->>'isSpicy')::BOOLEAN IS NOT TRUE)
+            OR v_spicy_mode = TRUE
+        );
+
+        -- Count distinct shown challenges (shown AFTER last reset)
+        SELECT COUNT(DISTINCT ch.activity_id) INTO v_shown
+        FROM challenge_history ch
+        INNER JOIN activities a ON a.id = ch.activity_id
+        WHERE ch.couple_id = couple_id_input
+        AND ch.challenge_type = v_frequency
+        AND ch.activity_id IS NOT NULL
+        AND ch.shown_at > v_reset_time  -- Only count challenges shown after reset
+        AND a.type = 'challenge'
+        AND a.content->>'frequency' = v_frequency
+        AND (
+            (v_spicy_mode = FALSE AND (a.content->>'isSpicy')::BOOLEAN IS NOT TRUE)
+            OR v_spicy_mode = TRUE
+        );
+
+        v_result := v_result || jsonb_build_object(
+            v_frequency, jsonb_build_object(
+                'total', v_total,
+                'shown', v_shown,
+                'allShown', v_shown >= v_total AND v_total > 0
+            )
+        );
+    END LOOP;
+
+    RETURN jsonb_build_object('success', true, 'data', v_result);
+END;
+$$;
+
+-- Reset challenge cycle (makes ALL challenges available again, PRESERVES stats)
+DROP FUNCTION IF EXISTS reset_challenge_cycle(UUID, TEXT);
+CREATE OR REPLACE FUNCTION reset_challenge_cycle(couple_id_input UUID, frequency_input TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- Store reset timestamp in couples.challenge_resets
+    -- This marks the point after which new challenge instances are tracked
+    -- All existing history is preserved for stats
+    UPDATE couples
+    SET challenge_resets = COALESCE(challenge_resets, '{}'::jsonb) || 
+        jsonb_build_object(frequency_input, NOW()::TEXT)
+    WHERE id = couple_id_input;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Challenge cycle reset for ' || frequency_input);
 END;
 $$;
 

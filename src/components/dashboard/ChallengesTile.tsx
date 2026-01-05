@@ -5,6 +5,8 @@ import confetti from 'canvas-confetti';
 import { type ChallengeStatus } from '../../hooks/useChallenges';
 import { useChallengePoints } from '../../hooks/useChallengePoints';
 import { ChallengeOverlay } from './ChallengeOverlay';
+import { PaywallModal } from '../ui/PaywallModal';
+import { type PoolStatus } from '../../context/ChallengeContext';
 
 const container = {
     hidden: { opacity: 0 },
@@ -35,6 +37,9 @@ interface ChallengesTileProps {
     markChallengeConfettiSeen: any;
     couple: any;
     userProfile: any;
+    poolStatus: PoolStatus | null;
+    resetCycle: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
+    seenBefore: { daily: boolean; weekly: boolean; monthly: boolean };
     /**
      * When true, the internal grid will run its "hidden -> show" stagger animation.
      * When false, the grid will stay in "hidden" state (useful when the page is still behind a spinner).
@@ -52,7 +57,11 @@ function ChallengeFrequencyCard({
     myMemory,
     partnerMemory,
     agreement,
-    onOpen
+    onOpen,
+    allShown,
+    seenBefore,
+    onReset,
+    onUpgrade
 }: {
     type: ChallengeFrequency;
     title: string;
@@ -64,6 +73,10 @@ function ChallengeFrequencyCard({
     partnerMemory: any;
     agreement: 'agreed' | 'disagreed' | 'pending' | 'none';
     onOpen: (t: ChallengeFrequency) => void;
+    allShown?: boolean;
+    seenBefore?: boolean;
+    onReset?: () => void;
+    onUpgrade?: () => void;
 }) {
     const isPlaceholder = !challenge;
 
@@ -115,6 +128,25 @@ function ChallengeFrequencyCard({
                 <div className="flex flex-col h-full items-center justify-center text-center">
                     <span className="text-xs font-bold uppercase tracking-wider mb-1 text-gray-400">{title}</span>
                     <p className="text-xs text-gray-400">Loading...</p>
+                </div>
+            ) : (allShown && seenBefore) ? (
+                <div className="flex flex-col h-full items-center justify-center text-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-purple-600">{title}</span>
+                    <p className="text-xs text-purple-600 mb-2">All challenges explored!</p>
+                    <div className="flex flex-col gap-2 w-full px-2">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onReset?.(); }}
+                            className="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                        >
+                            Reset Cycle
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onUpgrade?.(); }}
+                            className="px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg hover:from-yellow-500 hover:to-orange-600 transition-colors"
+                        >
+                            Get Premium
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <>
@@ -196,8 +228,14 @@ export function ChallengesTile({
     markChallengeConfettiSeen,
     couple,
     userProfile,
+    poolStatus,
+    resetCycle,
+    seenBefore,
     animateIn = true
 }: ChallengesTileProps) {
+
+    // PaywallModal state
+    const [showPaywall, setShowPaywall] = useState(false);
 
     // Animation driver:
     // Using AnimationControls lets us keep the grid in the initial "hidden" state without
@@ -340,6 +378,10 @@ export function ChallengesTile({
                     partnerMemory={partnerDailyMemory}
                     agreement={winnerAgreement.daily}
                     onOpen={handleOpen}
+                    allShown={poolStatus?.daily?.allShown}
+                    seenBefore={seenBefore.daily}
+                    onReset={() => resetCycle('daily')}
+                    onUpgrade={() => setShowPaywall(true)}
                 />
                 <ChallengeFrequencyCard
                     type="weekly"
@@ -352,6 +394,10 @@ export function ChallengesTile({
                     partnerMemory={partnerWeeklyMemory}
                     agreement={winnerAgreement.weekly}
                     onOpen={handleOpen}
+                    allShown={poolStatus?.weekly?.allShown}
+                    seenBefore={seenBefore.weekly}
+                    onReset={() => resetCycle('weekly')}
+                    onUpgrade={() => setShowPaywall(true)}
                 />
                 <ChallengeFrequencyCard
                     type="monthly"
@@ -364,6 +410,10 @@ export function ChallengesTile({
                     partnerMemory={partnerMonthlyMemory}
                     agreement={winnerAgreement.monthly}
                     onOpen={handleOpen}
+                    allShown={poolStatus?.monthly?.allShown}
+                    seenBefore={seenBefore.monthly}
+                    onReset={() => resetCycle('monthly')}
+                    onUpgrade={() => setShowPaywall(true)}
                 />
             </motion.div>
 
@@ -404,6 +454,12 @@ export function ChallengesTile({
                     }
                 />
             )}
+
+            <PaywallModal
+                isOpen={showPaywall}
+                onClose={() => setShowPaywall(false)}
+                onUpgradeSuccess={() => setShowPaywall(false)}
+            />
         </>
     );
 }

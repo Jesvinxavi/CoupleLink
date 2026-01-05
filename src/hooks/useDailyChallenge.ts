@@ -76,6 +76,23 @@ export function useDailyChallenge(coupleId: string | null) {
                 const activityData = rpcData.data
                 if (mounted) setActivity(activityData)
 
+                // Track question shown in challenge_history
+                if (activityData?.id) {
+                    const today = new Date().toISOString().split('T')[0];
+                    supabase
+                        .from('challenge_history')
+                        .upsert({
+                            couple_id: coupleId,
+                            challenge_type: 'question',
+                            activity_id: activityData.id,
+                            period_key: today,
+                            status: 'shown',
+                            shown_at: new Date().toISOString()
+                        }, { onConflict: 'couple_id,challenge_type,period_key' })
+                        .then(() => { }) // Fire and forget
+                        .catch(e => console.error('[QuestionTracking] Error:', e));
+                }
+
                 // 2. Fetch answers immediately using our helper
                 if (mounted) await fetchAnswers(activityData);
 
@@ -161,6 +178,22 @@ export function useDailyChallenge(coupleId: string | null) {
 
             if (error) throw error;
             setUserAnswer(data);
+
+            // Check if partner already answered - if so, mark as completed
+            if (partnerAnswer) {
+                const today = new Date().toISOString().split('T')[0];
+                supabase
+                    .from('challenge_history')
+                    .update({
+                        status: 'completed',
+                        completed_at: new Date().toISOString()
+                    })
+                    .eq('couple_id', coupleId)
+                    .eq('challenge_type', 'question')
+                    .eq('period_key', today)
+                    .then(() => { })
+                    .catch(e => console.error('[QuestionTracking] Completion error:', e));
+            }
 
             if (channelRef.current) {
                 await channelRef.current.send({
