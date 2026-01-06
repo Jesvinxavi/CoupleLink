@@ -19,17 +19,13 @@ export interface PoolStatus {
     monthly: PoolStatusItem;
 }
 
-export interface SeenBefore {
-    daily: boolean;
-    weekly: boolean;
-    monthly: boolean;
-}
+
 
 export interface ChallengeState {
     daily: Challenge | null;
     weekly: Challenge | null;
     monthly: Challenge | null;
-    seenBefore: SeenBefore;
+
     dailyTimeLeft: string;
     weeklyTimeLeft: string;
     monthlyTimeLeft: string;
@@ -98,7 +94,6 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
     const [isCompleting, setIsCompleting] = useState(false);
     const [isUndoing, setIsUndoing] = useState(false);
     const [poolStatus, setPoolStatus] = useState<PoolStatus | null>(null);
-    const [seenBefore, setSeenBefore] = useState<SeenBefore>({ daily: false, weekly: false, monthly: false });
 
     const [winnerAgreement, setWinnerAgreement] = useState<{
         daily: 'agreed' | 'disagreed' | 'pending' | 'none';
@@ -166,7 +161,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                     supabase.rpc('get_active_challenge' as any, { couple_id_input: couple.id, frequency_input: 'monthly' }) as any
                 ]);
 
-                if (dailyRes.data && dailyRes.data.success) {
+                if (dailyRes.data && dailyRes.data.success && dailyRes.data.data) {
                     const d = dailyRes.data.data;
                     setDaily({
                         id: d.id,
@@ -177,10 +172,11 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         category: d.category,
                         isCompetition: d.content?.isCompetition || false
                     });
-                    setSeenBefore(prev => ({ ...prev, daily: dailyRes.data.seenBefore || false }));
+                } else {
+                    setDaily(null);
                 }
 
-                if (weeklyRes.data && weeklyRes.data.success) {
+                if (weeklyRes.data && weeklyRes.data.success && weeklyRes.data.data) {
                     const w = weeklyRes.data.data;
                     setWeekly({
                         id: w.id,
@@ -191,10 +187,11 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         category: w.category,
                         isCompetition: w.content?.isCompetition || false
                     });
-                    setSeenBefore(prev => ({ ...prev, weekly: weeklyRes.data.seenBefore || false }));
+                } else {
+                    setWeekly(null);
                 }
 
-                if (monthlyRes.data && monthlyRes.data.success) {
+                if (monthlyRes.data && monthlyRes.data.success && monthlyRes.data.data) {
                     const m = monthlyRes.data.data;
                     setMonthly({
                         id: m.id,
@@ -205,17 +202,14 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         category: m.category,
                         isCompetition: m.content?.isCompetition || false
                     });
-                    setSeenBefore(prev => ({ ...prev, monthly: monthlyRes.data.seenBefore || false }));
+                } else {
+                    setMonthly(null);
                 }
 
                 // Fetch pool status for "all shown" UI
-                const { data: poolData, error: poolError } = await (supabase.rpc as any)('get_challenge_pool_status', { couple_id_input: couple.id });
-                console.log('[ChallengeContext] Pool Status RPC Response:', { poolData, poolError });
+                const { data: poolData } = await (supabase.rpc as any)('get_challenge_pool_status', { couple_id_input: couple.id });
                 if (poolData?.success && poolData.data) {
-                    console.log('[ChallengeContext] Setting poolStatus:', poolData.data);
                     setPoolStatus(poolData.data as PoolStatus);
-                } else {
-                    console.warn('[ChallengeContext] Pool Status RPC failed or no data:', { poolData, poolError });
                 }
 
             } catch (error) {
@@ -857,23 +851,45 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
 
     // Reset challenge cycle (clears cooloff for a frequency)
     const resetCycle = async (type: 'daily' | 'weekly' | 'monthly') => {
-        if (!couple) return;
+        console.log('[resetCycle] Starting reset for:', type);
+        if (!couple) {
+            console.error('[resetCycle] No couple found, aborting');
+            return;
+        }
+
         try {
-            const { data } = await (supabase.rpc as any)('reset_challenge_cycle', {
+            console.log('[resetCycle] Calling RPC reset_challenge_cycle...');
+            const { data, error } = await (supabase.rpc as any)('reset_challenge_cycle', {
                 couple_id_input: couple.id,
                 frequency_input: type
             });
+
+            if (error) {
+                console.error('[resetCycle] RPC Error:', error);
+            }
+
+            console.log('[resetCycle] RPC Response:', data);
+
             if (data?.success) {
+                console.log('[resetCycle] Reset successful. Fetching new pool status...');
                 // Refetch pool status
-                const { data: poolData } = await (supabase.rpc as any)('get_challenge_pool_status', { couple_id_input: couple.id });
+                const { data: poolData, error: poolError } = await (supabase.rpc as any)('get_challenge_pool_status', { couple_id_input: couple.id });
+
+                if (poolError) console.error('[resetCycle] Pool Status Error:', poolError);
+                console.log('[resetCycle] New Pool Status:', poolData);
+
                 if (poolData?.success && poolData.data) {
                     setPoolStatus(poolData.data as PoolStatus);
                 }
                 // Trigger refetch of challenges by refreshing couple data
+                console.log('[resetCycle] Refreshing couple data to get new challenges...');
                 await refreshCoupleData();
+                console.log('[resetCycle] Refresh complete.');
+            } else {
+                console.warn('[resetCycle] Backend reported failure:', data);
             }
         } catch (error) {
-            console.error('Error resetting challenge cycle:', error);
+            console.error('[resetCycle] Exception during reset:', error);
         }
     };
 
@@ -923,7 +939,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         markChallengeConfettiSeen,
         couple, refreshCoupleData,
         loadingChallenges,
-        poolStatus, resetCycle, seenBefore,
+        poolStatus, resetCycle,
         isCompleting, isUndoing
     };
 

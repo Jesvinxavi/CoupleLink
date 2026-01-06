@@ -141,39 +141,45 @@ export function ChallengeOverlay({
                             >
                                 {/* All Explored State */}
                                 {isAllExplored ? (
-                                    <div className="flex flex-col items-center py-8 text-center">
-                                        <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-4">
-                                            <PartyPopper className="w-8 h-8 text-purple-600" />
+                                    <div className="flex flex-col items-center pt-10 pb-2 text-center">
+                                        {/* Icon with glow effect */}
+                                        <div className="relative mb-6">
+                                            <div className="absolute inset-0 bg-purple-400/20 rounded-full blur-2xl"></div>
+                                            <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-purple-50 to-white dark:from-gray-800 dark:to-gray-900 shadow-xl shadow-purple-500/10 flex items-center justify-center ring-1 ring-black/5 dark:ring-white/10 rotate-3">
+                                                <PartyPopper className="w-12 h-12 text-purple-600 dark:text-purple-400 drop-shadow-sm" />
+                                            </div>
                                         </div>
-                                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+
+                                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                                             All {type.charAt(0).toUpperCase() + type.slice(1)} Challenges Explored!
                                         </h2>
-                                        <p className="text-gray-600 dark:text-gray-300 text-base leading-relaxed max-w-[300px] mb-8">
-                                            You've seen every {type} challenge we have. Reset the cycle to start fresh, or upgrade for more content!
+                                        <p className="text-gray-500 dark:text-gray-400 text-base leading-relaxed max-w-[320px] mb-8">
+                                            You've completed every accessible challenge in this category. Ready for more?
                                         </p>
 
                                         <div className="w-full space-y-3">
-                                            <Button
-                                                onClick={() => {
-                                                    onReset?.()
-                                                    onClose()
-                                                }}
-                                                variant="outline"
-                                                className="w-full h-14 text-lg font-bold rounded-xl border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800"
-                                            >
-                                                <RefreshCw className="w-5 h-5 mr-2" />
-                                                Reset Cycle
-                                            </Button>
-
+                                            {/* Primary Action: Get Plus */}
                                             <Button
                                                 onClick={() => {
                                                     onUpgrade?.()
                                                     onClose()
                                                 }}
-                                                className="w-full h-14 text-lg font-bold rounded-xl bg-gradient-to-br from-indigo-900 to-purple-900 hover:from-indigo-800 hover:to-purple-800 text-white shadow-lg shadow-purple-500/20"
+                                                className="w-full h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25 border-0 transform transition-all active:scale-[0.98]"
                                             >
-                                                <Sparkles className="w-5 h-5 mr-2" />
-                                                Get Premium
+                                                <Sparkles className="w-5 h-5 mr-2 text-white/90" />
+                                                Get Plus
+                                            </Button>
+
+                                            {/* Secondary Action: Reset Cycle - Soft filled button, not outline */}
+                                            <Button
+                                                onClick={() => {
+                                                    onReset?.()
+                                                    onClose()
+                                                }}
+                                                className="w-full h-14 text-lg font-bold rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-900 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-white border-0 transition-colors"
+                                            >
+                                                <RefreshCw className="w-5 h-5 mr-2 opacity-70" />
+                                                Reset Challenges
                                             </Button>
                                         </div>
                                     </div>

@@ -38,7 +38,6 @@ interface ChallengesTileProps {
     userProfile: any;
     poolStatus: PoolStatus | null;
     resetCycle: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
-    seenBefore: { daily: boolean; weekly: boolean; monthly: boolean };
     /**
      * When true, the internal grid will run its "hidden -> show" stagger animation.
      * When false, the grid will stay in "hidden" state (useful when the page is still behind a spinner).
@@ -71,14 +70,7 @@ function ChallengeFrequencyCard({
     onOpen: (t: ChallengeFrequency) => void;
     allShown?: boolean;
 }) {
-    // DEBUG: Log all incoming props for AllShown debugging
-    console.log(`[ChallengeFrequencyCard ${type}]`, {
-        allShown,
-        hasChallenge: !!challenge,
-        challengeTitle: challenge?.title,
-        status,
-        isPlaceholder: !challenge
-    });
+
 
     const isPlaceholder = !challenge;
 
@@ -101,7 +93,9 @@ function ChallengeFrequencyCard({
         "flex flex-col p-4 rounded-xl transition-all duration-200 border relative overflow-hidden h-[8.75rem]";
 
     // Priority 1: All Shown (Permanent "End of Content" State) - Clickable like other states
-    if (allShown) {
+    // If all shown AND no active challenge to display, show All Explored state
+    // (If all shown BUT challenge exists, it means we're on the last one, so show normal state)
+    if (allShown && !challenge) {
         return (
             <motion.div
                 variants={item}
@@ -337,8 +331,14 @@ export function ChallengesTile({
                 poolStatus?.monthly?.allShown;
 
         if (isAllShown) {
-            setAllExploredType(type);
-            return;
+            // Only force All Explored overlay if we don't have a challenge to show.
+            // If we have a challenge (e.g., the very last one), show it!
+            const hasChallenge = type === 'daily' ? !!daily : type === 'weekly' ? !!weekly : !!monthly;
+
+            if (!hasChallenge) {
+                setAllExploredType(type);
+                return;
+            }
         }
 
         if (type === 'daily') setSelectedChallenge({ type, data: daily });

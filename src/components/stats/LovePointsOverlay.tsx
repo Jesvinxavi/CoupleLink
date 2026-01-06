@@ -158,35 +158,41 @@ export const LovePointsOverlay: React.FC<LovePointsOverlayProps> = ({
                         {/* Inner Content Container */}
                         <div className="flex flex-col w-full bg-white dark:bg-gray-900 max-h-[85vh] shadow-2xl ring-1 ring-black/5 rounded-t-[32px] overflow-hidden">
                             {/* Header */}
-                            <div className="shrink-0 z-10 bg-white dark:bg-gray-900">
-                                {/* Top section with gradient */}
-                                <div className="relative py-4 px-6 bg-gradient-to-br from-purple-600 via-purple-500 to-violet-500 rounded-t-[32px]">
-                                    {/* Close button */}
-                                    <button
-                                        onClick={onClose}
-                                        className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
-                                    >
-                                        <X className="w-5 h-5 text-white" />
-                                    </button>
+                            <div className="shrink-0 z-10 bg-white dark:bg-gray-900 relative overflow-hidden">
+                                {/* Decorative Blur Background */}
+                                <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-purple-50 via-white to-white dark:from-purple-900/10 dark:via-gray-900 dark:to-gray-900 z-0"></div>
+                                <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-200/30 rounded-full blur-3xl z-0 pointer-events-none"></div>
+                                <div className="absolute -top-12 -left-12 w-48 h-48 bg-indigo-200/30 rounded-full blur-3xl z-0 pointer-events-none"></div>
 
-                                    {/* Title */}
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-white text-xl">stars</span>
+                                <div className="relative z-10 px-6 pt-4 pb-4">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div className="flex flex-col">
+                                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                                Love Points
+                                                <span className="text-2xl">✨</span>
+                                            </h2>
+                                            <p className="text-gray-500 dark:text-gray-400 text-sm">Your journey of love, quantified</p>
                                         </div>
-                                        <div>
-                                            <h2 className="text-lg font-bold text-white">Love Points</h2>
-                                            <p className="text-sm text-white/80">Your journey of love, quantified</p>
-                                        </div>
+                                        <button
+                                            onClick={onClose}
+                                            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                        </button>
                                     </div>
-                                </div>
 
-                                {/* Total Points - Below header */}
-                                <div className="text-center py-6 border-b border-gray-100 dark:border-gray-800">
-                                    <div className="text-5xl font-bold text-purple-600 dark:text-purple-400 tracking-tight">
-                                        {totalPoints.toLocaleString()}
+                                    {/* Total Points Display - Big & Premium */}
+                                    <div className="flex flex-col items-center">
+                                        <div className="relative">
+                                            <div className="absolute inset-0 bg-purple-400/20 blur-xl rounded-full"></div>
+                                            <div className="relative text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 drop-shadow-sm tracking-tighter">
+                                                {totalPoints.toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <span className="mt-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 text-xs font-bold uppercase tracking-wider border border-purple-100 dark:border-purple-800/50">
+                                            Total Earned Together
+                                        </span>
                                     </div>
-                                    <div className="text-gray-500 dark:text-gray-400 text-sm mt-1">Total Points Earned Together</div>
                                 </div>
                             </div>
 
@@ -203,10 +209,10 @@ export const LovePointsOverlay: React.FC<LovePointsOverlayProps> = ({
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: idx * 0.05 }}
-                                            className={`flex items-center gap-4 p-4 rounded-2xl ${cat.bgColor} border ${cat.borderColor}`}
+                                            className={`flex items-center gap-4 p-4 rounded-3xl ${cat.bgColor} border ${cat.borderColor} shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group`}
                                         >
                                             {/* Icon */}
-                                            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${cat.color} flex items-center justify-center shadow-lg`}>
+                                            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300`}>
                                                 <span className="material-symbols-outlined text-white text-xl">{cat.icon}</span>
                                             </div>
 
@@ -227,12 +233,15 @@ export const LovePointsOverlay: React.FC<LovePointsOverlayProps> = ({
                                         </motion.div>
                                     ))
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                                        <div className="bg-purple-100 dark:bg-purple-900/30 p-4 rounded-full mb-4">
-                                            <span className="material-symbols-outlined text-3xl text-purple-500">stars</span>
+                                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                                        <div className="relative mb-6">
+                                            <div className="absolute inset-0 bg-purple-400/20 rounded-full blur-xl"></div>
+                                            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/30 dark:to-gray-800 flex items-center justify-center shadow-lg ring-1 ring-black/5 dark:ring-white/10 rotate-3">
+                                                <span className="material-symbols-outlined text-4xl text-purple-500">stars</span>
+                                            </div>
                                         </div>
-                                        <p className="text-gray-500 dark:text-gray-400 font-medium">Start earning points!</p>
-                                        <p className="text-sm text-gray-400 mt-1">Complete challenges and activities together</p>
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Start earning points!</h3>
+                                        <p className="text-gray-500 dark:text-gray-400 text-sm max-w-[200px]">Complete challenges, questions, and explore together to grow your score.</p>
                                     </div>
                                 )}
 

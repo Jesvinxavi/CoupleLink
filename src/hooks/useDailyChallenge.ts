@@ -89,8 +89,9 @@ export function useDailyChallenge(coupleId: string | null) {
                             status: 'shown',
                             shown_at: new Date().toISOString()
                         }, { onConflict: 'couple_id,challenge_type,period_key' })
-                        .then(() => { }) // Fire and forget
-                        .catch(e => console.error('[QuestionTracking] Error:', e));
+                        .then(({ error }) => {
+                            if (error) console.error('[QuestionTracking] Error:', error);
+                        });
                 }
 
                 // 2. Fetch answers immediately using our helper
@@ -191,8 +192,9 @@ export function useDailyChallenge(coupleId: string | null) {
                     .eq('couple_id', coupleId)
                     .eq('challenge_type', 'question')
                     .eq('period_key', today)
-                    .then(() => { })
-                    .catch(e => console.error('[QuestionTracking] Completion error:', e));
+                    .then(({ error }) => {
+                        if (error) console.error('[QuestionTracking] Completion error:', error);
+                    });
             }
 
             if (channelRef.current) {
