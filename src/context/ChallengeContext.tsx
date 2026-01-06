@@ -209,9 +209,13 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                 }
 
                 // Fetch pool status for "all shown" UI
-                const { data: poolData } = await (supabase.rpc as any)('get_challenge_pool_status', { couple_id_input: couple.id });
+                const { data: poolData, error: poolError } = await (supabase.rpc as any)('get_challenge_pool_status', { couple_id_input: couple.id });
+                console.log('[ChallengeContext] Pool Status RPC Response:', { poolData, poolError });
                 if (poolData?.success && poolData.data) {
+                    console.log('[ChallengeContext] Setting poolStatus:', poolData.data);
                     setPoolStatus(poolData.data as PoolStatus);
+                } else {
+                    console.warn('[ChallengeContext] Pool Status RPC failed or no data:', { poolData, poolError });
                 }
 
             } catch (error) {

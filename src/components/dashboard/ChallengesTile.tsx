@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -58,10 +57,7 @@ function ChallengeFrequencyCard({
     partnerMemory,
     agreement,
     onOpen,
-    allShown,
-    seenBefore,
-    onReset,
-    onUpgrade
+    allShown
 }: {
     type: ChallengeFrequency;
     title: string;
@@ -74,10 +70,16 @@ function ChallengeFrequencyCard({
     agreement: 'agreed' | 'disagreed' | 'pending' | 'none';
     onOpen: (t: ChallengeFrequency) => void;
     allShown?: boolean;
-    seenBefore?: boolean;
-    onReset?: () => void;
-    onUpgrade?: () => void;
 }) {
+    // DEBUG: Log all incoming props for AllShown debugging
+    console.log(`[ChallengeFrequencyCard ${type}]`, {
+        allShown,
+        hasChallenge: !!challenge,
+        challengeTitle: challenge?.title,
+        status,
+        isPlaceholder: !challenge
+    });
+
     const isPlaceholder = !challenge;
 
     // Status-based rendering logic
@@ -97,19 +99,62 @@ function ChallengeFrequencyCard({
 
     const baseClassName =
         "flex flex-col p-4 rounded-xl transition-all duration-200 border relative overflow-hidden h-[8.75rem]";
-    const stateClassName = isPlaceholder
-        ? "bg-gray-50 border-gray-200 cursor-default"
-        : `cursor-pointer ${isDisagreed
-            ? "bg-red-50 border-red-200 hover:bg-red-100"
-            : isPendingAgreement
-                ? "bg-blue-50 border-blue-200 hover:bg-blue-100"
-                : isCompleted
-                    ? "bg-green-50 border-green-200 hover:bg-green-100"
-                    : isSkipped
-                        ? "bg-gray-50 border-gray-200 hover:bg-gray-100"
-                        : isWaiting
-                            ? "bg-amber-50 border-amber-200 hover:bg-amber-100"
-                            : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm"
+
+    // Priority 1: All Shown (Permanent "End of Content" State) - Clickable like other states
+    if (allShown) {
+        return (
+            <motion.div
+                variants={item}
+                initial={false}
+                onClick={() => onOpen(type)}
+                className={`${baseClassName} bg-purple-50 border-purple-200 hover:bg-purple-100 cursor-pointer`}
+            >
+                {/* Header - Same position as other states */}
+                <div className="flex flex-col mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider mb-1 text-purple-600">
+                        {title}
+                    </span>
+                </div>
+
+                {/* Content - Centered like completed/skipped */}
+                <div className="flex flex-col items-center justify-center py-2 h-full text-center">
+                    <div className="h-8 w-8 rounded-full bg-purple-200 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-purple-700 text-lg">celebration</span>
+                    </div>
+                    <span className="text-xs font-medium text-purple-700">All Explored!</span>
+                </div>
+            </motion.div>
+        );
+    }
+
+    // Priority 2: Loading / Placeholder
+    if (isPlaceholder) {
+        return (
+            <motion.div
+                variants={item}
+                initial={false}
+                className={`${baseClassName} bg-gray-50 border-gray-200 cursor-default`}
+            >
+                <div className="flex flex-col h-full items-center justify-center text-center">
+                    <span className="text-xs font-bold uppercase tracking-wider mb-1 text-gray-400">{title}</span>
+                    <p className="text-xs text-gray-400">Loading...</p>
+                </div>
+            </motion.div>
+        );
+    }
+
+    // Priority 3: Active Challenge Status
+    const stateClassName = `cursor-pointer ${isDisagreed
+        ? "bg-red-50 border-red-200 hover:bg-red-100"
+        : isPendingAgreement
+            ? "bg-blue-50 border-blue-200 hover:bg-blue-100"
+            : isCompleted
+                ? "bg-green-50 border-green-200 hover:bg-green-100"
+                : isSkipped
+                    ? "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                    : isWaiting
+                        ? "bg-amber-50 border-amber-200 hover:bg-amber-100"
+                        : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm"
         }`;
 
     return (
@@ -119,99 +164,70 @@ function ChallengeFrequencyCard({
             // Still animates normally when parent transitions hidden -> show.
             initial={false}
             onClick={() => {
-                if (isPlaceholder) return;
                 onOpen(type);
             }}
             className={`${baseClassName} ${stateClassName}`}
         >
-            {isPlaceholder ? (
-                <div className="flex flex-col h-full items-center justify-center text-center">
-                    <span className="text-xs font-bold uppercase tracking-wider mb-1 text-gray-400">{title}</span>
-                    <p className="text-xs text-gray-400">Loading...</p>
-                </div>
-            ) : (allShown && seenBefore) ? (
-                <div className="flex flex-col h-full items-center justify-center text-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-purple-600">{title}</span>
-                    <p className="text-xs text-purple-600 mb-2">All challenges explored!</p>
-                    <div className="flex flex-col gap-2 w-full px-2">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onReset?.(); }}
-                            className="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
-                        >
-                            Reset Cycle
-                        </button>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onUpgrade?.(); }}
-                            className="px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg hover:from-yellow-500 hover:to-orange-600 transition-colors"
-                        >
-                            Get Premium
-                        </button>
+            {/* Header & Timer */}
+            <div className="flex flex-col mb-3">
+                <span className={`text-xs font-bold uppercase tracking-wider mb-1 ${isCompleted ? 'text-green-600' : 'text-red-600'}`}>
+                    {title}
+                </span>
+                {challenge?.isCompetition && !isCompleted && !isSkipped && !isDisagreed && (
+                    <span className="absolute top-4 right-4 text-lg" title="Competitive Challenge">🏆</span>
+                )}
+                {!isCompleted && !isSkipped && !isDisagreed && !isPendingAgreement && (
+                    <span className={`text-xs font-medium ${isUrgent ? 'text-[#EA2831]' : 'text-heading-dark'}`}>
+                        {timeLeft}
+                    </span>
+                )}
+            </div>
+
+            {/* Content */}
+            {isDisagreed ? (
+                <div className="flex flex-col items-center justify-center py-2 h-full text-center">
+                    <div className="h-8 w-8 rounded-full bg-red-200 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-red-700 text-lg">warning</span>
                     </div>
+                    <span className="text-xs font-medium text-red-700">Disagreement! Tap to resolve.</span>
+                </div>
+            ) : isPendingAgreement ? (
+                <div className="flex flex-col items-center justify-center py-2 h-full text-center">
+                    <div className="h-8 w-8 rounded-full bg-blue-200 flex items-center justify-center mb-1">
+                        <span className="material-symbols-outlined text-blue-700 text-lg">handshake</span>
+                    </div>
+                    <span className="text-xs font-medium text-blue-700">Confirm Winner</span>
+                </div>
+            ) : isCompleted ? (
+                <div className="flex flex-col items-center justify-center py-2 h-full text-center">
+                    <div className="h-8 w-8 rounded-full bg-green-200 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-green-700 text-lg">check</span>
+                    </div>
+                    <span className="text-xs font-medium text-green-700">Completed</span>
+                </div>
+            ) : isSkipped ? (
+                <div className="flex flex-col items-center justify-center py-2 h-full text-center">
+                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-gray-600 text-lg">remove_done</span>
+                    </div>
+                    <span className="text-xs font-medium text-gray-600">{skipText}</span>
+                </div>
+            ) : isWaiting ? (
+                <div className="flex flex-col h-full justify-center items-center text-center">
+                    <span className="material-symbols-outlined text-amber-500 text-2xl">hourglass_empty</span>
+                    <p className="text-xs font-medium text-amber-700">Waiting for partner...</p>
                 </div>
             ) : (
-                <>
-                    {/* Header & Timer */}
-                    <div className="flex flex-col mb-3">
-                        <span className={`text-xs font-bold uppercase tracking-wider mb-1 ${isCompleted ? 'text-green-600' : 'text-red-600'}`}>
-                            {title}
-                        </span>
-                        {challenge?.isCompetition && !isCompleted && !isSkipped && !isDisagreed && (
-                            <span className="absolute top-4 right-4 text-lg" title="Competitive Challenge">🏆</span>
-                        )}
-                        {!isCompleted && !isSkipped && !isDisagreed && !isPendingAgreement && (
-                            <span className={`text-xs font-medium ${isUrgent ? 'text-[#EA2831]' : 'text-heading-dark'}`}>
-                                {timeLeft}
-                            </span>
-                        )}
+                <div className="flex flex-col h-full justify-between">
+                    <div>
+                        <h3 className="text-sm font-bold text-heading-dark line-clamp-1">
+                            {challenge.title}
+                        </h3>
+                        <p className="text-xs text-body-soft line-clamp-2">
+                            {challenge.description}
+                        </p>
                     </div>
-
-                    {/* Content */}
-                    {isDisagreed ? (
-                        <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                            <div className="h-8 w-8 rounded-full bg-red-200 flex items-center justify-center">
-                                <span className="material-symbols-outlined text-red-700 text-lg">warning</span>
-                            </div>
-                            <span className="text-xs font-medium text-red-700">Disagreement! Tap to resolve.</span>
-                        </div>
-                    ) : isPendingAgreement ? (
-                        <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                            <div className="h-8 w-8 rounded-full bg-blue-200 flex items-center justify-center mb-1">
-                                <span className="material-symbols-outlined text-blue-700 text-lg">handshake</span>
-                            </div>
-                            <span className="text-xs font-medium text-blue-700">Confirm Winner</span>
-                        </div>
-                    ) : isCompleted ? (
-                        <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                            <div className="h-8 w-8 rounded-full bg-green-200 flex items-center justify-center">
-                                <span className="material-symbols-outlined text-green-700 text-lg">check</span>
-                            </div>
-                            <span className="text-xs font-medium text-green-700">Completed</span>
-                        </div>
-                    ) : isSkipped ? (
-                        <div className="flex flex-col items-center justify-center py-2 h-full text-center">
-                            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                <span className="material-symbols-outlined text-gray-600 text-lg">remove_done</span>
-                            </div>
-                            <span className="text-xs font-medium text-gray-600">{skipText}</span>
-                        </div>
-                    ) : isWaiting ? (
-                        <div className="flex flex-col h-full justify-center items-center text-center">
-                            <span className="material-symbols-outlined text-amber-500 text-2xl">hourglass_empty</span>
-                            <p className="text-xs font-medium text-amber-700">Waiting for partner...</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col h-full justify-between">
-                            <div>
-                                <h3 className="text-sm font-bold text-heading-dark line-clamp-1">
-                                    {challenge.title}
-                                </h3>
-                                <p className="text-xs text-body-soft line-clamp-2">
-                                    {challenge.description}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                </>
+                </div>
             )}
         </motion.div >
     );
@@ -230,7 +246,6 @@ export function ChallengesTile({
     userProfile,
     poolStatus,
     resetCycle,
-    seenBefore,
     animateIn = true
 }: ChallengesTileProps) {
 
@@ -313,8 +328,19 @@ export function ChallengesTile({
     }, [dailyStatus, weeklyStatus, monthlyStatus, loadingPartner, myDailyMemory, myWeeklyMemory, myMonthlyMemory]);
 
     const [selectedChallenge, setSelectedChallenge] = useState<{ type: 'daily' | 'weekly' | 'monthly', data: any } | null>(null);
+    const [allExploredType, setAllExploredType] = useState<'daily' | 'weekly' | 'monthly' | null>(null);
 
     const handleOpen = (type: ChallengeFrequency) => {
+        // Check if allShown for this type - if so, open AllExploredOverlay instead
+        const isAllShown = type === 'daily' ? poolStatus?.daily?.allShown :
+            type === 'weekly' ? poolStatus?.weekly?.allShown :
+                poolStatus?.monthly?.allShown;
+
+        if (isAllShown) {
+            setAllExploredType(type);
+            return;
+        }
+
         if (type === 'daily') setSelectedChallenge({ type, data: daily });
         else if (type === 'weekly') setSelectedChallenge({ type, data: weekly });
         else setSelectedChallenge({ type, data: monthly });
@@ -379,9 +405,6 @@ export function ChallengesTile({
                     agreement={winnerAgreement.daily}
                     onOpen={handleOpen}
                     allShown={poolStatus?.daily?.allShown}
-                    seenBefore={seenBefore.daily}
-                    onReset={() => resetCycle('daily')}
-                    onUpgrade={() => setShowPaywall(true)}
                 />
                 <ChallengeFrequencyCard
                     type="weekly"
@@ -395,9 +418,6 @@ export function ChallengesTile({
                     agreement={winnerAgreement.weekly}
                     onOpen={handleOpen}
                     allShown={poolStatus?.weekly?.allShown}
-                    seenBefore={seenBefore.weekly}
-                    onReset={() => resetCycle('weekly')}
-                    onUpgrade={() => setShowPaywall(true)}
                 />
                 <ChallengeFrequencyCard
                     type="monthly"
@@ -411,9 +431,6 @@ export function ChallengesTile({
                     agreement={winnerAgreement.monthly}
                     onOpen={handleOpen}
                     allShown={poolStatus?.monthly?.allShown}
-                    seenBefore={seenBefore.monthly}
-                    onReset={() => resetCycle('monthly')}
-                    onUpgrade={() => setShowPaywall(true)}
                 />
             </motion.div>
 
@@ -452,6 +469,24 @@ export function ChallengesTile({
                         selectedChallenge.type === 'daily' ? myDailyMemory?.metadata?.winner_selection :
                             selectedChallenge.type === 'weekly' ? myWeeklyMemory?.metadata?.winner_selection : myMonthlyMemory?.metadata?.winner_selection
                     }
+                />
+            )}
+
+            {allExploredType && (
+                <ChallengeOverlay
+                    isOpen={!!allExploredType}
+                    onClose={() => setAllExploredType(null)}
+                    type={allExploredType}
+                    timeLeft=""
+                    isUrgent={false}
+                    isCompleted={false}
+                    onComplete={() => { }}
+                    onUndo={() => { }}
+                    onSkip={() => { }}
+                    rainCheckTokens={0}
+                    isAllExplored={true}
+                    onReset={() => resetCycle(allExploredType)}
+                    onUpgrade={() => setShowPaywall(true)}
                 />
             )}
 
