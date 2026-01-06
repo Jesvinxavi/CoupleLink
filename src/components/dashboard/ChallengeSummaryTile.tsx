@@ -15,14 +15,26 @@ export function ChallengeSummaryTile() {
     // Challenges Status
 
     // Timers
-    const { dailyTimeLeft, weeklyTimeLeft, monthlyTimeLeft, dailyStatus, weeklyStatus, monthlyStatus } = useChallenges();
-
-    // Local timer for Today's Q (same as daily deadline - Midnight UTC)
-    // We can just reuse dailyTimeLeft since they share the same deadline (Midnight)
-    // But for completeness/independence involving formats, let's just use dailyTimeLeft for now as they are synced.
+    const {
+        dailyTimeLeft, weeklyTimeLeft, monthlyTimeLeft,
+        dailyStatus, weeklyStatus, monthlyStatus,
+        poolStatus,
+        daily, weekly, monthly
+    } = useChallenges();
 
     // Helper to determine status color and label
     const getStatusStyle = (type: 'todays_question' | 'daily' | 'weekly' | 'monthly') => {
+        // Check for All Explored State first
+        if (type !== 'todays_question') {
+            const isAllExplored = poolStatus?.[type]?.allShown;
+            const challenge = type === 'daily' ? daily : type === 'weekly' ? weekly : monthly;
+
+            // If all shown and NO active challenge, we are in the "All Explored" empty state
+            if (isAllExplored && !challenge) {
+                return 'bg-purple-50 text-purple-700 border-purple-200';
+            }
+        }
+
         let status: 'completed' | 'waiting' | 'skipped' | 'incomplete' = 'incomplete';
 
         if (type === 'todays_question') {
@@ -64,9 +76,12 @@ export function ChallengeSummaryTile() {
 
         const style = getStatusStyle(type);
         const isCompletedOrSkipped = style.includes('bg-green') || style.includes('bg-gray');
+        const isAllExplored = style.includes('bg-purple');
 
         let timer = null;
-        if (!isCompletedOrSkipped) {
+        if (isAllExplored) {
+            timer = "All Explored!";
+        } else if (!isCompletedOrSkipped) {
             if (type === 'todays_question' || type === 'daily') timer = dailyTimeLeft;
             else if (type === 'weekly') timer = weeklyTimeLeft;
             else if (type === 'monthly') timer = monthlyTimeLeft;
@@ -80,7 +95,7 @@ export function ChallengeSummaryTile() {
                 <div className="flex flex-col items-center justify-center h-full gap-0.5">
                     <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center leading-none">{title}</span>
                     {timer && (
-                        <span className="text-[10px] font-medium opacity-80 leading-none tabular-nums">
+                        <span className={`text-[10px] font-medium opacity-80 leading-none tabular-nums ${isAllExplored ? 'mt-1' : ''}`}>
                             {timer}
                         </span>
                     )}

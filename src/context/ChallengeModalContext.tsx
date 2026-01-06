@@ -83,25 +83,33 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
     const getChallengeData = () => {
         if (!selectedChallenge) return null;
 
-        const challenge = selectedChallenge.type === 'daily' ? challenges.daily :
-            selectedChallenge.type === 'weekly' ? challenges.weekly : challenges.monthly;
+        const type = selectedChallenge.type;
 
-        const timeLeft = selectedChallenge.type === 'daily' ? challenges.dailyTimeLeft :
-            selectedChallenge.type === 'weekly' ? challenges.weeklyTimeLeft : challenges.monthlyTimeLeft;
+        // Check for All Explored State
+        const isAllExplored = challenges.poolStatus?.[type]?.allShown && !challenges[type];
 
-        const isUrgent = selectedChallenge.type === 'daily' ? challenges.dailyTimeUrgent :
-            selectedChallenge.type === 'weekly' ? challenges.weeklyTimeUrgent : challenges.monthlyTimeUrgent;
+        const challenge = type === 'daily' ? challenges.daily :
+            type === 'weekly' ? challenges.weekly : challenges.monthly;
 
-        const status = selectedChallenge.type === 'daily' ? challenges.dailyStatus :
-            selectedChallenge.type === 'weekly' ? challenges.weeklyStatus : challenges.monthlyStatus;
+        // Allow opening if challenge exists OR if it's "All Explored"
+        if (!challenge && !isAllExplored) return null;
 
-        const myMemory = selectedChallenge.type === 'daily' ? challenges.myDailyMemory :
-            selectedChallenge.type === 'weekly' ? challenges.myWeeklyMemory : challenges.myMonthlyMemory;
+        const timeLeft = type === 'daily' ? challenges.dailyTimeLeft :
+            type === 'weekly' ? challenges.weeklyTimeLeft : challenges.monthlyTimeLeft;
 
-        const partnerMemory = selectedChallenge.type === 'daily' ? challenges.partnerDailyMemory :
-            selectedChallenge.type === 'weekly' ? challenges.partnerWeeklyMemory : challenges.partnerMonthlyMemory;
+        const isUrgent = type === 'daily' ? challenges.dailyTimeUrgent :
+            type === 'weekly' ? challenges.weeklyTimeUrgent : challenges.monthlyTimeUrgent;
 
-        const winnerAgreement = challenges.winnerAgreement[selectedChallenge.type];
+        const status = type === 'daily' ? challenges.dailyStatus :
+            type === 'weekly' ? challenges.weeklyStatus : challenges.monthlyStatus;
+
+        const myMemory = type === 'daily' ? challenges.myDailyMemory :
+            type === 'weekly' ? challenges.myWeeklyMemory : challenges.myMonthlyMemory;
+
+        const partnerMemory = type === 'daily' ? challenges.partnerDailyMemory :
+            type === 'weekly' ? challenges.partnerWeeklyMemory : challenges.partnerMonthlyMemory;
+
+        const winnerAgreement = challenges.winnerAgreement[type];
 
         const isSkipped = status === 'skipped';
 
@@ -115,7 +123,8 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
             isPartnerCompleted: !!partnerMemory,
             winnerAgreement,
             isSkipped,
-            initialSelection
+            initialSelection,
+            isAllExplored
         };
     };
 
@@ -126,7 +135,7 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
             {children}
 
             {/* Global Modal - persists across page navigation */}
-            {selectedChallenge && challengeData?.challenge && (
+            {selectedChallenge && challengeData && (
                 <ChallengeOverlay
                     isOpen={!!selectedChallenge}
                     onClose={handleClose}
@@ -143,6 +152,17 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
                     winnerAgreement={challengeData.winnerAgreement}
                     isSkipped={challengeData.isSkipped}
                     initialSelection={challengeData.initialSelection}
+
+                    // All Explored Props
+                    isAllExplored={challengeData.isAllExplored}
+                    onReset={() => {
+                        challenges.resetCycle(selectedChallenge.type);
+                        handleClose(); // Optional: close after reset or keep open to see new challenge? 
+                        // Usually better to keep open or re-open, but reset refreshes data.
+                        // Let's just trigger reset. The Overlay usually closes or shows new data.
+                        // Actually, logic in ChallengeContext refreshes data. 
+                        // If we close, user sees new dashboard. That's fine.
+                    }}
                 />
             )}
         </ChallengeModalContext.Provider>
