@@ -90,7 +90,7 @@ export function ChallengeSummaryTile() {
         return (
             <div
                 onClick={handleClick}
-                className={`flex flex-col items-center justify-center p-2 rounded-lg border ${style} w-full h-full transition-all cursor-pointer hover:opacity-80 relative`}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border ${style} w-full min-h-[60px] h-full transition-all cursor-pointer hover:opacity-80 relative`}
             >
                 <div className="flex flex-col items-center justify-center h-full gap-0.5">
                     <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center leading-none">{title}</span>
@@ -106,7 +106,7 @@ export function ChallengeSummaryTile() {
 
     return (
         <div
-            className="col-span-12 md:col-span-4 h-full bg-white rounded-3xl p-4 shadow-sm border border-gray-100 transition-all relative overflow-hidden group"
+            className="col-span-12 md:col-span-4 h-full bg-white rounded-3xl p-4 shadow-sm border border-gray-100 transition-all relative overflow-hidden group flex flex-col"
         >
             <div
                 onClick={() => navigate('/challenges')}
@@ -119,7 +119,7 @@ export function ChallengeSummaryTile() {
                 <span className="material-symbols-outlined text-gray-400 group-hover:text-rose-500 transition-colors">arrow_forward</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 h-[120px]">
+            <div className="grid grid-cols-2 gap-2 flex-1">
                 <StatusBox title="Today's Question" type="todays_question" />
                 <StatusBox title="Daily" type="daily" />
                 <StatusBox title="Weekly" type="weekly" />
