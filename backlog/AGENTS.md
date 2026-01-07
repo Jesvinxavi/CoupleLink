@@ -20,7 +20,7 @@ Every task file MUST start with this YAML Frontmatter:
 ---
 id: <ID>        # Integer, must be unique. Check existing files to find next ID.
 title: <TITLE>  # String, same as filename title.
-status: <STATUS> # One of: "To Do", "In Progress", "In Review", "Done"
+status: <STATUS> # One of: "Thinking", "To Do", "In Progress", "In Review", "Done"
 created: <DATE> # YYYY-MM-DD
 labels: []
 ---
@@ -47,9 +47,10 @@ labels: []
 When creating new tasks, ALWAYS start by copying the structure from `backlog/templates/`.
 - **New Feature**: Use `backlog/templates/feature.md` -> Forces us to identify context files first.
 - **Bug Fix**: Use `backlog/templates/bug.md` -> Forces us to write a reproduction step.
+- **Refactor**: Use `backlog/templates/refactor.md` -> Forces risk analysis.
+- **Maintenance**: Use `backlog/templates/chore.md` -> Simple checklist format.
 
 ## Subtasks & Breakdowns
-All subtasks MUST be implemented as Markdown Checklists within the main task file.
 All subtasks MUST be implemented as Markdown Checklists within the main task file.
 Do NOT create separate child task files unless the scope is massive.
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Scaffold Agent & Backlog Environment
+# Scaffold Agent & Backlog Environment v2.0 (Optimized)
 # Usage: ./scaffold-agents.sh
 
 echo "🚀 Initializing Agent & Backlog Environment..."
@@ -52,6 +52,8 @@ id: 1
 title: Fix Login
 status: To Do    # Options: Thinking, To Do, In Progress, In Review, Done
 created: 2026-01-01
+priority: P2     # P0 (Critical), P1 (High), P2 (Medium), P3 (Low)
+effort: M        # XS, S, M, L, XL
 ---
 \`\`\`
 
@@ -63,8 +65,8 @@ created: 2026-01-01
 When creating new tasks, ALWAYS start by copying the structure from \`backlog/templates/\`.
 - **New Feature**: Use \`backlog/templates/feature.md\` -> Forces us to identify context files first.
 - **Bug Fix**: Use \`backlog/templates/bug.md\` -> Forces us to write a reproduction step.
-- **Refactor**: Use \`backlog/templates/refactor.md\`.
-- **Maintenance**: Use \`backlog/templates/chore.md\`.
+- **Refactor**: Use \`backlog/templates/refactor.md\` -> Forces risk analysis.
+- **Maintenance**: Use \`backlog/templates/chore.md\` -> Simple checklist format.
 
 ## Subtasks & Breakdowns
 All subtasks MUST be implemented as Markdown Checklists within the main task file.
@@ -81,7 +83,7 @@ EOF
 # 4. Write Templates
 echo "📄 Writing Templates..."
 
-# Feature
+# Feature (Enhanced)
 cat > backlog/templates/feature.md <<EOF
 ---
 id: 0
@@ -89,6 +91,8 @@ title: Feature Title
 status: Thinking
 created: 2026-01-01
 labels: ["Feature"]
+priority: P2      # P0 (Critical), P1 (High), P2 (Medium), P3 (Low)
+effort: M         # XS, S, M, L, XL
 ---
 
 # Feature Description
@@ -99,18 +103,24 @@ labels: ["Feature"]
 - \`src/components/...\`
 - \`src/utils/...\`
 
+# Acceptance Criteria
+*When is this feature "truly done"? Be specific.*
+- [ ] User can do X
+- [ ] System responds with Y
+- [ ] Edge case Z is handled
+
 # Implementation Plan
 *Break it down into small, verifiable steps.*
 - [ ] Step 1
 - [ ] Step 2
 
 # Verification
-*How will we know it works?*
+*How will we prove it works?*
 - [ ] Automated Test: \`npm test ...\`
 - [ ] Manual Check: Click X button
 EOF
 
-# Bug
+# Bug (Enhanced)
 cat > backlog/templates/bug.md <<EOF
 ---
 id: 0
@@ -118,10 +128,15 @@ title: Bug Title
 status: To Do
 created: 2026-01-01
 labels: ["Bug"]
+priority: P1      # P0 (Critical), P1 (High), P2 (Medium), P3 (Low)
+effort: S         # XS, S, M, L, XL
 ---
 
-# The Problem
-*What is broken?*
+# Expected Behavior
+*What SHOULD happen?*
+
+# Actual Behavior
+*What IS happening instead?*
 
 # Steps to Reproduce
 1. Go to...
@@ -132,12 +147,12 @@ labels: ["Bug"]
 *Antigravity should determine this before writing code.*
 
 # Fix Plan
-- [ ] Reproduce with test case
+- [ ] Write test to reproduce bug
 - [ ] Fix the code
-- [ ] Verify fix
+- [ ] Verify fix passes test
 EOF
 
-# Refactor
+# Refactor (Enhanced)
 cat > backlog/templates/refactor.md <<EOF
 ---
 id: 0
@@ -145,22 +160,25 @@ title: Refactor Title
 status: To Do
 created: 2026-01-01
 labels: ["Refactor"]
+priority: P2      # P0 (Critical), P1 (High), P2 (Medium), P3 (Low)
+effort: M         # XS, S, M, L, XL
 ---
 
 # Refactor Goal
 *What are we cleaning up and why?*
 
 # Risk Analysis
-*What could break?*
+*What could break? Which features depend on this code?*
 
 # Implementation Plan
 - [ ] Create safety snapshot/branch
+- [ ] Write tests for existing behavior (if missing)
 - [ ] Refactor the code
 - [ ] Run existing tests
 - [ ] Verify nothing changed in UI behavior
 EOF
 
-# Chore
+# Chore (Enhanced)
 cat > backlog/templates/chore.md <<EOF
 ---
 id: 0
@@ -168,6 +186,8 @@ title: Chore Title
 status: To Do
 created: 2026-01-01
 labels: ["Chore"]
+priority: P3      # P0 (Critical), P1 (High), P2 (Medium), P3 (Low)
+effort: XS        # XS, S, M, L, XL
 ---
 
 # Chore Description
@@ -176,12 +196,13 @@ labels: ["Chore"]
 # Checklist
 - [ ] Perform the task
 - [ ] Verify build passes
+- [ ] Update documentation if needed
 EOF
 
 # 5. Write Workflows
 echo "⚡ Writing Workflows..."
 
-# Start Task
+# Start Task (Enhanced with Hive Mind)
 cat > .agent/workflows/start-task.md <<EOF
 ---
 description: Start working on a backlog task
@@ -190,18 +211,20 @@ description: Start working on a backlog task
 This workflow automates the process of picking up a task from the backlog.
 It handles git branching and updates the task status.
 
+0. **Read the Hive Mind.**
+   - Read \`backlog/KNOWLEDGE.md\` to understand past lessons and gotchas.
+   - Apply any relevant knowledge to the upcoming task.
 1. **Ask the user for the Task ID.** (e.g., "1")
 2. **Read the Task File.**
    - Locate \`backlog/tasks/task-<ID> - <Title>.md\`.
    - Read its content to understand the requirements.
 3. **Update Status to "In Progress".**
    - Edit the YAML frontmatter: \`status: In Progress\`.
-   - Identify the user running the command (Jesvin or Agent).
 4. **Create a Git Branch.**
    - Format: \`task-<ID>-<kebab-case-title>\`
    - Run: \`git checkout -b task-<ID>-...\`
 5. **Analyze Requirements.**
-   - If it's a "Feature" template, identify the Context Files listed.
+   - If it's a "Feature" template, identify the Context Files and Acceptance Criteria.
    - If it's a "Bug" template, identify the Reproduction Steps.
 6. **Confirm to User.**
    - "I have started Task <ID>. I am on branch <branch>. I am ready to code."
@@ -230,7 +253,7 @@ It prevents tasks from being closed without context and lessons learned.
         \`\`\`
 4.  **Hive Mind (Memory).**
     *   Ask the agent: "What is one specific lesson or gotcha from this task?"
-    *   Append this to \`backlog/KNOWLEDGE.md\`.
+    *   Append this to \`backlog/KNOWLEDGE.md\` under the appropriate category.
 5.  **Status Update.**
     *   Move card to "Done" (or "In Review") in YAML.
     *   Commit changes: \`chore: complete task 5\`.
@@ -264,7 +287,7 @@ This workflow turns "I want X" into a rigorous plan.
         *   Generate all tasks and link them: \`backlog task create ... --milestone <ID>\`.
 EOF
 
-# Update Types (Supabase specific - optional fallback included)
+# Update Types (Supabase specific)
 cat > .agent/workflows/update-types.md <<EOF
 ---
 description: Update Supabase TypeScript types
@@ -283,7 +306,7 @@ This workflow keeps your frontend in sync with your database.
     *   \`git commit -m "chore: update database types"\`
 EOF
 
-# 6. Init Knowledge Base
+# 6. Init Knowledge Base (with categories)
 echo "📘 Initializing Knowledge Base..."
 cat > backlog/KNOWLEDGE.md <<EOF
 # The Hive Mind (Project Knowledge Base)
@@ -291,15 +314,33 @@ cat > backlog/KNOWLEDGE.md <<EOF
 This file contains accumulated wisdom from completed tasks.
 **Agents MUST read this file before starting complex tasks.**
 
-## Lessons Learned
-*   [$(date +%Y-%m-%d)] **Initial Setup**: Environment created via scaffold-agents.sh.
+---
+
+## 🗄️ Database & Supabase
+*Lessons about schemas, RLS policies, and migrations.*
+
+## 🎨 UI & Components
+*Lessons about styling, component behavior, and responsive design.*
+
+## 🔐 Authentication & Security
+*Lessons about auth flows, tokens, and security considerations.*
+
+## 🚀 Deployment & DevOps
+*Lessons about builds, hosting, and environment configuration.*
+
+## 📦 Dependencies & Tooling
+*Lessons about package versions, compatibility, and build tools.*
+
+---
+
+## General Lessons Learned
+*   [$(date +%Y-%m-%d)] **Initial Setup**: Environment created via scaffold-agents.sh v2.0.
 EOF
 
 # 7. Final Instructions
-echo "✅ Done! Environment Scaffolded."
+echo "✅ Done! Environment Scaffolded (v2.0 Optimized)."
 echo ""
 echo "Next Steps:"
 echo "1. Run 'npx backlog.md init' if you haven't (to install the CLI binary)."
 echo "2. Start the board: 'npx backlog.md browser'"
 echo "3. Antigravity is ready to use /start-task and /create-spec."
-EOF

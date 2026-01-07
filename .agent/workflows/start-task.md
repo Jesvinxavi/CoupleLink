@@ -5,6 +5,9 @@ description: Start working on a backlog task
 This workflow automates the process of picking up a task from the backlog.
 It handles git branching and updates the task status.
 
+0. **Read the Hive Mind.**
+   - Read `backlog/KNOWLEDGE.md` to understand past lessons and gotchas.
+   - Apply any relevant knowledge to the upcoming task.
 1. **Ask the user for the Task ID.** (e.g., "1")
 2. **Read the Task File.**
    - Locate `backlog/tasks/task-<ID> - <Title>.md`.

@@ -4,6 +4,8 @@ title: Chore Title
 status: To Do
 created: 2026-01-01
 labels: ["Chore"]
+priority: P3      # P0 (Critical), P1 (High), P2 (Medium), P3 (Low)
+effort: XS        # XS, S, M, L, XL
 ---
 
 # Chore Description
@@ -12,3 +14,4 @@ labels: ["Chore"]
 # Checklist
 - [ ] Perform the task
 - [ ] Verify build passes
+- [ ] Update documentation if needed
