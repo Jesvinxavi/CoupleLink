@@ -1,13 +1,14 @@
 ---
 id: '1'
 title: Example Checklist Task
-status: To Do
+status: Done
 assignee: []
 created_date: ''
 updated_date: '2026-01-07 22:19'
 labels:
   - Documentation
 dependencies: []
+ordinal: 1000
 ---
 
 ## Implementation Plan

@@ -2,6 +2,13 @@
 
 This project uses `backlog.md` for task management. As an AI agent, you can read and write tasks directly to the filesystem.
 
+## Agent Workflows
+To ensure quality, you MUST use these standardized workflows:
+- **Starting**: Use `/start-task` (Sets status, creates branch, analyzes requirements).
+- **Finishing**: Use `/finish-task` (Runs build, updates Context, updates Knowledge Base).
+- **Architecting**: Use `/create-spec` (Analyzes code, writes spec, creates multiple tasks).
+- **Utilities**: Use `/update-types` (Syncs Supabase types).
+
 ## Task File Structure
 All tasks are stored in `backlog/tasks/`.
 Naming convention: `task-<ID> - <TITLE>.md` (e.g., `task-1 - Fix Login.md`).
@@ -36,7 +43,13 @@ labels: []
 - When a CLI Agent (Gemini/Vibe) finishes work, it MUST set status to `In Review`.
 - This signals Antigravity (Chat Agent) to inspect the code before marking `Done`.
 
+## Task Templates
+When creating new tasks, ALWAYS start by copying the structure from `backlog/templates/`.
+- **New Feature**: Use `backlog/templates/feature.md` -> Forces us to identify context files first.
+- **Bug Fix**: Use `backlog/templates/bug.md` -> Forces us to write a reproduction step.
+
 ## Subtasks & Breakdowns
+All subtasks MUST be implemented as Markdown Checklists within the main task file.
 All subtasks MUST be implemented as Markdown Checklists within the main task file.
 Do NOT create separate child task files unless the scope is massive.
 

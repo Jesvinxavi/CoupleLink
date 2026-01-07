@@ -1,6 +1,6 @@
 project_name: "CoupleLink"
 default_status: "To Do"
-statuses: ["To Do", "In Progress", "In Review", "Done"]
+statuses: ["Thinking", "To Do", "In Progress", "In Review", "Done"]
 labels: []
 milestones: []
 date_format: yyyy-mm-dd
