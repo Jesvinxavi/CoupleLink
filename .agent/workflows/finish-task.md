@@ -18,8 +18,8 @@ It prevents tasks from being closed without context and lessons learned.
         - `src/modified/file.ts`
         ```
 4.  **Hive Mind (Memory).**
-    *   Ask the agent: "What is one specific lesson or gotcha from this task?"
-    *   Append this to `backlog/KNOWLEDGE.md`.
+    *   Ask the agent: \"What is one specific lesson or gotcha from this task?\"
+    *   Append this to `backlog/KNOWLEDGE.md` under the **appropriate category** (Database, UI, Auth, etc.).
 5.  **Status Update.**
     *   Move card to "Done" (or "In Review") in YAML.
     *   Commit changes: `chore: complete task 5`.

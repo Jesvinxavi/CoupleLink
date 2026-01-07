@@ -22,6 +22,8 @@ id: <ID>        # Integer, must be unique. Check existing files to find next ID.
 title: <TITLE>  # String, same as filename title.
 status: <STATUS> # One of: "Thinking", "To Do", "In Progress", "In Review", "Done"
 created: <DATE> # YYYY-MM-DD
+priority: P2    # P0 (Critical), P1 (High), P2 (Medium), P3 (Low)
+effort: M       # XS, S, M, L, XL
 labels: []
 ---
 ```

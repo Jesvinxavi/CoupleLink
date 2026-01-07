@@ -19,7 +19,7 @@ It handles git branching and updates the task status.
    - Format: `task-<ID>-<kebab-case-title>`
    - Run: `git checkout -b task-<ID>-...`
 5. **Analyze Requirements.**
-   - If it's a "Feature" template, identify the Context Files listed.
-   - If it's a "Bug" template, identify the Reproduction Steps.
+   - If it's a \"Feature\" template, identify the Context Files and **Acceptance Criteria**.
+   - If it's a \"Bug\" template, identify the **Expected/Actual Behavior** and Reproduction Steps.
 6. **Confirm to User.**
    - "I have started Task <ID>. I am on branch <branch>. I am ready to code."
