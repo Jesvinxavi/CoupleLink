@@ -35,3 +35,14 @@ labels: []
 ## "In Review" - The Handover Protocol
 - When a CLI Agent (Gemini/Vibe) finishes work, it MUST set status to `In Review`.
 - This signals Antigravity (Chat Agent) to inspect the code before marking `Done`.
+
+## Subtasks & Breakdowns
+All subtasks MUST be implemented as Markdown Checklists within the main task file.
+Do NOT create separate child task files unless the scope is massive.
+
+**Format:**
+```markdown
+## Implementation Plan
+- [ ] Subtask 1
+- [ ] Subtask 2
+```
