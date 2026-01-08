@@ -1,7 +1,7 @@
 ---
 id: task-7
 title: Backup and Rewrite scaffold-agents.sh
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-01-08 19:45'
 labels:

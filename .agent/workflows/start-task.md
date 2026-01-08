@@ -81,12 +81,7 @@ git checkout <branch-from-frontmatter>
 
 ---
 
-## 8. Confirm to User
-"I have started Task <ID>. Working on branch <branch>. Skills loaded: [list]. Ready to implement."
-
----
-
-## 9. Implement the Task
+## 8. Implement the Task
 - Follow the subtasks in the task file
 - Mark subtasks complete as you go: `- [x]`
 - When done, invoke `/commit-task` (not /finish-spec yet)
