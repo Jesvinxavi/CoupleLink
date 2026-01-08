@@ -81,6 +81,11 @@ Load `.agent/skills/quality-gate/SKILL.md`
 ## 6. Run Self-Reflection Skill
 Load `.agent/skills/self-reflection/SKILL.md`
 
+**Preparation:**
+- **CRITICAL:** You must READ all `backlog/tasks/task-*.md` files associated with this spec.
+- Do not rely solely on your memory or the last task's context.
+- Extract "Lessons Learned" or specific nuances from each task description and completion notes.
+
 **Answer these questions for the ENTIRE spec (holistic view):**
 - What went well across all tasks?
 - What could improve?
