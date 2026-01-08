@@ -1,7 +1,7 @@
 ---
 id: task-8
 title: Local Verification of Scaffold Script
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-01-08 19:45'
 labels:

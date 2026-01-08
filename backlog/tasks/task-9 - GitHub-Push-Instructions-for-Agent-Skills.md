@@ -1,7 +1,7 @@
 ---
 id: task-9
 title: GitHub Push Instructions for Agent Skills
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-01-08 19:45'
 labels:
