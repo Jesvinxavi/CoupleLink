@@ -84,13 +84,15 @@ git checkout <branch-from-frontmatter>
 ## 8. Implement the Task
 - Follow the subtasks in the task file
 - Mark subtasks complete as you go: `- [x]`
-- When done, invoke `/commit-task` (not /finish-spec yet)
+- **STOP** when implementation is complete.
+- Notify User: "Task <ID> implementation complete. Ready for `@[/commit-task] <ID>`."
 
 ---
 
 > [!NOTE]
 > ## After Task Completion
 > 
-> 1. Run `/commit-task` to commit changes + quick build check
-> 2. Repeat `/start-task` for next task in the spec
-> 3. After ALL tasks: Run `/finish-spec` for holistic quality gate
+> 1. implementation ends. Agent notifies user.
+> 2. User invokes `@[/commit-task]` (or agent requests it).
+> 3. Repeat `/start-task` for next task.
+> 4. After ALL tasks: Run `/finish-spec`.
