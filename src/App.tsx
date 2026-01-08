@@ -17,7 +17,7 @@ import { GlobalCouponListener } from "@/components/GlobalCouponListener"
 import { GlobalModalQueueProvider } from "@/context/GlobalModalQueueContext"
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary"
 import { DebugConsole } from "@/components/debug/DebugConsole"
-import { ScrollToTop } from "@/components/ScrollToTop"
+
 import { DeveloperProvider } from "@/context/DeveloperContext"
 
 
@@ -25,7 +25,6 @@ import { DeveloperProvider } from "@/context/DeveloperContext"
 function App() {
   return (
     <Router>
-      <ScrollToTop />
       <GlobalErrorBoundary>
         <AuthProvider>
           <DeveloperProvider>
