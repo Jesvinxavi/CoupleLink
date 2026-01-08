@@ -2,34 +2,100 @@
 description: Start working on a backlog task
 ---
 
-This workflow automates the process of picking up a task from the backlog.
-It handles git branching and updates the task status.
+This workflow picks up a task from the backlog and prepares for implementation.
+**Note:** Feature branching happens in `/create-task-spec`. This workflow just loads skills and starts work.
 
-0. **Read the Hive Mind.**
-   - Read `backlog/KNOWLEDGE.md` to understand past lessons and gotchas.
-   - Apply any relevant knowledge to the upcoming task.
+---
 
-1. **Ask the user for the Task ID.** (e.g., "1")
+## 0. Read the Hive Mind
+- Read `backlog/KNOWLEDGE.md` to understand past lessons and gotchas.
+- Apply any relevant knowledge to the upcoming task.
 
-2. **Read the Task File.**
-   - Locate `backlog/tasks/task-<ID> - <Title>.md`.
-   - Read its content to understand the requirements.
+---
 
-3. **Check Task-Decomposer Trigger.**
-   - If effort is L or XL, or request is vague → Load `.agent/skills/task-decomposer/SKILL.md`
-   - Break down into subtasks before proceeding.
+## 1. Identify the Task
+- User provides Task ID (e.g., "6")
+- Locate `backlog/tasks/task-<ID> - <Title>.md`
+- Read its content to understand requirements
 
-4. **Update Status to "In Progress".**
-   - Edit the YAML frontmatter: `status: In Progress`.
+---
 
-5. **Create a Git Branch.**
-   - Format: `task-<ID>-<kebab-case-title>`
-   - Run: `git checkout -b task-<ID>-...`
+## 2. Check Dependency Guardrails (CRITICAL)
 
-6. **Load Relevant Skills.**
-   - Feature → `frontend-mastery` + `supabase-expert` (if DB changes)
-   - Bug → `research-deep-dive`
-   - Read SKILL.md files before coding.
+**Read the `dependencies:` list in the task frontmatter.**
+(e.g., `dependencies: [task-6]`)
 
-7. **Confirm to User.**
-   - "I have started Task <ID>. I am on branch <branch>. Skills loaded: [list]. Ready to code."
+- **If empty:** Proceed.
+- **If populated:** Check the status of each dependent task.
+  - If any dependency is NOT `Done`:
+    - **STOP.** Do not start this task.
+    - Notify user: "Task <ID> is blocked by <Dep-ID>. Please finish <Dep-ID> first."
+
+---
+
+## 3. Check Context Links
+If stuck or need clarity:
+- Read the `spec:` link in frontmatter for full feature context
+- Read the `related_adr:` link for architectural decisions
+
+---
+
+## 4. Check Task-Decomposer Trigger
+- If effort is L or XL, or task is vague → Load `.agent/skills/task-decomposer/SKILL.md`
+- Break down into subtasks before proceeding
+
+---
+
+## 5. Update Status to "In Progress"
+- Edit the YAML frontmatter: `status: In Progress`
+
+---
+
+## 6. Verify Branch (Do NOT Create)
+
+> [!IMPORTANT]
+> Do NOT create a new branch. Feature branches are created in `/create-task-spec`.
+
+**Read the `branch:` field from task frontmatter** to know which branch you should be on.
+
+**Check current branch and switch if needed:**
+```bash
+git branch --show-current
+# If wrong, switch to the branch specified in task frontmatter:
+git checkout <branch-from-frontmatter>
+```
+
+**Valid scenarios:**
+- Task has `branch: main` → You should be on `main`
+- Task has `branch: feature/skills-migration` → You should be on `feature/skills-migration`
+
+---
+
+## 7. Load Relevant Skills
+- Check `skills:` field in task frontmatter
+- Read each skill's SKILL.md before coding
+- Common mappings:
+  - UI work → `frontend-mastery`
+  - DB work → `supabase-expert`
+  - Bugs → `research-deep-dive`
+
+---
+
+## 8. Confirm to User
+"I have started Task <ID>. Working on branch <branch>. Skills loaded: [list]. Ready to implement."
+
+---
+
+## 9. Implement the Task
+- Follow the subtasks in the task file
+- Mark subtasks complete as you go: `- [x]`
+- When done, invoke `/commit-task` (not /finish-spec yet)
+
+---
+
+> [!NOTE]
+> ## After Task Completion
+> 
+> 1. Run `/commit-task` to commit changes + quick build check
+> 2. Repeat `/start-task` for next task in the spec
+> 3. After ALL tasks: Run `/finish-spec` for holistic quality gate

@@ -81,6 +81,7 @@ effort: M  # XS, S, M, L, XL
 skills: [skill-name]
 spec: backlog/specs/feature-name.md  # REQUIRED: Link back to parent spec
 related_adr: backlog/decisions/adr-name.md  # Optional: If architectural change
+branch: feature/spec-name  # REQUIRED if >2 tasks, else 'main'
 ---
 ```
 
@@ -94,6 +95,7 @@ Brief description of the task.
 ## Context
 - **Spec:** [Feature Name](file:///path/to/backlog/specs/feature-name.md)
 - **ADR:** [Decision Name](file:///path/to/backlog/decisions/adr-name.md) (if applicable)
+- **Branch:** `feature/spec-name` (or `main` if ≤2 tasks)
 
 ## Subtasks
 - [ ] Subtask 1
@@ -107,6 +109,13 @@ Brief description of the task.
 - **Small Feature (< 10 tasks)**: Generate tasks directly.
 - **Large Feature (> 10 tasks)**: Create a Milestone first.
 - **ALWAYS create physical files** - Never just document in the spec.
+- **Bi-directional Linking**: After creating task files, append a list of them to the Spec file:
+
+```markdown
+## Generated Tasks (Auto-Generated)
+- [ ] [Task-6: Create Package](file:///path/to/task-6.md)
+- [ ] [Task-7: Rewrite Script](file:///path/to/task-7.md)
+```
 
 ---
 
@@ -124,7 +133,32 @@ Ask: "Does this introduce new technology, patterns, or architecture changes?"
 1. Evaluate if tests are needed (impact matrix)
 2. Select test type (Unit/Integration/E2E)
 3. Document the test plan in the spec using the Output Template
-4. Note: Tests are WRITTEN during task execution, VERIFIED during finish-task
+4. Note: Tests are WRITTEN during task execution, VERIFIED during /finish-spec
+
+---
+
+## 9. Create Feature Branch (If >2 Tasks)
+
+**Count the tasks generated in Step 6.**
+
+| Task Count | Action |
+|------------|--------|
+| ≤2 tasks | No branch needed. Work on current branch. |
+| >2 tasks | Create feature branch before starting any tasks. |
+
+**Branch Creation (for >2 tasks):**
+```bash
+git checkout -b feature/<spec-name>
+# Example: git checkout -b feature/skills-migration
+```
+
+**Branch Naming Convention:**
+- `feature/<kebab-case-spec-name>`
+- Derived from the spec filename (e.g., `feature-skills-migration.md` → `feature/skills-migration`)
+
+> [!NOTE]
+> Individual tasks do NOT create sub-branches. All task commits go to the feature branch.
+> After ALL tasks complete, use `/finish-spec` to quality-check and merge.
 
 ---
 
@@ -138,6 +172,7 @@ Ask: "Does this introduce new technology, patterns, or architecture changes?"
 - [ ] **Task FILES created in `backlog/tasks/`** (not just documented)
 - [ ] Testing strategy documented
 - [ ] ADR created (if architectural change)
+- [ ] **Feature branch created** (if >2 tasks)
 
 ---
 
@@ -146,8 +181,10 @@ Ask: "Does this introduce new technology, patterns, or architecture changes?"
 > 
 > After completing this workflow:
 > 1. **STOP.** Do not start coding or executing tasks.
-> 2. **Notify user** that the spec and tasks are ready.
-> 3. **Wait for `/start-task`** workflow to be invoked.
+> 2. **Notify user** that the spec, tasks, and branch (if any) are ready.
+> 3. **Wait for `/start-task`** workflow to be invoked for each task.
+> 4. After all tasks: User invokes `/finish-spec` for holistic review.
 > 
 > The `/start-task` workflow is the ONLY way to begin implementation.
+
 
