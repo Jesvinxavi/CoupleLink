@@ -100,6 +100,7 @@ Skills are specialized instructions in \`.agent/skills/\`. Load them dynamically
 | \`context-curator\` | Managing KNOWLEDGE.md (when >200 lines) |
 | \`task-decomposer\` | Breaking down vague/large requests |
 | \`quality-gate\` | Self-review before "In Review" status |
+| \`adr-manager\` | Record architectural decisions (backlog/decisions) |
 
 **How to Use:**
 1. Read the \`SKILL.md\` for the relevant skill before starting work
@@ -108,7 +109,8 @@ Skills are specialized instructions in \`.agent/skills/\`. Load them dynamically
 4. Reference \`resources/\` files for detailed patterns
 
 **Task → Skill Mapping:**
-- Feature → \`task-decomposer\` → \`frontend-mastery\` + \`supabase-expert\` → \`quality-gate\`
+- Feature (Major) → \`adr-manager\` → \`task-decomposer\`
+- Feature (Standard) → \`task-decomposer\` → \`frontend-mastery\` + \`supabase-expert\` → \`quality-gate\`
 - Bug → \`research-deep-dive\` → domain skill → \`quality-gate\`
 - Refactor → \`frontend-mastery\` or \`supabase-expert\` → \`quality-gate\`
 - Chore → \`git-operations\` → \`quality-gate\`
@@ -619,6 +621,69 @@ description: <When to load this skill>
 ## Description: Trigger condition (max 1024 chars)
 EOF
 
+# Meta-Skills: ADR Manager
+mkdir -p .agent/skills/adr-manager/resources
+cat > .agent/skills/adr-manager/SKILL.md <<'EOF'
+---
+name: adr-manager
+description: Use when significant architectural decisions are made. Creates standard Architecture Decision Records (ADRs) in Nygard format.
+---
+
+# ADR Manager Skill
+
+## Trigger
+Use this skill when you make a decision that:
+- Introduces a new technology or library
+- Changes the database schema structure significantly
+- Defines a new pattern (e.g., "Use Edge Functions for X")
+- Changes a core workflow or navigation flow
+
+## Core Instructions
+1.  **Check Context**: Is this a *decision* or just *work*? If decision, proceed.
+2.  **Generate ID**: Count existing files in `backlog/decisions/`. New ID = Count + 1 (padded to 4 digits, e.g., `0003`).
+3.  **Create File**: `backlog/decisions/<ID>-<kebab-case-title>.md`
+4.  **Use Template**: Follow the Nygard format (see `resources/adr-template.md`).
+
+## Verification
+- [ ] File created in `backlog/decisions/`
+- [ ] ID is sequential
+- [ ] Status is set correctly
+- [ ] Consequences list at least one "con" (trade-off)
+EOF
+
+cat > .agent/skills/adr-manager/resources/adr-template.md <<'EOF'
+# Architecture Decision Record (ADR) Template
+
+File Name Format: `YYYY-MM-DD-short-title.md`
+
+```markdown
+# [Short Title]
+
+- Status: [Proposed | Accepted | Deprecated | Superseded]
+- Date: [YYYY-MM-DD]
+- Deciders: [List everyone involved]
+
+## Context and Problem Statement
+[Describe the context and problem statement...]
+
+## Decision Drivers
+* [driver 1...]
+
+## Considered Options
+* [option 1]
+* [option 2]
+
+## Decision Outcome
+Chosen option: "[option 1]", because...
+
+### Positive Consequences
+* [e.g., improvement...]
+
+### Negative Consequences
+* [e.g., trade-off...]
+```
+EOF
+
 # Meta-Skills: Self-Reflection
 mkdir -p .agent/skills/self-reflection
 cat > .agent/skills/self-reflection/SKILL.md <<'EOF'
@@ -710,6 +775,7 @@ This project uses a **Skills System** to give agents specialized knowledge for s
 | Skill | Trigger |
 |-------|---------|
 | `skill-creator` | 80%+ confidence to create new skill |
+| `adr-manager` | Architectual decisions (new tech, major patterns) |
 | `self-reflection` | After /finish-task |
 | `workflow-creator` | 3+ repeated sequences |
 | `context-curator` | KNOWLEDGE.md > 200 lines |

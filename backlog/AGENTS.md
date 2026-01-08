@@ -80,6 +80,7 @@ Skills are specialized instructions in `.agent/skills/`. Load them dynamically b
 | `context-curator` | Managing KNOWLEDGE.md (when >200 lines) |
 | `task-decomposer` | Breaking down vague/large requests |
 | `quality-gate` | Self-review before "In Review" status |
+| `adr-manager` | Record architectural decisions (backlog/decisions) |
 
 **How to Use:**
 1. Read the `SKILL.md` for the relevant skill before starting work
@@ -88,7 +89,8 @@ Skills are specialized instructions in `.agent/skills/`. Load them dynamically b
 4. Reference `resources/` files for detailed patterns
 
 **Task → Skill Mapping:**
-- Feature → `task-decomposer` → `frontend-mastery` + `supabase-expert` → `quality-gate`
+- Feature (Major) → `adr-manager` → `task-decomposer`
+- Feature (Standard) → `task-decomposer` → `frontend-mastery` + `supabase-expert` → `quality-gate`
 - Bug → `research-deep-dive` → domain skill → `quality-gate`
 - Refactor → `frontend-mastery` or `supabase-expert` → `quality-gate`
 - Chore → `git-operations` → `quality-gate`

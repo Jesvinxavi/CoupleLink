@@ -20,6 +20,7 @@ This project uses a **Skills System** to give agents specialized knowledge for s
 | Skill | Trigger |
 |-------|---------|
 | `skill-creator` | 80%+ confidence to create new skill |
+| `adr-manager` | Architectual decisions (new tech, major patterns) |
 | `self-reflection` | After /finish-task |
 | `workflow-creator` | 3+ repeated sequences |
 | `context-curator` | KNOWLEDGE.md > 200 lines |
