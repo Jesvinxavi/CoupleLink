@@ -10,7 +10,7 @@ updated: 2026-01-08
 ## Overview
 
 This project uses a **Skills System** to give agents specialized knowledge for specific task types.
-**Total Skills: 16** (4 Domain + 12 Meta)
+**Total Skills: 17** (4 Domain + 13 Meta)
 
 ---
 
@@ -24,7 +24,7 @@ This project uses a **Skills System** to give agents specialized knowledge for s
 | `research-deep-dive` | Investigation before coding |
 | `git-operations` | Branching, commits, PRs |
 
-### Meta-Skills (12)
+### Meta-Skills (13)
 | Skill | Trigger |
 |-------|---------|
 | `skill-creator` | 80%+ confidence to create new skill |
@@ -38,6 +38,7 @@ This project uses a **Skills System** to give agents specialized knowledge for s
 | `test-strategist` | Evaluate test needs, write tests |
 | `project-decomposer` | New project initialization (PRD, Tech Spec) |
 | `github-automator` | Automate GitHub actions (create repo, issues, PRs) |
+| `comprehensive-audit` | Deep review of spec implementation for robustness |
 
 ---
 

@@ -27,7 +27,29 @@ grep -l "spec:.*<spec-name>" backlog/tasks/*.md
 
 ---
 
-## 3. Run Quality-Gate Skill
+## 3. Comprehensive Audit (CRITICAL)
+
+**Load `.agent/skills/comprehensive-audit/SKILL.md`**
+
+**Goal:** Identify any mistakes and ensure the implementation is as robust as possible.
+
+The skill contains:
+- 6-phase audit methodology
+- Task-level and code-level review checklists
+- Correctness, robustness, security, and test audits
+- Severity classification and resolution tracking
+- Anti-patterns to avoid
+
+> [!IMPORTANT]
+> **Elite Standard:** You must achieve a **Robustness Score of 100/100**.
+> If score < 100:
+> 1. Fix issues
+> 2. Commit fix: `fix(audit): resolve robustness issues (Score: X -> 100)`
+> 3. Re-run audit to confirm 100/100
+
+---
+
+## 4. Run Quality-Gate Skill
 Load `.agent/skills/quality-gate/SKILL.md`
 
 1. **Build Check:**
@@ -45,7 +67,7 @@ Load `.agent/skills/quality-gate/SKILL.md`
 
 ---
 
-## 4. Context Binding (Automatic)
+## 5. Context Binding (Automatic)
 - Run `git diff --name-only main...HEAD`
 - Update the spec file to add a summary of changes:
   ```markdown
@@ -56,7 +78,7 @@ Load `.agent/skills/quality-gate/SKILL.md`
 
 ---
 
-## 5. Run Self-Reflection Skill
+## 6. Run Self-Reflection Skill
 Load `.agent/skills/self-reflection/SKILL.md`
 
 **Answer these questions for the ENTIRE spec (holistic view):**
@@ -70,12 +92,12 @@ Append to `backlog/KNOWLEDGE.md` under the appropriate category.
 
 ---
 
-## 6. Check Context-Curator Trigger
+## 7. Check Context-Curator Trigger
 - If `KNOWLEDGE.md` > 200 lines, run context-curator skill.
 
 ---
 
-## 7. Merge Strategy
+## 8. Merge Strategy
 
 | Spec Type | Action |
 |-----------|--------|
@@ -91,7 +113,7 @@ git push
 
 ---
 
-## 8. Update Spec Status
+## 9. Update Spec Status
 - Add completion timestamp to spec file
 - Mark all related tasks as Done (if not already)
 - Commit: `chore: complete spec <spec-name>`
@@ -100,6 +122,7 @@ git push
 
 ## Definition of Done (Spec Finished When)
 - [ ] All tasks have `status: Done`
+- [ ] Comprehensive audit completed (no issues found)
 - [ ] Build passes
 - [ ] Tests pass (if required)
 - [ ] Self-reflection completed
