@@ -313,8 +313,7 @@ export function ChallengeOverlay({
                                                 onUndo()
                                                 onClose()
                                             }}
-                                            variant="outline"
-                                            className="w-full h-14 text-lg font-bold rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200"
+                                            className="w-full h-14 text-lg font-bold rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition-colors"
                                         >
                                             <RotateCcw className="w-5 h-5 mr-2" />
                                             {isSkipped ? 'Unskip' : 'Undo Completion'}
@@ -334,26 +333,27 @@ export function ChallengeOverlay({
 
                                     {/* Rain Check / Skip */}
                                     {!isCompleted && !isSkipped && (
-                                        <Button
-                                            onClick={() => {
-                                                if (rainCheckTokens > 0) {
-                                                    onSkip()
-                                                    onClose()
-                                                }
-                                            }}
-                                            disabled={rainCheckTokens <= 0}
-                                            variant="ghost"
-                                            className={`w-full h-12 rounded-xl border border-transparent ${rainCheckTokens > 0 ? 'text-purple-600 hover:bg-purple-50' : 'text-gray-400'}`}
-                                        >
-                                            {rainCheckTokens > 0 ? (
-                                                <>
-                                                    <span className="material-symbols-outlined mr-2 text-lg">umbrella</span>
-                                                    Use Rain Check (Skip)
-                                                </>
-                                            ) : (
-                                                "No Rain Checks Available"
-                                            )}
-                                        </Button>
+                                        <div className="flex justify-center">
+                                            <Button
+                                                onClick={() => {
+                                                    if (rainCheckTokens > 0) {
+                                                        onSkip()
+                                                        onClose()
+                                                    }
+                                                }}
+                                                disabled={rainCheckTokens <= 0}
+                                                className={`px-6 h-12 rounded-xl font-bold transition-all ${rainCheckTokens > 0 ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20' : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'}`}
+                                            >
+                                                {rainCheckTokens > 0 ? (
+                                                    <>
+                                                        <span className="material-symbols-outlined mr-2 text-lg">umbrella</span>
+                                                        Use Rain Check (Skip)
+                                                    </>
+                                                ) : (
+                                                    "No Rain Checks Available"
+                                                )}
+                                            </Button>
+                                        </div>
                                     )}
                                 </div>
                             )}

@@ -10,6 +10,7 @@ This file contains accumulated wisdom from completed tasks.
 
 ## 🎨 UI & Components
 *Lessons about styling, component behavior, and responsive design.*
+*   [2026-01-08] **Button Styling**: When overriding Button component styles with `className`, remove the `variant` prop entirely. Keeping `variant="outline"` or `variant="ghost"` alongside custom background classes can cause conflicts. Use explicit classes like `bg-purple-600` without variant.
 
 ## 🔐 Authentication & Security
 *Lessons about auth flows, tokens, and security considerations.*
