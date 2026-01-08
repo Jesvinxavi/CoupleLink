@@ -8,18 +8,28 @@ It handles git branching and updates the task status.
 0. **Read the Hive Mind.**
    - Read `backlog/KNOWLEDGE.md` to understand past lessons and gotchas.
    - Apply any relevant knowledge to the upcoming task.
+
 1. **Ask the user for the Task ID.** (e.g., "1")
+
 2. **Read the Task File.**
    - Locate `backlog/tasks/task-<ID> - <Title>.md`.
    - Read its content to understand the requirements.
-3. **Update Status to "In Progress".**
+
+3. **Check Task-Decomposer Trigger.**
+   - If effort is L or XL, or request is vague → Load `.agent/skills/task-decomposer/SKILL.md`
+   - Break down into subtasks before proceeding.
+
+4. **Update Status to "In Progress".**
    - Edit the YAML frontmatter: `status: In Progress`.
-   - Identify the user running the command (Jesvin or Agent).
-4. **Create a Git Branch.**
+
+5. **Create a Git Branch.**
    - Format: `task-<ID>-<kebab-case-title>`
    - Run: `git checkout -b task-<ID>-...`
-5. **Analyze Requirements.**
-   - If it's a \"Feature\" template, identify the Context Files and **Acceptance Criteria**.
-   - If it's a \"Bug\" template, identify the **Expected/Actual Behavior** and Reproduction Steps.
-6. **Confirm to User.**
-   - "I have started Task <ID>. I am on branch <branch>. I am ready to code."
+
+6. **Load Relevant Skills.**
+   - Feature → `frontend-mastery` + `supabase-expert` (if DB changes)
+   - Bug → `research-deep-dive`
+   - Read SKILL.md files before coding.
+
+7. **Confirm to User.**
+   - "I have started Task <ID>. I am on branch <branch>. Skills loaded: [list]. Ready to code."

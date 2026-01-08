@@ -28,7 +28,7 @@ labels: []
 ---
 ```
 
-## Workflow using Vibe Kanban & Antigravity
+## Task Lifecycle
 1. **Creation**: Create a new file in `backlog/tasks/` with `status: To Do`.
 2. **Implementation**:
     - Change status to `In Progress`.
@@ -42,8 +42,8 @@ labels: []
     - Move file to `backlog/archive/tasks/` (Optional, or just leave in tasks with Done status).
 
 ## "In Review" - The Handover Protocol
-- When a CLI Agent (Gemini/Vibe) finishes work, it MUST set status to `In Review`.
-- This signals Antigravity (Chat Agent) to inspect the code before marking `Done`.
+- When an Agent finishes work, it MUST set status to `In Review`.
+- This signals the user or reviewing agent to inspect the code before marking `Done`.
 
 ## Task Templates
 When creating new tasks, ALWAYS start by copying the structure from `backlog/templates/`.
@@ -62,3 +62,34 @@ Do NOT create separate child task files unless the scope is massive.
 - [ ] Subtask 1
 - [ ] Subtask 2
 ```
+
+## Skill Loading Protocol
+
+Skills are specialized instructions in `.agent/skills/`. Load them dynamically based on task type.
+
+**Available Skills:**
+| Skill | When to Load |
+|-------|--------------|
+| `frontend-mastery` | UI components, styling, pages |
+| `supabase-expert` | Database, RLS, migrations, Edge Functions |
+| `research-deep-dive` | Complex investigations, debugging |
+| `git-operations` | Branching, commits, PRs |
+| `skill-creator` | Creating new skills (80%+ confidence) |
+| `self-reflection` | After completing tasks (auto via /finish-task) |
+| `workflow-creator` | Automating repeated multi-step processes |
+| `context-curator` | Managing KNOWLEDGE.md (when >200 lines) |
+| `task-decomposer` | Breaking down vague/large requests |
+| `quality-gate` | Self-review before "In Review" status |
+
+**How to Use:**
+1. Read the `SKILL.md` for the relevant skill before starting work
+2. Follow the skill's Core Instructions
+3. Use the skill's Verification checklist before marking done
+4. Reference `resources/` files for detailed patterns
+
+**Task → Skill Mapping:**
+- Feature → `task-decomposer` → `frontend-mastery` + `supabase-expert` → `quality-gate`
+- Bug → `research-deep-dive` → domain skill → `quality-gate`
+- Refactor → `frontend-mastery` or `supabase-expert` → `quality-gate`
+- Chore → `git-operations` → `quality-gate`
+- Task Complete → `self-reflection` (always)
