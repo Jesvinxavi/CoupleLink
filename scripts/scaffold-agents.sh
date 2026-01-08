@@ -101,6 +101,7 @@ Skills are specialized instructions in \`.agent/skills/\`. Load them dynamically
 | \`task-decomposer\` | Breaking down vague/large requests |
 | \`quality-gate\` | Self-review before "In Review" status |
 | \`adr-manager\` | Record architectural decisions (backlog/decisions) |
+| \`skill-orchestrator\` | Auto-assign skills to tasks (via /create-spec) |
 
 **How to Use:**
 1. Read the \`SKILL.md\` for the relevant skill before starting work
@@ -684,6 +685,36 @@ Chosen option: "[option 1]", because...
 ```
 EOF
 
+# Meta-Skills: Skill Orchestrator
+mkdir -p .agent/skills/skill-orchestrator
+cat > .agent/skills/skill-orchestrator/SKILL.md <<'EOF'
+---
+name: skill-orchestrator
+description: Use during task creation (/create-spec) to analyze requirements and assign relevant skills. Ensures worker agents know which skills to load.
+---
+
+# Skill Orchestrator
+
+## Purpose
+Analyze new tasks/specs and assign relevant skills automatically.
+
+## Trigger
+Run during `/create-spec` workflow (step 5).
+
+## Skill Assignment Matrix
+| Task Contains | Assign Skill(s) |
+|---------------|-----------------|
+| UI, component, page, styling | `frontend-mastery` |
+| Database, RLS, migration, Supabase | `supabase-expert` |
+| Bug, investigation, debug | `research-deep-dive` |
+| Branch, commit, merge | `git-operations` |
+| Major architecture, new library | `adr-manager` |
+| Effort L/XL, vague requirements | `task-decomposer` |
+
+## Output
+Add `## Skills (Auto-Assigned)` section to each task file.
+EOF
+
 # Meta-Skills: Self-Reflection
 mkdir -p .agent/skills/self-reflection
 cat > .agent/skills/self-reflection/SKILL.md <<'EOF'
@@ -723,15 +754,222 @@ description: Use to manage KNOWLEDGE.md. Prune outdated entries when file exceed
 Keep project memory clean and organized.
 EOF
 
-# Meta-Skills: Task-Decomposer
+# Meta-Skills: Task-Decomposer (Full Version)
 mkdir -p .agent/skills/task-decomposer
 cat > .agent/skills/task-decomposer/SKILL.md <<'EOF'
 ---
 name: task-decomposer
-description: Use when receiving vague or L/XL effort requests. Break into subtasks before coding.
+description: Use when receiving vague or complex requests. Asks clarifying questions, then breaks down requirements into structured subtasks. Prevents rushing into code.
 ---
+
 # Task-Decomposer Skill
-Transform vague requests into clear plans.
+
+Transform vague requests into clear, executable plans.
+
+---
+
+## When to Trigger
+
+- Request is vague ("make it better", "fix the issues", "I want X")
+- Request spans multiple files or systems
+- Request has unclear acceptance criteria
+- Effort estimate is L or XL
+- You're unsure where to start
+- Invoked by `/create-task-spec` workflow
+
+---
+
+## Step 1: Assess Complexity (FIRST)
+
+| Complexity | Signs | Action |
+|------------|-------|--------|
+| **Simple** | Clear request, single file, cosmetic | Skip questions, proceed |
+| **Medium** | Multiple files, some unknowns | Ask 2-3 targeted questions |
+| **Complex** | Vague, architecture impact | Full elicitation below |
+
+**Examples:**
+- "Make button purple" → **Simple** → Confirm which button, proceed
+- "Add dark mode" → **Medium** → Scope, components, persistence
+- "I want notifications" → **Complex** → Full question battery
+
+---
+
+## Step 2: Clarifying Questions (Adaptive)
+
+**Universal Rule:** For EVERY task, briefly scan these 4 categories for ambiguity:
+1.  **Technical Implementation** (Schema, APIs, Perf)
+2.  **UI & UX** (Empty states, transitions, mobile)
+3.  **Concerns** (Security, failure states)
+4.  **Tradeoffs** (Speed vs Robustness)
+
+---
+
+### For SIMPLE Tasks
+**Action:** Quick Scan.
+- Is the request *actually* simple, or are there hidden UI/Tech implications?
+- **IF Clear**: Just confirm the specific element/file.
+- **IF Ambiguous**: Ask with a recommendation.
+  - *Example:* "This button submits data. I recommend adding a **loading spinner** for feedback. Or we could just disable it. Shall we add the spinner?"
+
+→ Then skip to Step 5 (Subtasks).
+
+---
+
+### For MEDIUM Tasks
+**Action:** Targeted Scan.
+Don't just ask "what is the flow?". **Check the 4 categories** and ask only about what's missing.
+- **Technical**: "Does this need a new DB column? I suggest **adding 'status' to 'tasks'** for tracking."
+- **UI/UX**: "For mobile, I recommend **stacking the columns**. Or we could hide the sidebar. Thoughts?"
+- **Concerns**: "If offline, I suggest we **queue the request**. Agree?"
+
+**Decision:**
+- If a category is obvious (e.g., standard button), skip it.
+- If a category has *any* doubt, ASK with a recommendation.
+
+→ Then proceed to Step 3.
+
+---
+
+### For COMPLEX Tasks (Deep Interview Mode)
+
+**Goal:** Interview the user in detail. **Avoid obvious questions.** Dig for edge cases, tradeoffs, and hidden complexity.
+
+#### 1. The Interview Protocol
+Act as a Senior Architect. Don't just ask "what do you want?". Ask "what have you considered?".
+
+**CRITICAL: Always provide Options + Recommendation.**
+- **❌ Bad:** "How should we handle errors?"
+- **✅ Good:** "I recommend we **toast the error** so the user knows to retry. We could also just log it, but that feels silent. Thoughts?"
+
+- **UI & UX:** "For empty states, I suggest a **placeholder illustration** (cleaner) vs just text. Do you agree?"
+- **Technical:** "What are the performance implications? Security concerns?"
+- **Tradeoffs:** "We could do X (fast) or Y (robust). Which do you prefer?"
+- **Concerns:** "I'm worried about [potential issue]. How should we handle it?"
+
+#### 2. Question Categories (Must Cover All)
+1.  **Technical Implementation:** Database schema, API design, libraries.
+2.  **UI & UX Details:** Interactions, error states, responsiveness.
+3.  **Risk & Concerns:** "What if the API fails?", "What if user is offline?"
+4.  **Strategic Tradeoffs:** Quality vs Speed, Flexibility vs Simplicity.
+
+#### 3. The Loop (Continual Interview)
+```
+REPEAT:
+  1. Analyze current understanding.
+  2. Identify GAPS (non-obvious ones).
+  3. Ask deep, investigative questions.
+  4. Wait for response.
+UNTIL: You can write the FULL spec without guessing.
+```
+
+---
+
+## Step 3: Identify Components
+
+Break into independent pieces:
+- [ ] Frontend changes
+- [ ] Backend/database changes  
+- [ ] Configuration changes
+- [ ] Documentation updates
+
+---
+
+## Step 4: Pre-Mortem Analysis (Elite Move)
+
+**For Complex/Critical Tasks, ask:**
+"Imagine we released this and it FAILED. What happened?"
+
+*Examples:*
+- "We migrated the DB but didn't update the types."
+- "The UI looks good but the API is slow."
+- "Users on mobile can't see the button."
+
+**Action:** Turn these failures into **Prevention Subtasks** (e.g., "Add loading skeleton", "Verify mobile overflow").
+
+---
+
+## Step 5: Create Subtask List
+
+Format for task file:
+```markdown
+## Implementation Plan
+- [ ] Subtask 1 (effort: S)
+- [ ] Subtask 2 (effort: M, depends on 1)
+- [ ] Subtask 3 (effort: S)
+```
+
+---
+
+## Step 6: Estimate Effort
+
+| Size | Criteria |
+|------|----------|
+| XS | < 30 min, single file |
+| S | 30 min - 2 hr, 1-3 files |
+| M | 2-4 hr, multiple files |
+| L | 4-8 hr, multiple components |
+| XL | > 8 hr, consider splitting |
+
+---
+
+## Output Template
+
+```markdown
+## Task Decomposition: [Original Request]
+
+### Complexity: [Simple/Medium/Complex]
+
+### Clarifying Questions Asked
+1. Q: [Question] → A: [Answer]
+2. Q: [Question] → A: [Answer]
+
+### Goal (After Clarification)
+[What I now understand the user wants]
+
+### Components Affected
+- Component A
+- Component B
+
+### Subtasks
+1. **[Subtask 1]** - [Description] (effort: S)
+2. **[Subtask 2]** - [Description] (effort: M)
+
+### Risks/Unknowns
+- [Any remaining uncertainties]
+```
+
+---
+
+## Verification
+- [ ] Complexity assessed before questioning
+- [ ] Questions proportional to complexity
+- [ ] All ambiguities resolved before decomposition
+- [ ] Subtasks are actionable and sized
+
+---
+
+## Anti-Patterns (Avoid These)
+
+| ❌ Don't | ✅ Do Instead |
+|----------|---------------|
+| Ask 20 questions for a button color change | Assess complexity first |
+| Start coding with "I'll figure it out" | Clarify unknowns upfront |
+| Create subtasks without effort estimates | Size every subtask |
+| Ignore edge cases | Explicitly ask "what should NOT happen?" |
+| Assume database changes are obvious | Always confirm RLS/schema impact |
+| Make subtasks too large (> 4hr) | Split anything XL into multiple tasks |
+
+---
+
+## Success Criteria
+
+Your decomposition is "good enough" when:
+- [ ] A different agent could execute it without asking questions
+- [ ] Each subtask has ONE clear deliverable
+- [ ] Dependencies are explicit (not assumed)
+- [ ] Effort estimates are realistic
+- [ ] Edge cases are documented
+- [ ] User has confirmed understanding
 EOF
 
 # Meta-Skills: Quality-Gate
@@ -753,17 +991,23 @@ EOF
 echo "📖 Writing Skills System Walkthrough..."
 mkdir -p backlog/docs
 cat > backlog/docs/SKILLS-SYSTEM.md <<'EOF'
+---
+title: Skills System Walkthrough
+type: doc
+---
+
 # Skills System Walkthrough
 
 ## Overview
 
 This project uses a **Skills System** to give agents specialized knowledge for specific task types.
+**Total Skills: 15** (4 Domain + 11 Meta)
 
 ---
 
 ## Skills Available
 
-### Domain Skills
+### Domain Skills (4)
 | Skill | Purpose |
 |-------|---------|
 | `frontend-mastery` | UI/UX, Tailwind, animations |
@@ -771,45 +1015,48 @@ This project uses a **Skills System** to give agents specialized knowledge for s
 | `research-deep-dive` | Investigation before coding |
 | `git-operations` | Branching, commits, PRs |
 
-### Meta-Skills (Autonomous Improvement)
+### Meta-Skills (11)
 | Skill | Trigger |
 |-------|---------|
 | `skill-creator` | 80%+ confidence to create new skill |
-| `adr-manager` | Architectual decisions (new tech, major patterns) |
+| `adr-manager` | Architectural decisions (new tech, major patterns) |
 | `self-reflection` | After /finish-task |
 | `workflow-creator` | 3+ repeated sequences |
 | `context-curator` | KNOWLEDGE.md > 200 lines |
-| `task-decomposer` | L/XL effort tasks |
+| `task-decomposer` | L/XL effort tasks, `/create-task-spec` |
 | `quality-gate` | Before "In Review" status |
+| `skill-orchestrator` | Auto-assign skills during spec creation |
+| `test-strategist` | Evaluate test needs, write tests |
+| `project-decomposer` | New project initialization (PRD, Tech Spec) |
+
+---
+
+## Key Workflows
+
+| Workflow | Purpose |
+|----------|---------|
+| `/create-project-spec` | New repo → Vision → Docs (PRD, Tech Spec) → Bootstrap |
+| `/create-task-spec` | Feature idea → Spec → Tasks |
+| `/start-task` | Begin work on a backlog item |
+| `/finish-task` | Quality gate + Self-reflection |
 
 ---
 
 ## How It Works
 
 ```
-New Task
+New Project? → /create-project-spec
+    ↓ (project-decomposer)
+PRD.md, TECH-SPEC.md, ARCHITECTURE.md
     ↓
-┌─────────────────────────────────┐
-│ Check effort: L/XL or vague?    │
-│ → Yes: Run task-decomposer      │
-└─────────────────────────────────┘
+Repo Scaffolded
     ↓
-Load domain skills (frontend-mastery, supabase-expert, etc.)
+New Feature? → /create-task-spec
+    ↓ (task-decomposer + skill-orchestrator)
+Spec + Tasks with Skills Assigned
     ↓
-Do Work
-    ↓
-┌─────────────────────────────────┐
-│ Run quality-gate                │
-│ → Build check                   │
-│ → Skill checklists              │
-└─────────────────────────────────┘
-    ↓
-┌─────────────────────────────────┐
-│ Run self-reflection             │
-│ → What went well?               │
-│ → Update KNOWLEDGE.md           │
-└─────────────────────────────────┘
-    ↓
+/start-task → Do Work → /finish-task
+    ↓ (quality-gate + self-reflection)
 Done
 ```
 
@@ -821,17 +1068,6 @@ Done
 2. **Follow Core Instructions** in the skill
 3. **Complete Verification checklist** before marking done
 4. **Reference resources/** for detailed patterns
-
----
-
-## Creating New Skills
-
-Use the `skill-creator` meta-skill when:
-- Same pattern used 3+ times
-- Critical domain knowledge missing
-- Repeated mistakes a skill could prevent
-
-Requires **80%+ confidence** to trigger.
 
 ---
 
@@ -851,4 +1087,324 @@ echo "1. Run 'npx backlog.md init' if you haven't (to install the CLI binary)."
 echo "2. Start the board: 'npx backlog.md browser'"
 echo "3. Skills available in .agent/skills/ for specialized tasks."
 echo "4. Read backlog/docs/SKILLS-SYSTEM.md for the walkthrough."
-echo "5. Antigravity is ready to use /start-task and /create-spec."
+echo "5. Antigravity is ready to use /start-task and /create-task-spec."
+
+# Project Decomposer Skill
+mkdir -p .agent/skills/project-decomposer/resources
+cat > .agent/skills/project-decomposer/SKILL.md <<'EOF'
+---
+name: project-decomposer
+description: Triggers at project start. Deeply interviews user to generate PRD, Tech Spec, and Architecture Design. Scaffolds entire project structure.
+---
+
+# Project Decomposer Skill
+
+**The "Principal Architect" in a box.**
+Use this skill to convert a raw idea into a fully scaffolded, production-ready repository.
+
+---
+
+## Trigger
+- `/create-project-spec` workflow (Step 1)
+- New repository initialization
+
+---
+
+## Phase 1: The Deep Interview (Project Scale)
+**Goal:** Extract the "Soul" of the project.
+*Don't just ask "what features?". Ask "what success looks like?".*
+
+### Guiding Principle: The Opinionated Partner
+**Never ask an open-ended question without providing a path forward.**
+- **❌ Bad:** "What database do you want?"
+- **✅ Good:** "For this, I recommend **PostgreSQL (Supabase)** because of its relational integrity. Alternatively, we could use Firebase if realtime is the priority. I suggest Supabase to keep options open. Thoughts?"
+
+### 1. The Vision
+- "In one sentence, what is this? (e.g., 'Uber for Dog Walkers')"
+- "Who is the user? (e.g., 'Busy professionals', 'Teenagers')"
+- "What is the 'Magic Moment'? (e.g., 'When the dog is matched')"
+
+### 2. The Stack Selection (Auto-Recommend)
+Based on requirements, recommend the stack:
+- **Web App**: React, Vite, Tailwind, Supabase
+- **Mobile**: React Native / Expo
+- **Backend-Heavy**: NestJS / Node
+*Ask user to confirm or override.*
+
+### 3. The Feature Map
+- "List the core 3 features for MVP."
+- "What are the nice-to-haves (V2)?"
+- "Are there complex flows (Payments, Realtime, AI)?"
+
+### 4. Technical Constraints
+- "Auth provider?" (Supabase, Clerk, Firebase)
+- "Database type?" (SQL, NoSQL)
+- "Hosting target?" (Vercel, Netlify, AWS)
+
+---
+
+## Phase 2: Document Generation (The "Ambiguity Killer")
+
+**Rule:** Every document must be detailed enough for a stranger to build the app without asking questions.
+
+### 1. PRD.md (Product Requirements Document)
+**Goal:** Zero ambiguity on behaviour.
+- **Executive Summary:** The "Elevator Pitch".
+- **User Personas:** Detailed (Name, Age, Goal, Frustration).
+- **User Stories:** `As a [Persona], I want [Action], So that [Benefit]`.
+- **Requirements Table:**
+  | ID | Feature | Description | Priority |
+  |----|---------|-------------|----------|
+  | F-01 | Sign Up | Email/Password + Google Auth | P0 |
+- **Non-Functional Requirements:** Performance (<1s load), Scale (10k users), Accessibility.
+- **Success Metrics:** "100 Daily Active Users", "Retention > 20%".
+
+### 2. TECH-SPEC.md (Technical Specification)
+**Goal:** Zero ambiguity on code structure.
+- **Stack Decision:** Frameworks, Libraries with rationale.
+- **Data Schema:** 
+  - Table definitions (Name, Columns, Types, Relationships).
+  - *Example:* `users (id: uuid, email: text, created_at: timestamptz)`
+- **API Surface:**
+  - `POST /api/auth/login` - Body: {email, password}
+  - `GET /api/dashboard` - RLS Protected
+- **Project Structure:** File tree diagram.
+
+### 3. ARCHITECTURE.md
+**Goal:** Zero ambiguity on data flow.
+- **System Diagram:** Mermaid chart showing Frontend -> API -> DB -> External Services.
+- **Data Flow:** How data moves for key actions (e.g. Checkout).
+- **Security Strategy:** RLS Policies, Auth flow, API Gateways.
+- **Third-Party Integrations:** Stripe, SendGrid, AI Models (with fallback strategies).
+
+---
+
+## Phase 3: Project Bootstrap (Scaffold)
+**Action:** Execute shell commands to set up the repo.
+
+### 1. Install & Configure
+- `npm create vite@latest . -- --template react-ts`
+- `npm install tailwindcss postcss autoprefixer ...`
+- `npx tailwindcss init -p`
+
+### 2. Setup Directory Structure
+- `src/components/ui` (Design System)
+- `src/features` (Domain Modules)
+- `src/lib` (Utilities, API clients)
+- `src/hooks` (Custom hooks)
+
+### 3. Setup Tooling
+- ESLint / Prettier config
+- VS Code extensions (`.vscode/extensions.json`)
+- API Clients (Supabase client)
+
+---
+
+## Anti-Patterns
+- Skipping the "Vision" step (builds the wrong thing)
+- Assessing tech stack without knowing requirements
+- Creating a monolith implementation plan (break it down!)
+- Ignoring "V2" features (leads to dead-end architecture)
+
+---
+
+## Verification Checklist
+- [ ] Vision clearly articulated (one-sentence pitch)
+- [ ] Stack confirmed by user
+- [ ] PRD.md created with all required sections
+- [ ] TECH-SPEC.md created with schema and API surface
+- [ ] ARCHITECTURE.md created with Mermaid diagram
+- [ ] All three docs reviewed and approved by user
+- [ ] Project bootstrapped with correct folder structure
+EOF
+
+# Create Project Spec Workflow
+cat > .agent/workflows/create-project-spec.md <<'EOF'
+---
+description: Initialize a new project from scratch (Idea -> Architecture -> Codebase)
+---
+
+# Create Project Spec Workflow
+
+**Use this ONLY at the very start of a new project.**
+It converts a raw idea into a production-ready codebase.
+
+---
+
+## 1. The Deep Interview (Invoke project-decomposer)
+**Load** `.agent/skills/project-decomposer/SKILL.md`
+1.  **Vision**: Define the core value proposal.
+2.  **Stack Selection**: React vs Next, SQL vs NoSQL (Agent recommends, User confirms).
+3.  **Feature Map**: Define MVP vs V2.
+4.  **Constraints**: Auth, Hosting, Budget.
+
+---
+
+## 2. Generate Core Documents
+Create these in `backlog/specs/project/`:
+- `PRD.md` (Product Requirements)
+- `TECH-SPEC.md` (Stack, Schema, API)
+- `ARCHITECTURE.md` (Diagrams, Data Flow)
+
+> [!IMPORTANT]
+> **User Review Point**: Pause here. Ask user to review these docs. Do not proceed to code until approved.
+
+---
+
+## 2.5 Customize Task-Decomposer (Project-Specific)
+
+**After docs are approved**, enhance `.agent/skills/task-decomposer/SKILL.md` with project context:
+
+1.  **Add Project-Specific Question Categories:**
+    Based on TECH-SPEC.md, add relevant categories. Example:
+    - If using Supabase: "RLS Policy Impact?" 
+    - If using Stripe: "Payment Edge Cases?"
+
+2.  **Add Project-Specific Anti-Patterns:**
+    Based on ARCHITECTURE.md, add things to avoid. Example:
+    - "Don't create new tables without updating types"
+    - "Don't bypass the feature folder structure"
+
+3.  **Update Effort Guidelines:**
+    Based on project complexity, adjust XS-XL definitions if needed.
+
+> [!NOTE]
+> This step is optional for simple projects. Apply only if the project has unique patterns worth encoding.
+
+## 3. Project Bootstrap (Scaffold)
+**Once approved, execute the setup:**
+
+1.  **Initialize Repo**:
+    - `npm create vite@latest` (or selected stack)
+    - `git init`
+
+2.  **Install Dependencies**:
+    - `npm install tailwindcss ...` (based on tech spec)
+    - Install Linting/Prettier
+
+3.  **Setup Structure**:
+    - Create `src/features`, `src/components`, `src/lib`
+    - Create `backlog/` directories (if not present)
+
+4.  **Configuration**:
+    - `tsconfig.json`
+    - `.eslintrc`
+    - `.vscode/extensions.json`
+
+---
+
+## 4. Final Handover
+1.  Commit changes: `feat: project initialization`.
+2.  Notify user: "Project is ready. You can now use `/create-task-spec` for individual features."
+
+---
+
+## Definition of Done (Project Spec Complete When)
+
+- [ ] Vision defined (one-sentence pitch)
+- [ ] Stack selected and confirmed by user
+- [ ] PRD.md created in `backlog/specs/project/`
+- [ ] TECH-SPEC.md created in `backlog/specs/project/`
+- [ ] ARCHITECTURE.md created in `backlog/specs/project/`
+- [ ] User has reviewed and approved all 3 docs
+- [ ] Repo initialized with correct structure
+- [ ] Dependencies installed
+- [ ] Initial commit made
+EOF
+
+# Create Task Spec Workflow (Renamed from create-spec)
+cat > .agent/workflows/create-task-spec.md <<'EOF'
+---
+description: Convert a vague idea into a technical specification
+---
+
+This workflow turns "I want X" into a rigorous plan.
+**Use this BEFORE creating a task.**
+
+---
+
+## 1. Gather Requirements (Invoke Task-Decomposer)
+
+**Load** `.agent/skills/task-decomposer/SKILL.md` and follow its process:
+1. Assess complexity (Simple/Medium/Complex)
+2. Ask clarifying questions proportional to complexity
+3. Resolve all ambiguity before proceeding
+
+> [!NOTE]
+> The skill handles adaptive questioning - simple tasks get 1-2 confirms, complex tasks get full elicitation.
+
+---
+
+## 2. Analyze the Codebase & Roadmap
+*   Read `package.json`, `index.css`, and relevant components.
+*   **Conflict Check (Crucial):**
+    *   Read `backlog/tasks/` - Is overlap work already in progress?
+    *   Read `backlog/specs/` - Is this feature already defined?
+    *   If conflict found → **STOP**. Notify user.
+*   Identify existing patterns to reuse.
+
+---
+
+## 3. Draft the Specification
+*   Create `backlog/specs/feature-<name>.md`.
+*   Include:
+    *   **User Stories** (As a user, I want...)
+    *   **Acceptance Criteria** (Given/When/Then)
+    *   **Technical Implementation** (Approach, file changes)
+    *   **Database Changes** (if any)
+    *   **Out of Scope** (What we're NOT doing)
+
+---
+
+## 4. Review with User
+*   Present the spec for approval.
+*   Ask: "Is there anything I missed or got wrong?"
+*   If changes needed → Update spec → Re-review
+
+---
+
+## 5. Assign Skills (Skill Orchestrator)
+*   Load `.agent/skills/skill-orchestrator/SKILL.md`
+*   Analyze the spec for skill keywords
+*   Determine skills for resulting tasks
+
+---
+
+## 6. Generate Tasks
+*   **Small Feature (< 10 tasks)**: Generate tasks directly.
+*   **Large Feature (> 10 tasks)**: Create a Milestone first.
+*   **Include `## Skills` section** in each task.
+
+---
+
+## 7. Check ADR Trigger
+
+Ask: "Does this introduce new technology, patterns, or architecture changes?"
+- **Yes** → Load `adr-manager` skill, create ADR in `backlog/decisions/`
+- **No** → Proceed
+
+---
+
+## 8. Testing Strategy (Invoke Test-Strategist)
+
+**Load** `.agent/skills/test-strategist/SKILL.md` and:
+1. Evaluate if tests are needed (impact matrix)
+2. Select test type (Unit/Integration/E2E)
+3. Document the test plan in the spec using the Output Template
+4. Note: Tests are WRITTEN during task execution, VERIFIED during finish-task
+
+---
+
+## Definition of Done (Spec Complete When)
+
+- [ ] All clarifying questions answered
+- [ ] Codebase analyzed for patterns/constraints
+- [ ] Spec file created in `backlog/specs/`
+- [ ] User has reviewed and approved
+- [ ] Skills assigned via skill-orchestrator
+- [ ] Tasks generated with effort estimates
+- [ ] Testing strategy documented
+- [ ] ADR created (if architectural change)
+EOF
+
+echo "Agents Scaffolding Complete! v4.1"

@@ -1,6 +1,6 @@
 ---
 name: task-decomposer
-description: Use when receiving vague or complex requests. Breaks down ambiguous requirements into structured, actionable subtasks before implementation. Prevents rushing into code.
+description: Use when receiving vague or complex requests. Asks clarifying questions, then breaks down requirements into structured subtasks. Prevents rushing into code.
 ---
 
 # Task-Decomposer Skill
@@ -11,49 +11,138 @@ Transform vague requests into clear, executable plans.
 
 ## When to Trigger
 
-- Request is vague ("make it better", "fix the issues")
+- Request is vague ("make it better", "fix the issues", "I want X")
 - Request spans multiple files or systems
 - Request has unclear acceptance criteria
 - Effort estimate is L or XL
 - You're unsure where to start
+- Invoked by `/create-task-spec` workflow
 
 ---
 
-## Decomposition Process
+## Step 1: Assess Complexity (FIRST)
 
-### 1. Clarify the Goal
-Ask yourself:
-- What is the user actually trying to achieve?
-- What would "done" look like?
-- Are there hidden requirements?
+| Complexity | Signs | Action |
+|------------|-------|--------|
+| **Simple** | Clear request, single file, cosmetic | Skip questions, proceed |
+| **Medium** | Multiple files, some unknowns | Ask 2-3 targeted questions |
+| **Complex** | Vague, architecture impact | Full elicitation below |
 
-### 2. Identify Components
-Break into independent pieces:
-- Frontend changes
-- Backend/database changes
-- Configuration changes
-- Documentation updates
+**Examples:**
+- "Make button purple" → **Simple** → Confirm which button, proceed
+- "Add dark mode" → **Medium** → Scope, components, persistence
+- "I want notifications" → **Complex** → Full question battery
 
-### 3. Define Dependencies
-```mermaid
-graph TD
-    A[Task 1] --> B[Task 2]
-    A --> C[Task 3]
-    B --> D[Task 4]
-    C --> D
+---
+
+## Step 2: Clarifying Questions (Adaptive)
+
+**Universal Rule:** For EVERY task, briefly scan these 4 categories for ambiguity:
+1.  **Technical Implementation** (Schema, APIs, Perf)
+2.  **UI & UX** (Empty states, transitions, mobile)
+3.  **Concerns** (Security, failure states)
+4.  **Tradeoffs** (Speed vs Robustness)
+
+---
+
+### For SIMPLE Tasks
+**Action:** Quick Scan.
+- Is the request *actually* simple, or are there hidden UI/Tech implications?
+- **IF Clear**: Just confirm the specific element/file.
+- **IF Ambiguous**: Ask with a recommendation.
+  - *Example:* "This button submits data. I recommend adding a **loading spinner** for feedback. Or we could just disable it. Shall we add the spinner?"
+
+→ Then skip to Step 5 (Subtasks).
+
+---
+
+### For MEDIUM Tasks
+**Action:** Targeted Scan.
+Don't just ask "what is the flow?". **Check the 4 categories** and ask only about what's missing.
+- **Technical**: "Does this need a new DB column? I suggest **adding 'status' to 'tasks'** for tracking."
+- **UI/UX**: "For mobile, I recommend **stacking the columns**. Or we could hide the sidebar. Thoughts?"
+- **Concerns**: "If offline, I suggest we **queue the request**. Agree?"
+
+**Decision:**
+- If a category is obvious (e.g., standard button), skip it.
+- If a category has *any* doubt, ASK with a recommendation.
+
+→ Then proceed to Step 3.
+
+---
+
+### For COMPLEX Tasks (Deep Interview Mode)
+
+**Goal:** Interview the user in detail. **Avoid obvious questions.** Dig for edge cases, tradeoffs, and hidden complexity.
+
+#### 1. The Interview Protocol
+Act as a Senior Architect. Don't just ask "what do you want?". Ask "what have you considered?".
+
+**CRITICAL: Always provide Options + Recommendation.**
+- **❌ Bad:** "How should we handle errors?"
+- **✅ Good:** "I recommend we **toast the error** so the user knows to retry. We could also just log it, but that feels silent. Thoughts?"
+
+- **UI & UX:** "For empty states, I suggest a **placeholder illustration** (cleaner) vs just text. Do you agree?"
+- **Technical:** "What are the performance implications? Security concerns?"
+- **Tradeoffs:** "We could do X (fast) or Y (robust). Which do you prefer?"
+- **Concerns:** "I'm worried about [potential issue]. How should we handle it?"
+
+#### 2. Question Categories (Must Cover All)
+1.  **Technical Implementation:** Database schema, API design, libraries.
+2.  **UI & UX Details:** Interactions, error states, responsiveness.
+3.  **Risk & Concerns:** "What if the API fails?", "What if user is offline?"
+4.  **Strategic Tradeoffs:** Quality vs Speed, Flexibility vs Simplicity.
+
+#### 3. The Loop (Continual Interview)
+```
+REPEAT:
+  1. Analyze current understanding.
+  2. Identify GAPS (non-obvious ones).
+  3. Ask deep, investigative questions.
+  4. Wait for response.
+UNTIL: You can write the FULL spec without guessing.
 ```
 
-### 4. Create Subtask List
+---
+
+## Step 3: Identify Components
+
+Break into independent pieces:
+- [ ] Frontend changes
+- [ ] Backend/database changes  
+- [ ] Configuration changes
+- [ ] Documentation updates
+
+---
+
+## Step 4: Pre-Mortem Analysis (Elite Move)
+
+**For Complex/Critical Tasks, ask:**
+"Imagine we released this and it FAILED. What happened?"
+
+*Examples:*
+- "We migrated the DB but didn't update the types."
+- "The UI looks good but the API is slow."
+- "Users on mobile can't see the button."
+
+**Action:** Turn these failures into **Prevention Subtasks** (e.g., "Add loading skeleton", "Verify mobile overflow").
+
+---
+
+## Step 5: Create Subtask List
+
 Format for task file:
 ```markdown
 ## Implementation Plan
-- [ ] Subtask 1 (dependency: none)
-- [ ] Subtask 2 (dependency: 1)
-- [ ] Subtask 3 (dependency: 1)
-- [ ] Subtask 4 (dependency: 2, 3)
+- [ ] Subtask 1 (effort: S)
+- [ ] Subtask 2 (effort: M, depends on 1)
+- [ ] Subtask 3 (effort: S)
 ```
 
-### 5. Estimate Effort
+---
+
+## Step 6: Estimate Effort
+
 | Size | Criteria |
 |------|----------|
 | XS | < 30 min, single file |
@@ -64,49 +153,61 @@ Format for task file:
 
 ---
 
-## Decomposition Template
+## Output Template
 
 ```markdown
 ## Task Decomposition: [Original Request]
 
-### Interpreted Goal
-[What I understand the user wants]
+### Complexity: [Simple/Medium/Complex]
 
-### Clarifying Questions (if any)
-1. Question 1?
-2. Question 2?
+### Clarifying Questions Asked
+1. Q: [Question] → A: [Answer]
+2. Q: [Question] → A: [Answer]
+
+### Goal (After Clarification)
+[What I now understand the user wants]
 
 ### Components Affected
-- [ ] Component A
-- [ ] Component B
+- Component A
+- Component B
 
-### Proposed Subtasks
-1. **[Subtask 1]** - [Brief description] (effort: S)
-2. **[Subtask 2]** - [Brief description] (effort: M)
+### Subtasks
+1. **[Subtask 1]** - [Description] (effort: S)
+2. **[Subtask 2]** - [Description] (effort: M)
 
 ### Risks/Unknowns
-- Risk 1
-- Unknown 1
-
-### Recommended Approach
-Start with subtask X because...
+- [Any remaining uncertainties]
 ```
 
 ---
 
-## Decision Points
-
-| If... | Then... |
-|-------|---------|
-| Request is clear and small | Skip decomposition, start coding |
-| Request is clear but large | Decompose into subtasks |
-| Request is vague | Ask clarifying questions first |
-| Request has dependencies | Map dependencies before starting |
+## Verification
+- [ ] Complexity assessed before questioning
+- [ ] Questions proportional to complexity
+- [ ] All ambiguities resolved before decomposition
+- [ ] Subtasks are actionable and sized
 
 ---
 
-## Integration
+## Anti-Patterns (Avoid These)
 
-- Run before starting any L/XL effort task
-- Output goes into task file's Implementation Plan
-- Triggers research-deep-dive if unknowns identified
+| ❌ Don't | ✅ Do Instead |
+|----------|---------------|
+| Ask 20 questions for a button color change | Assess complexity first |
+| Start coding with "I'll figure it out" | Clarify unknowns upfront |
+| Create subtasks without effort estimates | Size every subtask |
+| Ignore edge cases | Explicitly ask "what should NOT happen?" |
+| Assume database changes are obvious | Always confirm RLS/schema impact |
+| Make subtasks too large (> 4hr) | Split anything XL into multiple tasks |
+
+---
+
+## Success Criteria
+
+Your decomposition is "good enough" when:
+- [ ] A different agent could execute it without asking questions
+- [ ] Each subtask has ONE clear deliverable
+- [ ] Dependencies are explicit (not assumed)
+- [ ] Effort estimates are realistic
+- [ ] Edge cases are documented
+- [ ] User has confirmed understanding

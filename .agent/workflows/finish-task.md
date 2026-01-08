@@ -13,6 +13,10 @@ It prevents tasks from being closed without context and lessons learned.
     *   Run `npm run build` (or equivalent).
     *   **If fail**: ABORT. Report error to user.
     *   Complete all applicable skill checklists.
+    *   **Verify Tests (via test-strategist):**
+        *   Check if spec required tests
+        *   If yes: Verify tests exist and pass (`npm test`)
+        *   If tests missing: Write them before proceeding
 
 3.  **Context Binding (Automatic).**
     *   Run `git diff --name-only main...HEAD`.
