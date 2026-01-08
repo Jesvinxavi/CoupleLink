@@ -82,18 +82,8 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
         }
 
         if (currentTokens > prevTokensRef.current) {
-            console.log('[useStreak] Tokens increased:', {
-                current: currentTokens,
-                prev: prevTokensRef.current,
-                lastSeen,
-                isRefunding: isRefundingRef.current
-            });
-
             if (!isRefundingRef.current) {
-                console.log('[useStreak] Enqueueing Rain Check modal');
                 enqueueModal('raincheck');
-            } else {
-                console.log('[useStreak] Token increase ignored due to refund state');
             }
         }
 

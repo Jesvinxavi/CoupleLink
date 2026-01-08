@@ -64,14 +64,14 @@ self.addEventListener('notificationclick', (event: any) => {
 // Handle subscription change (e.g., browser refreshes push subscription)
 self.addEventListener('pushsubscriptionchange', (event) => {
     // Re-subscribe logic if subscription expires
-    console.log('[SW] Push subscription changed, re-subscribing...');
+
 
     // Attempt to re-subscribe with same options
     event.waitUntil(
         self.registration.pushManager.subscribe({
             userVisibleOnly: true
-        }).then((subscription) => {
-            console.log('[SW] Successfully re-subscribed:', subscription.endpoint);
+        }).then(() => {
+
             // Note: In production, you'd want to update the backend with the new subscription
         }).catch((error) => {
             console.error('[SW] Failed to re-subscribe:', error);

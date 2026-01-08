@@ -176,8 +176,6 @@ export default function CreateSpace() {
         } catch (err) {
             console.error('[CreateSpace] Failed to copy token:', err)
             // Try fallback if writeText fails (e.g. mobile permissions)
-            console.log("[CreateSpace] Attempting fallback after writeText failure...")
-            // ... (Same fallback logic potentially, but let's see logs first)
         }
     }
 

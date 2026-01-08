@@ -173,18 +173,7 @@ export function ThrowbackTile() {
         return null;
     }
 
-    // DEBUG: Log item details for troubleshooting
-    console.log('[ThrowbackTile] Rendering item:', {
-        id: item.id,
-        type: item.type,
-        title: item.title,
-        content: item.content,
-        media_urls: item.media_urls,
-        hasMediaUrls: item.media_urls && item.media_urls.length > 0,
-        coverImage: item.media_urls?.[0] || null,
-        created_at: item.created_at,
-        uploader_id: item.uploader_id
-    });
+
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);

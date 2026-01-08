@@ -3,6 +3,8 @@ title: Feature Spec: Centralized Agent Skills Repository (Migration)
 type: doc
 created: 2026-01-08
 context: Refactoring skills system to remote repo
+status: completed
+completed: 2026-01-08
 ---
 
 # Feature Spec: Centralized Agent Skills Repository (Migration)
@@ -150,5 +152,17 @@ cp -r "$CACHE_DIR/skills/"* ".agent/skills/"
 | Test Type | Manual Verification |
 | Test Plan | 1. Delete a skill folder. 2. Run script. 3. Verify skill restored. |
 
-No automated tests required (bash script, not application code).
+
+## 11. Files Changed (Auto-Generated)
+- `.agent/skills/comprehensive-audit/SKILL.md`
+- `.agent/skills/github-automator/SKILL.md`
+- `.agent/workflows/finish-spec.md`
+- `.agent/workflows/commit-task.md`
+- `.agent/workflows/start-task.md`
+- `agent-skills-package/` (synced)
+- `src/sw.ts` (cleanup)
+- `src/context/ChallengeContext.tsx` (cleanup)
+- `src/pages/CreateSpace.tsx` (cleanup)
+- `src/hooks/useStreak.ts` (cleanup)
+- `src/components/dashboard/ThrowbackTile.tsx` (cleanup)
 
