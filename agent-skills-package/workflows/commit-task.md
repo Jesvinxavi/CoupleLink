@@ -55,6 +55,7 @@ npm run build
 ---
 
 ## 4. Update Task Status to Done
+- **Verify status is `In Review`** (it should be, from start-task).
 - Edit task file frontmatter: `status: Done`
 - Ensure all subtasks are checked: `- [x]`
 

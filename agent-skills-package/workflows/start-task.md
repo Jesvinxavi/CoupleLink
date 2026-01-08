@@ -85,7 +85,16 @@ git checkout <branch-from-frontmatter>
 - Follow the subtasks in the task file
 - Mark subtasks complete as you go: `- [x]`
 - **STOP** when implementation is complete.
-- Notify User: "Task <ID> implementation complete. Ready for `@[/commit-task] <ID>`."
+
+---
+
+## 9. Update Status to "In Review"
+- Edit task file frontmatter: `status: In Review`
+
+---
+
+## 10. Notify User
+- Notify User: "Task <ID> implementation complete. Status updated to `In Review`. Ready for `@[/commit-task] <ID>`."
 
 ---
 

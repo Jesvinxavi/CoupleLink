@@ -1,0 +1,107 @@
+---
+description: Complete a spec with quality gates and memory updates
+---
+
+# Finish Spec Workflow
+
+**Use after ALL tasks in a spec are completed.**
+This runs a holistic quality gate and captures lessons learned.
+
+---
+
+## 1. Identify the Spec
+- Ask user which spec is complete (e.g., "skills-migration")
+- Locate `backlog/specs/feature-<name>.md` or `backlog/documents/<name>.md`
+- Find all related tasks via the `spec:` field in task frontmatter
+
+---
+
+## 2. Verify All Tasks Complete
+```bash
+# Check task files for this spec
+grep -l "spec:.*<spec-name>" backlog/tasks/*.md
+```
+
+- All related tasks should have `status: Done`
+- If any tasks are not Done → ABORT. Complete them first.
+
+---
+
+## 3. Run Quality-Gate Skill
+Load `.agent/skills/quality-gate/SKILL.md`
+
+1. **Build Check:**
+   ```bash
+   npm run build
+   ```
+   - If fail → ABORT. Fix and re-run.
+
+2. **Skill Checklists:** Complete all applicable skill checklists for the tasks.
+
+3. **Test Verification (via test-strategist):**
+   - Check if spec required tests
+   - If yes: Verify tests exist and pass (`npm test`)
+   - If tests missing: Write them before proceeding
+
+---
+
+## 4. Context Binding (Automatic)
+- Run `git diff --name-only main...HEAD`
+- Update the spec file to add a summary of changes:
+  ```markdown
+  ## Files Changed (Auto-Generated)
+  - `src/modified/file.ts`
+  - `scripts/scaffold-agents.sh`
+  ```
+
+---
+
+## 5. Run Self-Reflection Skill
+Load `.agent/skills/self-reflection/SKILL.md`
+
+**Answer these questions for the ENTIRE spec (holistic view):**
+- What went well across all tasks?
+- What could improve?
+- What patterns emerged?
+- Any architectural insights?
+
+**Capture at least 2-3 lessons learned.**
+Append to `backlog/KNOWLEDGE.md` under the appropriate category.
+
+---
+
+## 6. Check Context-Curator Trigger
+- If `KNOWLEDGE.md` > 200 lines, run context-curator skill.
+
+---
+
+## 7. Merge Strategy
+
+| Spec Type | Action |
+|-----------|--------|
+| Had feature branch | Create PR or merge to main |
+| No feature branch (≤2 tasks) | Already on main, just commit |
+
+**Merge command (if on feature branch):**
+```bash
+git checkout main
+git merge feature/<spec-name>
+git push
+```
+
+---
+
+## 8. Update Spec Status
+- Add completion timestamp to spec file
+- Mark all related tasks as Done (if not already)
+- Commit: `chore: complete spec <spec-name>`
+
+---
+
+## Definition of Done (Spec Finished When)
+- [ ] All tasks have `status: Done`
+- [ ] Build passes
+- [ ] Tests pass (if required)
+- [ ] Self-reflection completed
+- [ ] KNOWLEDGE.md updated
+- [ ] Feature branch merged (if applicable)
