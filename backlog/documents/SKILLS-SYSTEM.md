@@ -1,3 +1,9 @@
+---
+title: Skills System Walkthrough
+type: doc
+created: 2026-01-07
+---
+
 # Skills System Walkthrough
 
 ## Overview

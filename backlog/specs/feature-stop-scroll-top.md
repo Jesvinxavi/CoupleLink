@@ -1,3 +1,9 @@
+---
+title: Stop Scroll Top on Page Change
+type: spec
+created: 2026-01-07
+---
+
 # Feature: Stop Scroll Top on Page Change
 
 ## Goal Description

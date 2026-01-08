@@ -1,3 +1,9 @@
+---
+title: Challenge Overlay Button Styling
+type: spec
+created: 2026-01-07
+---
+
 # Feature: Challenge Overlay Button Styling
 
 ## User Stories
