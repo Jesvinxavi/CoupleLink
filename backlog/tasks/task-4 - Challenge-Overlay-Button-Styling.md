@@ -1,7 +1,7 @@
 ---
 id: task-4
 title: Challenge Overlay Button Styling
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-01-08 00:54'
 labels:
