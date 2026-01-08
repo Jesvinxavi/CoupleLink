@@ -13,3 +13,7 @@ dependencies: []
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Disable global scroll-to-top on route change to prevent jarring transitions. See spec in backlog/specs/feature-stop-scroll-top.md
 <!-- SECTION:DESCRIPTION:END -->
+
+# Context (Auto-Generated)
+- `src/App.tsx`
+- `src/components/ScrollToTop.tsx` (Deleted)
