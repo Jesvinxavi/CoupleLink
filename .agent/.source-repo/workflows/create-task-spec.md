@@ -54,59 +54,10 @@ This workflow turns "I want X" into a rigorous plan.
 
 ---
 
-## 6. Generate Task Files (REQUIRED)
-
-> [!CAUTION]
-> **DO NOT SKIP THIS STEP.** Tasks must be created as actual files in `backlog/tasks/`.
-
-### Task File Requirements
-
-**Filename Convention:** `task-N - Title-With-Dashes.md`
-- Example: `task-6 - Create-agent-skills-package-Folder.md`
-- Use next available task number (check existing files)
-
-**Required Frontmatter:**
-```yaml
----
-id: task-N
-title: Human Readable Title
-status: To Do
-assignee: []
-created_date: 'YYYY-MM-DD HH:MM'
-labels:
-  - Feature  # or Infrastructure, Bug, etc.
-dependencies: []  # or [task-5] if depends on another
-priority: medium  # low, medium, high
-effort: M  # XS, S, M, L, XL
-skills: [skill-name]
-spec: backlog/specs/feature-name.md  # REQUIRED: Link back to parent spec
-related_adr: backlog/decisions/adr-name.md  # Optional: If architectural change
----
-```
-
-**Task Body:**
-```markdown
-## Description
-<!-- SECTION:DESCRIPTION:BEGIN -->
-Brief description of the task.
-<!-- SECTION:DESCRIPTION:END -->
-
-## Context
-- **Spec:** [Feature Name](file:///path/to/backlog/specs/feature-name.md)
-- **ADR:** [Decision Name](file:///path/to/backlog/decisions/adr-name.md) (if applicable)
-
-## Subtasks
-- [ ] Subtask 1
-- [ ] Subtask 2
-
-## Skills Sequence
-1. `skill-name` - Why this skill
-```
-
-### Task Generation Rules
-- **Small Feature (< 10 tasks)**: Generate tasks directly.
-- **Large Feature (> 10 tasks)**: Create a Milestone first.
-- **ALWAYS create physical files** - Never just document in the spec.
+## 6. Generate Tasks
+*   **Small Feature (< 10 tasks)**: Generate tasks directly.
+*   **Large Feature (> 10 tasks)**: Create a Milestone first.
+*   **Include `## Skills` section** in each task.
 
 ---
 
@@ -135,19 +86,6 @@ Ask: "Does this introduce new technology, patterns, or architecture changes?"
 - [ ] Spec file created in `backlog/specs/`
 - [ ] User has reviewed and approved
 - [ ] Skills assigned via skill-orchestrator
-- [ ] **Task FILES created in `backlog/tasks/`** (not just documented)
+- [ ] Tasks generated with effort estimates
 - [ ] Testing strategy documented
 - [ ] ADR created (if architectural change)
-
----
-
-> [!CAUTION]
-> ## WORKFLOW ENDS HERE - DO NOT IMPLEMENT
-> 
-> After completing this workflow:
-> 1. **STOP.** Do not start coding or executing tasks.
-> 2. **Notify user** that the spec and tasks are ready.
-> 3. **Wait for `/start-task`** workflow to be invoked.
-> 
-> The `/start-task` workflow is the ONLY way to begin implementation.
-
