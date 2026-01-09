@@ -37,15 +37,24 @@ Based on requirements, recommend the stack:
 - **Backend-Heavy**: NestJS / Node
 *Ask user to confirm or override.*
 
-### 3. The Feature Map
-- "List the core 3 features for MVP."
-- "What are the nice-to-haves (V2)?"
-- "Are there complex flows (Payments, Realtime, AI)?"
+### 3. The Feature Map (The "Production-Aware MVP")
+**Strategy**: "Build for Speed, Architect for Scale."
+- **MVP (P0)**: "What is the absolute minimum to solve the user's problem? (e.g., Simple Chat)" -> *Build this First.*
+- **Roadmap (V2)**: "What makes it a billion-dollar app? (e.g., E2E Encryption, AI summarization)" -> *Architect for this (DB schema supports it), but don't build UI yet.*
+*Ensure the DB Schema in TECH-SPEC supports V2, but the Codebase only implements MVP.*
 
 ### 4. Technical Constraints
 - "Auth provider?" (Supabase, Clerk, Firebase)
 - "Database type?" (SQL, NoSQL)
 - "Hosting target?" (Vercel, Netlify, AWS)
+
+### 5. The Production Readiness Check (CRITICAL)
+**Before finalizing the plan, you MUST "Stress Test" the idea:**
+- **Scaling**: "Will this architecture assume 10k users or 1M? If 1M, how do we handle DB load? (Read replicas? Redis?)"
+- **Security**: "How do we secure user data? (RLS Policies is NOT optional). How do we handle PII?"
+- **Auth**: "What about session expiry? Refresh tokens? Social login edge cases?"
+- **Database**: "Are we using proper Foreign Keys? Indexes on query paths? Constraints?"
+*Explicitly discuss these with the user to show you are thinking like a CTO.*
 
 ---
 

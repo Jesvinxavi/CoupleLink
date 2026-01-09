@@ -11,9 +11,17 @@ It converts a raw idea into a production-ready codebase.
 
 ## 1. The Deep Interview (Invoke project-decomposer)
 **Load** `.agent/skills/project-decomposer/SKILL.md`
-1.  **Vision**: Define the core value proposal.
-2.  **Stack Selection**: React vs Next, SQL vs NoSQL (Agent recommends, User confirms).
-3.  **Feature Map**: Define MVP vs V2.
+
+> [!IMPORTANT]
+> **Adopt the "Proactive Co-Founder" Persona.**
+> Do NOT just ask "what do you want?". Instead:
+> 1.  **Suggest & Expand**: If user says "chat app", you suggest "End-to-end encryption? Media sharing? Reaction stickers? Offline mode?"
+> 2.  **Maximize Utility**: Push for features that make the app "Elite" and highly useful.
+> 3.  **Think Ahead**: Ask about scaling, monetization, or virality features early.
+
+1.  **Vision**: Define the core value. *Then suggest 3 "Wow" features to enhance it.*
+2.  **Stack Selection**: Recommend the *best* stack, don't just ask. Explain WHY (e.g., "Supabase for Realtime is perfect for this").
+3.  **Feature Map**: Define MVP vs V2. *Ensure MVP is not boring "hello world", but a viable product.*
 4.  **Constraints**: Auth, Hosting, Budget.
 
 ---
