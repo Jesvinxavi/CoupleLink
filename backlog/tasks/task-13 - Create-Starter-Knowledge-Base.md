@@ -1,16 +1,17 @@
 ---
 id: task-13
 title: Create Starter Knowledge Base
-status: To Do
+status: In Review
+assignee: []
 created_date: '2026-01-09'
+updated_date: '2026-01-09 02:08'
+labels: []
+dependencies: []
 priority: medium
-effort: S
-skills: [context-curator]
-spec: backlog/specs/feature-elite-scaffold-improvements.md
-branch: main
 ---
 
 ## Description
+
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Create a `KNOWLEDGE-STARTER.md` file that new projects get instantiated with. It should contain universal lessons.
 <!-- SECTION:DESCRIPTION:END -->
