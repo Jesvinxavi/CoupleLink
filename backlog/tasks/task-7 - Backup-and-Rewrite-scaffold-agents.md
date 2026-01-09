@@ -11,7 +11,7 @@ dependencies: [task-6]
 priority: high
 effort: L
 skills: [git-operations]
-spec: backlog/documents/feature-skills-migration.md
+spec: backlog/docs/feature-skills-migration.md
 related_adr: backlog/decisions/adr-skills-remote-architecture.md
 branch: feature/skills-migration
 ---
@@ -23,7 +23,7 @@ Refactor the monolithic `scaffold-agents.sh` script (~1400 lines) to be a lightw
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Context
-- **Spec:** [Skills Migration](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/documents/feature-skills-migration.md)
+- **Spec:** [Skills Migration](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/docs/feature-skills-migration.md)
 - **ADR:** [Remote Skills Architecture](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/decisions/adr-skills-remote-architecture.md)
 - **Branch:** `feature/skills-migration`
 

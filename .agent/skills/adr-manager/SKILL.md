@@ -15,8 +15,9 @@ Use this skill when you make a decision that:
 ## Core Instructions
 1.  **Check Context**: Is this a *decision* or just *work*? If decision, proceed.
 2.  **Generate ID**: Count existing files in `backlog/decisions/`. New ID = Count + 1 (padded to 4 digits, e.g., `0003`).
-3.  **Create File**: `backlog/decisions/<ID>-<kebab-case-title>.md`
-4.  **Use Template**: Follow the Nygard format (see `resources/adr-template.md`).
+3.  **Create File (Option A - CLI)**: `npx backlog.md decision create "Decision Title"` (auto-generates ID and file)
+4.  **Create File (Option B - Manual)**: `backlog/decisions/<ID>-<kebab-case-title>.md`
+5.  **Use Template**: Follow the Nygard format (see `resources/adr-template.md`).
 
 ## Guidelines
 - **Title**: Short noun phrase (e.g., "Use Supabase Auth")

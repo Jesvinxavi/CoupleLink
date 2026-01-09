@@ -11,7 +11,7 @@ dependencies: []
 priority: high
 effort: M
 skills: [git-operations]
-spec: backlog/documents/feature-skills-migration.md
+spec: backlog/docs/feature-skills-migration.md
 related_adr: backlog/decisions/adr-skills-remote-architecture.md
 branch: feature/skills-migration
 ---
@@ -23,7 +23,7 @@ Create a `agent-skills-package/` directory in the root of the workspace. This wi
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Context
-- **Spec:** [Skills Migration](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/documents/feature-skills-migration.md)
+- **Spec:** [Skills Migration](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/docs/feature-skills-migration.md)
 - **ADR:** [Remote Skills Architecture](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/decisions/adr-skills-remote-architecture.md)
 - **Branch:** `feature/skills-migration`
 

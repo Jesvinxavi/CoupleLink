@@ -21,6 +21,17 @@ if ! command -v git &> /dev/null; then
     exit 1
 fi
 
+if ! command -v npm &> /dev/null; then
+    echo "❌ Error: npm is not installed."
+    exit 1
+fi
+
+# 1b. Install Backlog.md if not present
+if ! command -v backlog &> /dev/null; then
+    echo "📦 Installing backlog.md globally..."
+    npm install -g backlog.md
+fi
+
 # 2. Prepare Directories
 mkdir -p .agent/{skills,workflows,cache}
 mkdir -p backlog/{docs,decisions,tasks,specs}
@@ -48,8 +59,8 @@ fi
 
 # 4. Installation (Sync)
 echo "📂 Installing Skills..."
-if [ -d "$SOURCE_DIR/skills" ]; then
-    cp -R "$SOURCE_DIR/skills/"* .agent/skills/
+if [ -d "$SOURCE_DIR/.agent/skills" ]; then
+    cp -R "$SOURCE_DIR/.agent/skills/"* .agent/skills/
     echo "   ✅ Skills synced"
 else
     echo "   ❌ Error: Skills directory missing in source!"
@@ -57,17 +68,33 @@ else
 fi
 
 echo "📂 Installing Workflows..."
-if [ -d "$SOURCE_DIR/workflows" ]; then
-    cp -R "$SOURCE_DIR/workflows/"* .agent/workflows/
+if [ -d "$SOURCE_DIR/.agent/workflows" ]; then
+    mkdir -p .agent/workflows
+    cp -R "$SOURCE_DIR/.agent/workflows/"* .agent/workflows/
     echo "   ✅ Workflows synced"
 else
     echo "   ⚠️  Workflows directory missing in source"
 fi
 
+echo "📂 Installing Backlog Config & Templates..."
+mkdir -p backlog/templates
+if [ -f "$SOURCE_DIR/backlog/AGENTS.md" ]; then
+    cp "$SOURCE_DIR/backlog/AGENTS.md" backlog/
+    echo "   ✅ AGENTS.md synced"
+fi
+if [ -f "$SOURCE_DIR/backlog/config.yml" ]; then
+    cp "$SOURCE_DIR/backlog/config.yml" backlog/
+    echo "   ✅ config.yml synced"
+fi
+if [ -d "$SOURCE_DIR/backlog/templates" ]; then
+    cp -R "$SOURCE_DIR/backlog/templates/"* backlog/templates/
+    echo "   ✅ Templates synced"
+fi
+
 echo "📂 Installing Documentation..."
-if [ -f "$SOURCE_DIR/docs/SKILLS-SYSTEM.md" ]; then
+if [ -f "$SOURCE_DIR/backlog/docs/SKILLS-SYSTEM.md" ]; then
     mkdir -p backlog/docs
-    cp "$SOURCE_DIR/docs/SKILLS-SYSTEM.md" backlog/docs/
+    cp "$SOURCE_DIR/backlog/docs/SKILLS-SYSTEM.md" backlog/docs/
     echo "   ✅ SKILLS-SYSTEM.md synced"
 fi
 

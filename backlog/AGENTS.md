@@ -2,6 +2,47 @@
 
 This project uses `backlog.md` for task management. As an AI agent, you can read and write tasks directly to the filesystem.
 
+## 💡 Search First
+Before asking for context or reporting missing files, ALWAYS use `backlog search "<query>"` to find relevant tasks, docs, or decisions.
+
+## 🛠️ CLI Operations (Robustness)
+Agents MUST use the CLI for state changes to prevent Markdown corruption.
+
+### Task State Changes
+| Goal | DO NOT Edit File | DO Use CLI |
+| :--- | :--- | :--- |
+| **Mark Done** | Replace `status: ...` | `npx backlog.md task edit <ID> --status Done` |
+| **Mark Progress** | Replace `status: ...` | `npx backlog.md task edit <ID> --status "In Progress"` |
+| **Check Item** | Replace `[ ]` with `[x]` | `npx backlog.md task edit <ID> --check-ac <N>` |
+| **Add Note** | Append text to file | `npx backlog.md task edit <ID> --append-notes "Text..."` |
+| **Add Dep** | Edit `dependencies:` | `npx backlog.md task edit <ID> --dep <ParentID>` |
+| **Archive Task** | Move file manually | `npx backlog.md task archive <ID>` |
+
+### Context & Discovery
+| Goal | Command |
+| :--- | :--- |
+| **List In-Progress** | `npx backlog.md task list --status "In Progress"` |
+| **List High Priority** | `npx backlog.md task list --priority high` |
+| **List by Label** | `npx backlog.md task list -l Frontend` |
+| **Project Overview** | `npx backlog.md overview` |
+| **Search Everything** | `npx backlog.md search "<query>"` |
+
+### Brainstorming (Drafts)
+| Goal | Command |
+| :--- | :--- |
+| **Create Draft** | `npx backlog.md draft create "Idea Name"` |
+| **Promote to Task** | `npx backlog.md draft promote <draft-id>` |
+
+### Documentation & Decisions
+| Goal | Command |
+| :--- | :--- |
+| **Create Doc** | `npx backlog.md doc create "Title"` |
+| **Create ADR** | `npx backlog.md decision create "Decision Title"` |
+| **Export Board** | `npx backlog.md board export` |
+
+
+
+
 ## Agent Workflows
 To ensure quality, you MUST use these standardized workflows:
 - **Starting**: Use `/start-task` (Sets status, creates branch, analyzes requirements).

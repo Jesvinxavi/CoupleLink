@@ -15,6 +15,9 @@ This workflow picks up a task from the backlog and prepares for implementation.
 
 ## 1. Identify the Task
 - User provides Task ID (e.g., "6")
+- **If no ID provided:**
+  - Run `npx backlog.md task list --priority high` to see critical tasks.
+  - Pick the top one.
 - Locate `backlog/tasks/task-<ID> - <Title>.md`
 - Read its content to understand requirements
 
@@ -35,7 +38,7 @@ This workflow picks up a task from the backlog and prepares for implementation.
 
 ## 3. Check Context Links
 If stuck or need clarity:
-- Read the `spec:` link in frontmatter for full feature context
+- Read the `spec:` link in frontmatter for full feature context (usually in `backlog/specs/` or `backlog/docs/`)
 - Read the `related_adr:` link for architectural decisions
 
 ---
@@ -47,7 +50,7 @@ If stuck or need clarity:
 ---
 
 ## 5. Update Status to "In Progress"
-- Edit the YAML frontmatter: `status: In Progress`
+- Use CLI: `npx backlog.md task edit <ID> --status "In Progress"`
 
 ---
 
@@ -89,7 +92,7 @@ git checkout <branch-from-frontmatter>
 ---
 
 ## 9. Update Status to "In Review"
-- Edit task file frontmatter: `status: In Review`
+- Use CLI: `npx backlog.md task edit <ID> --status "In Review"`
 
 ---
 

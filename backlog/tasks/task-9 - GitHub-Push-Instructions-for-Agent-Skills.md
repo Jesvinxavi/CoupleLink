@@ -12,7 +12,7 @@ dependencies: [task-8]
 priority: medium
 effort: XS
 skills: [git-operations]
-spec: backlog/documents/feature-skills-migration.md
+spec: backlog/docs/feature-skills-migration.md
 related_adr: backlog/decisions/adr-skills-remote-architecture.md
 branch: feature/skills-migration
 ---
@@ -24,7 +24,7 @@ Provide the user with the exact commands to push the new `agent-skills-package/`
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Context
-- **Spec:** [Skills Migration](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/documents/feature-skills-migration.md)
+- **Spec:** [Skills Migration](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/docs/feature-skills-migration.md)
 - **ADR:** [Remote Skills Architecture](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/decisions/adr-skills-remote-architecture.md)
 - **Branch:** `feature/skills-migration`
 

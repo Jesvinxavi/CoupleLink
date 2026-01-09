@@ -11,7 +11,7 @@ This runs a holistic quality gate and captures lessons learned.
 
 ## 1. Identify the Spec
 - Ask user which spec is complete (e.g., "skills-migration")
-- Locate `backlog/specs/feature-<name>.md` or `backlog/documents/<name>.md`
+- Locate `backlog/specs/feature-<name>.md` or `backlog/docs/<name>.md`
 - Find all related tasks via the `spec:` field in task frontmatter
 
 ---
@@ -102,7 +102,15 @@ Append to `backlog/KNOWLEDGE.md` under the appropriate category.
 
 ---
 
-## 8. Merge Strategy
+## 8. Generate Status Report
+- Run `backlog board export` to generate a markdown snapshot of the project status.
+- Save this snapshot to `backlog/docs/status/` (create folder if needed) with the naming convention `YYYY-MM-DD-status-report.md`.
+- This provides a historical record of the project state at the time of spec completion.
+
+---
+
+
+## 9. Merge Strategy
 
 | Spec Type | Action |
 |-----------|--------|
@@ -118,7 +126,7 @@ git push
 
 ---
 
-## 9. Update Spec Status
+## 10. Update Spec Status
 - Add completion timestamp to spec file
 - Mark all related tasks as Done (if not already)
 - Commit: `chore: complete spec <spec-name>`

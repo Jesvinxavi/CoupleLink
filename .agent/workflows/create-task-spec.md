@@ -26,6 +26,15 @@ This workflow turns "I want X" into a rigorous plan.
     *   Read `backlog/specs/` - Is this feature already defined?
     *   If conflict found → **STOP**. Notify user.
 *   Identify existing patterns to reuse.
+*   **Search**: Use `backlog search "<concept>"` to check for existing docs or similar tasks.
+
+---
+
+## 2.5 Brainstorming (Optional - Drafts)
+*   If the requirements are still fuzzy, use `backlog/drafts/` to brainstorm.
+*   Create a file `backlog/drafts/idea-<name>.md` to jot down thoughts before formalizing.
+*   Once clear, convert the draft into a spec and tasks.
+
 
 ---
 

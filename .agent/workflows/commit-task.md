@@ -56,8 +56,8 @@ npm run build
 
 ## 4. Update Task Status to Done
 - **Verify status is `In Review`** (it should be, from start-task).
-- Edit task file frontmatter: `status: Done`
-- Ensure all subtasks are checked: `- [x]`
+- Use CLI: `npx backlog.md task edit <ID> --status Done`
+- Use CLI for subtasks: `npx backlog.md task edit <ID> --check-ac 1 --check-ac 2 ...` (or verify manually)
 
 ---
 

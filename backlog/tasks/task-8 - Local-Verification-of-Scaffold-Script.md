@@ -12,7 +12,7 @@ dependencies: [task-7]
 priority: medium
 effort: S
 skills: [test-strategist]
-spec: backlog/documents/feature-skills-migration.md
+spec: backlog/docs/feature-skills-migration.md
 related_adr: backlog/decisions/adr-skills-remote-architecture.md
 branch: feature/skills-migration
 ---
@@ -24,7 +24,7 @@ Verify the new script works correctly using a local path simulation before pushi
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Context
-- **Spec:** [Skills Migration](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/documents/feature-skills-migration.md)
+- **Spec:** [Skills Migration](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/docs/feature-skills-migration.md)
 - **ADR:** [Remote Skills Architecture](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/decisions/adr-skills-remote-architecture.md)
 - **Branch:** `feature/skills-migration`
 
