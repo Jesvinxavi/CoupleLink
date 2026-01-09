@@ -24,6 +24,8 @@ This file contains accumulated wisdom from completed tasks.
 ---
 
 ## General Lessons Learned
+*   [2026-01-09] **Workflow Discipline**: Even when the path seems clear, strictly following workflow steps (e.g., pausing for `@[/commit-task]`) prevents sync issues and ensures clean git history.
+*   [2026-01-09] **Config Safety**: When upgrading configuration files via script, always parse for existing user customizations (like "Agent" labels) before deciding to overwrite or backup. A "smart merge" or "backup-first" strategy is critical for non-destructive upgrades.
 *   [2026-01-08] **Skills System**: Automation of meta-skills (like `github-automator`) significantly reduces friction. Encapsulating CLI commands into skills ensures consistency and robustness.
 *   [2026-01-08] **Comprehensive Audit**: Embedding automated "grep" checks into the audit skill itself (Phase 2.5) catches low-hanging fruit (secrets, debug logs) before manual review, making the 100/100 robustness score more achievable and meaningful.
 *   [2026-01-08] **Safe Verification**: When testing destructive operations (like syncing/overwriting skills), always verify locally first by deleting a single target file (e.g., `task-decomposer`) and confirming its restoration, rather than risking the entire directory immediately.

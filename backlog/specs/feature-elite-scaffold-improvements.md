@@ -52,5 +52,13 @@ Upgrade `scaffold-agents.sh` to be a production-grade, "elite" installer that ha
 2.  `agent-skills-package/backlog/docs/KNOWLEDGE-STARTER.md` (The Seed)
 
 ## Generated Tasks (Auto-Generated)
-- [ ] [Task-12: Implement Elite Script Logic](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/tasks/task-12%20-%20Implement-Elite-Scaffold-Script-Logic.md)
-- [ ] [Task-13: Create Starter Knowledge Base](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/tasks/task-13%20-%20Create-Starter-Knowledge-Base.md)
+- [x] [Task-12: Implement Elite Script Logic](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/tasks/task-12%20-%20Implement-Elite-Scaffold-Script-Logic.md)
+- [x] [Task-13: Create Starter Knowledge Base](file:///Users/jesvinxavi/Downloads/CoupleLink-main/backlog/tasks/task-13%20-%20Create-Starter-Knowledge-Base.md)
+
+## Files Changed (Auto-Generated)
+- `agent-skills-package/backlog/docs/KNOWLEDGE-STARTER.md`
+- `backlog/config.yml`
+- `backlog/specs/feature-elite-scaffold-improvements.md`
+- `backlog/tasks/task-12 - Implement-Elite-Scaffold-Script-Logic.md`
+- `backlog/tasks/task-13 - Create-Starter-Knowledge-Base.md`
+- `scripts/scaffold-agents.sh`
