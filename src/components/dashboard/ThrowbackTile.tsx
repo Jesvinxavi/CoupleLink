@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCoupleData } from '@/hooks/useCoupleData';
-import { Loader2, Calendar, CalendarDays, Quote, Image as ImageIcon, HelpCircle, X, MapPin, Heart, Sparkles, Ticket, StickyNote, Trophy, Timer, CircleDashed, Check } from 'lucide-react';
+import { Loader2, Calendar, CalendarDays, Quote, Image as ImageIcon, HelpCircle, X, MapPin, Heart, Sparkles, Ticket, StickyNote, Trophy, CircleDashed, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { positions } from '@/data/positionsData';
 import { PositionSVG } from '../sexploration/PositionSVG';
@@ -232,7 +232,8 @@ export function ThrowbackTile() {
     };
 
 
-    const position = item.type === 'position' ? positions.find(p => p.name === item.title || p.id === item.id) : null;
+    // Fix: item.title contains position_id (slug) from RPC, so match against p.id
+    const position = item.type === 'position' ? positions.find(p => p.id === item.title) : null;
 
     const getLabel = () => {
         return "Throwback";
@@ -446,19 +447,28 @@ export function ThrowbackTile() {
                                 </div>
                             </div>
                         ) : item.type === 'position' ? (
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-3">
-                                    {position && <PositionSVG position={position} size="sm" />}
-                                    <div>
-                                        <h4 className="font-bold text-heading-dark text-base line-clamp-1">
-                                            {item.title}
-                                        </h4>
-                                        {item.category && (
-                                            <span className="text-xs text-rose-500 capitalize">{item.category}</span>
-                                        )}
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-gray-200 dark:border-gray-700 p-4 space-y-3 min-w-[75%] mx-auto relative overflow-hidden">
+                                {/* Tab Notch - Rose for Positions */}
+                                <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-100 dark:bg-rose-900/30" />
+
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-3">
+                                        {position && <PositionSVG position={position} size="sm" />}
+                                        <div>
+                                            <h4 className="font-bold text-gray-900 dark:text-white text-base line-clamp-1 capitalize">
+                                                {position?.name || (item.title || '').replace(/-/g, ' ')}
+                                            </h4>
+                                            {item.category && (
+                                                <span className="text-[10px] text-rose-500 font-bold uppercase tracking-wide">{item.category}</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 mt-2 pt-1 border-t border-gray-100 dark:border-gray-700/50">
+                                        <Check className="w-4 h-4 text-green-600 dark:text-green-500 stroke-[3]" />
+                                        <p className="text-[10px] font-bold uppercase">Position Completed</p>
                                     </div>
                                 </div>
-                                <p className="text-xs text-green-600 font-medium">Position Completed</p>
                             </div>
                         ) : item.type === 'fantasy' ? (
                             // Completed fantasy style - amber to match fantasy pill
@@ -703,24 +713,33 @@ export function ThrowbackTile() {
                                                     </div>
                                                 </div>
                                             ) : item.type === 'position' ? (
-                                                <>
-                                                    <div className="flex flex-col items-center gap-4">
-                                                        {position && <PositionSVG position={position} size="lg" />}
-                                                        <div className="text-center">
-                                                            <h3 className="text-2xl font-bold text-heading-dark mb-2">
-                                                                {item.title}
-                                                            </h3>
+                                                <div className="space-y-6">
+                                                    <div className="space-y-4">
+                                                        <div className="flex flex-col items-center gap-4">
+                                                            <div className="flex items-center gap-4 w-full justify-center">
+                                                                {position && <div className="shrink-0"><PositionSVG position={position} size="md" /></div>}
+                                                                <h3 className="text-2xl font-bold text-heading-dark text-center capitalize">
+                                                                    {position?.name || (item.title || '').replace(/-/g, ' ')}
+                                                                </h3>
+                                                            </div>
+
                                                             {item.category && (
-                                                                <span className="inline-block px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-xs font-medium capitalize mb-3">
+                                                                <span className="inline-block px-3 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full text-xs font-bold uppercase tracking-wide">
                                                                     {item.category}
                                                                 </span>
                                                             )}
-                                                            <p className="text-body-soft leading-relaxed">
-                                                                {item.content}
+
+                                                            <p className="text-body-soft leading-relaxed text-center px-4">
+                                                                {position?.description || item.content}
                                                             </p>
                                                         </div>
+
+                                                        <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-xl flex items-center justify-center gap-3 border border-green-100 dark:border-green-900/30">
+                                                            <Check className="w-5 h-5 text-green-600 dark:text-green-500 stroke-[3]" />
+                                                            <p className="text-green-800 dark:text-green-400 font-bold text-sm text-center">Position Completed</p>
+                                                        </div>
                                                     </div>
-                                                </>
+                                                </div>
                                             ) : item.type === 'fantasy' ? (
                                                 <>
                                                     {/* Completed fantasy style - amber to match fantasy pill */}
