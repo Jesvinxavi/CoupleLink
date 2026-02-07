@@ -30,7 +30,8 @@ const DEFAULT_PREFERENCES = {
         calendar_events: true,
         partner_birthday: true,
         my_birthday: true,
-        anniversary: true
+        anniversary: true,
+        coupon_activation: true
     }
 };
 
@@ -56,6 +57,7 @@ interface NotificationPreferences {
         partner_birthday: boolean;
         my_birthday: boolean;
         anniversary: boolean;
+        coupon_activation: boolean;
     };
 }
 
@@ -80,7 +82,8 @@ const SECTIONS = [
         icon: 'local_fire_department',
         types: [
             { key: 'fantasies', label: 'Fantasy Notifications', description: 'New fantasies and approvals' },
-            { key: 'coupons', label: 'Coupon Received', description: 'When partner sends a coupon' }
+            { key: 'coupons', label: 'Coupon Received', description: 'When partner sends a coupon' },
+            { key: 'coupon_activation', label: 'Coupon Activated', description: 'When partner activates a coupon' }
         ]
     },
     {

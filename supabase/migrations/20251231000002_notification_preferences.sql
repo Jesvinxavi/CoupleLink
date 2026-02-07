@@ -24,7 +24,8 @@ ADD COLUMN IF NOT EXISTS notification_preferences JSONB DEFAULT '{
     "calendar_events": true,
     "partner_birthday": true,
     "my_birthday": true,
-    "anniversary": true
+    "anniversary": true,
+    "coupon_activation": true
   }
 }'::jsonb;
 
@@ -46,7 +47,7 @@ BEGIN
         "daily_expiry": true, "weekly_expiry": true, "monthly_expiry": true,
         "new_sticky_note": true, "new_journal_post": true, "fantasies": true,
         "coupons": true, "calendar_events": true, "partner_birthday": true,
-        "my_birthday": true, "anniversary": true
+        "my_birthday": true, "anniversary": true, "coupon_activation": true
       }
     }'::jsonb
     WHERE notification_preferences IS NULL;

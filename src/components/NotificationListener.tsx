@@ -13,6 +13,7 @@ const SECTION_MAP: Record<string, string> = {
     monthly_expiry: 'challenges_streak',
     fantasies: 'sexploration_fun',
     coupons: 'sexploration_fun',
+    coupon_activation: 'sexploration_fun',
     calendar_events: 'dates_reminders',
     new_sticky_note: 'dates_reminders',
     new_journal_post: 'dates_reminders',
@@ -51,6 +52,10 @@ const NOTIFICATION_MESSAGES: Record<string, string[]> = {
         "You received a Pleasure Coupon! 🎁",
         "Lucky you! Partner sent a coupon. Redeem it soon! 🎟️"
     ],
+    coupon_activation: [
+        "Partner activated a Pleasure Coupon! 🔥",
+        "It's happening! Partner activated a coupon. Get ready! ⚡"
+    ],
     calendar_events: [
         "New Event added to your calendar! 📅",
         "Partner planned something special! 🥂"
@@ -76,6 +81,7 @@ const getTitle = (type: string): string => {
         fantasies_added: 'New Fantasy',
         fantasies_approved: 'Fantasy Approved',
         coupons: 'New Coupon',
+        coupon_activation: 'Coupon Activated',
         calendar_events: 'Calendar Event'
     };
     return titles[type] || 'CoupleLink';
@@ -278,6 +284,27 @@ export function NotificationListener() {
                     if (payload.new.assigned_to === user.id) {
                         if (shouldNotify('coupons', userPreferences)) {
                             showNotification('coupons');
+                        }
+                    }
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'coupons',
+                    filter: `couple_id=eq.${couple.id}`
+                },
+                (payload) => {
+                    // Notify if partner activated a coupon (activated_at changed from null to value)
+                    if (
+                        payload.new.gifted_by === user.id &&
+                        payload.new.activated_at &&
+                        !payload.old.activated_at
+                    ) {
+                        if (shouldNotify('coupon_activation', userPreferences)) {
+                            showNotification('coupon_activation');
                         }
                     }
                 }
