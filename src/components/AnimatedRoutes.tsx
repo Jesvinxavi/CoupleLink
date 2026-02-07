@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom"
-import { AnimatePresence } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 
 import { useAuth } from "@/context/AuthContext"
 import ProtectedRoute from "@/components/ProtectedRoute"
@@ -23,6 +23,7 @@ import StatsPage from "@/pages/Stats"
 import SexplorationPage from "@/pages/Sexploration"
 import ChallengesPage from "@/pages/Challenges"
 import { useCoupleData } from "@/hooks/useCoupleData"
+import logo from "@/assets/logo.png"
 
 function RootRedirect() {
     const { userProfile, loading } = useCoupleData()
@@ -33,8 +34,19 @@ function RootRedirect() {
     if (loading || !userProfile) {
         return (
             <div className="flex min-h-screen flex-col items-center justify-center bg-[#FFF5F5]">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#EA2831] border-t-transparent shadow-lg"></div>
-                <p className="mt-4 text-body-soft animate-pulse">Loading your space...</p>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="flex flex-col items-center"
+                >
+                    <div className="flex items-center gap-3 mb-10">
+                        <img src={logo} alt="CoupleLink Logo" className="h-12 w-12 object-contain" />
+                        <h1 className="text-4xl font-bold text-heading-dark">Couple<span className="text-[#EA2831]">Link</span></h1>
+                    </div>
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#EA2831] border-t-transparent shadow-md"></div>
+                    <p className="mt-6 text-body-soft font-medium animate-pulse">Loading your space...</p>
+                </motion.div>
             </div>
         )
     }
