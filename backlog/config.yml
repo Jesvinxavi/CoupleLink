@@ -1,4 +1,4 @@
-project_name: "CoupleLink"
+project_name: "CoupleLink-main"
 default_status: "To Do"
 statuses: ["Thinking", "To Do", "In Progress", "In Review", "Done"]
 labels: ["Feature", "Bug", "Chore", "Refactor", "Documentation", "Agent", "Frontend", "Backend", "Supabase"]
