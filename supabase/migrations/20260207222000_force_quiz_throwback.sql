@@ -227,8 +227,7 @@ BEGIN
         HAVING COUNT(DISTINCT ua.user_id) >= 2
     ),
     all_memories AS (
-        -- FORCED: Only 'quiz' for verification
-        SELECT * FROM all_memories_raw amr WHERE amr.type = 'quiz'
+        SELECT * FROM all_memories_raw
     ),
     numbered_items AS (
         SELECT 

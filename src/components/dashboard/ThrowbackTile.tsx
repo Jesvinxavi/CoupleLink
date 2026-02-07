@@ -301,23 +301,21 @@ export function ThrowbackTile() {
                 <div className="relative z-10 flex flex-col p-4">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-start gap-2">
-                            <div className={`flex items-center gap-2 ${item.type === 'photo' && coverImage ? 'bg-black/40 backdrop-blur-md rounded-lg px-2 py-1.5' : ''}`}>
-                                <div className={`shrink-0 ${item.type === 'photo' ? '' : 'mt-1'}`}>
+                        <div className="flex flex-col min-w-0">
+                            <div className={`flex items-start gap-2 ${item.type === 'photo' && coverImage ? 'bg-black/40 backdrop-blur-md rounded-lg px-2 py-1.5' : ''}`}>
+                                <div className={`shrink-0 mt-1`}>
                                     {getIcon()}
                                 </div>
-                                <div className="flex flex-col min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className={`text-lg font-bold ${item.type === 'photo' ? 'text-white' : 'text-heading-dark'}`}>
-                                            {getLabel()}
-                                        </h3>
-                                        {getCategoryBadge()}
-                                    </div>
-                                    <p className={`text-xs -mt-0.5 ${item.type === 'photo' ? 'text-white/80' : 'text-body-soft'}`}>
-                                        {formatDate(item.created_at)}
-                                    </p>
+                                <div className="flex items-center gap-2">
+                                    <h3 className={`text-lg font-bold ${item.type === 'photo' ? 'text-white' : 'text-heading-dark'}`}>
+                                        {getLabel()}
+                                    </h3>
+                                    {getCategoryBadge()}
                                 </div>
                             </div>
+                            <p className={`text-xs mt-0.5 ${item.type === 'photo' ? 'text-white/80' : 'text-body-soft'}`}>
+                                {formatDate(item.created_at)}
+                            </p>
                         </div>
                         <span className={`material-symbols-outlined transition-colors ${item.type === 'photo' ? 'text-white/60 md:group-hover:text-white group-active:text-white' : 'text-gray-400 md:group-hover:text-gray-600 group-active:text-gray-600'}`}>
                             arrow_forward
@@ -643,21 +641,21 @@ export function ThrowbackTile() {
                                 >
                                     {/* Header Section - Always at top */}
                                     <div className="flex items-start justify-between px-6 py-3 border-b border-gray-50 shrink-0 bg-white">
-                                        <div className="flex items-start gap-3">
-                                            <div className="shrink-0 mt-1">
-                                                {getIcon()}
-                                            </div>
-                                            <div>
+                                        <div className="flex flex-col">
+                                            <div className="flex items-start gap-3">
+                                                <div className="shrink-0 mt-1">
+                                                    {getIcon()}
+                                                </div>
                                                 <div className="flex items-center gap-2">
                                                     <h3 className="text-lg font-bold text-heading-dark">
                                                         {getLabel()}
                                                     </h3>
                                                     {getCategoryBadge()}
                                                 </div>
-                                                <p className="text-xs text-body-soft -mt-0.5">
-                                                    {formatDate(item.created_at)}
-                                                </p>
                                             </div>
+                                            <p className="text-xs text-body-soft mt-0.5">
+                                                {formatDate(item.created_at)}
+                                            </p>
                                         </div>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
