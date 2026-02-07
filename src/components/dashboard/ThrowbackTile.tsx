@@ -299,19 +299,21 @@ export function ThrowbackTile() {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                         <div className="flex items-start gap-2">
-                            <div className={`shrink-0 ${item.type === 'photo' ? 'p-1.5 rounded-full bg-white/20 backdrop-blur-sm' : 'mt-1'}`}>
-                                {getIcon()}
-                            </div>
-                            <div className={`flex flex-col min-w-0 ${item.type === 'photo' && coverImage ? 'bg-black/40 backdrop-blur-md rounded-lg px-2 py-1 ml-1' : ''}`}>
-                                <div className="flex items-center gap-2">
-                                    <h3 className={`text-lg font-bold ${item.type === 'photo' ? 'text-white' : 'text-heading-dark'}`}>
-                                        {getLabel()}
-                                    </h3>
-                                    {getCategoryBadge()}
+                            <div className={`flex items-center gap-2 ${item.type === 'photo' && coverImage ? 'bg-black/40 backdrop-blur-md rounded-lg px-2 py-1.5' : ''}`}>
+                                <div className={`shrink-0 ${item.type === 'photo' ? '' : 'mt-1'}`}>
+                                    {getIcon()}
                                 </div>
-                                <p className={`text-xs -mt-0.5 ${item.type === 'photo' ? 'text-white/80' : 'text-body-soft'}`}>
-                                    {formatDate(item.created_at)}
-                                </p>
+                                <div className="flex flex-col min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className={`text-lg font-bold ${item.type === 'photo' ? 'text-white' : 'text-heading-dark'}`}>
+                                            {getLabel()}
+                                        </h3>
+                                        {getCategoryBadge()}
+                                    </div>
+                                    <p className={`text-xs -mt-0.5 ${item.type === 'photo' ? 'text-white/80' : 'text-body-soft'}`}>
+                                        {formatDate(item.created_at)}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         <span className={`material-symbols-outlined transition-colors ${item.type === 'photo' ? 'text-white/60 md:group-hover:text-white group-active:text-white' : 'text-gray-400 md:group-hover:text-gray-600 group-active:text-gray-600'}`}>
@@ -322,40 +324,41 @@ export function ThrowbackTile() {
                     {/* Content Preview */}
                     <div className={`flex flex-col ${item.type === 'photo' && coverImage ? 'flex-1 min-h-[140px] justify-end' : 'justify-start'}`}>
                         {item.type === 'photo' ? (
-                            <div className={`space-y-1 ${coverImage ? 'mt-auto bg-black/40 backdrop-blur-md rounded-xl p-3' : ''}`}>
-                                {/* Show title if no cover image */}
-                                {item.title && (
-                                    <h4 className={`font-bold text-base line-clamp-1 ${coverImage ? 'text-white drop-shadow-sm' : 'text-heading-dark'}`}>
-                                        {item.title}
-                                    </h4>
-                                )}
-                                {item.content && (
-                                    <p className={`font-medium line-clamp-2 leading-snug ${coverImage ? 'text-white text-lg drop-shadow-sm' : 'text-body-soft text-base'}`}>
-                                        {coverImage ? `"${item.content}"` : item.content}
-                                    </p>
-                                )}
-                                {!item.content && !item.title && (
-                                    <p className={`text-xs ${coverImage ? 'text-white/70' : 'text-gray-400'}`}>Photo memory</p>
-                                )}
-                                <div className={`flex items-center gap-2 pt-2 text-[10px] font-medium ${coverImage ? 'text-white/90' : 'text-gray-500'}`}>
-                                    <UserAvatar
-                                        user={getUser(item.uploader_id)}
-                                        className="w-4 h-4 border-none"
-                                        iconClassName="w-3 h-3"
-                                    />
-                                    <span>Uploaded by {getAuthorLabel(item.uploader_id)}</span>
-                                    {item.location && (
-                                        <>
-                                            <span>•</span>
-                                            <div className="flex items-center gap-1">
-                                                <MapPin className="w-3 h-3" />
-                                                <span className="truncate max-w-[100px]">{item.location}</span>
-                                            </div>
-                                        </>
+                            <div className={`flex flex-col items-end space-y-1 ${coverImage ? 'mt-auto' : ''}`}>
+                                <div className={`${coverImage ? 'bg-black/40 backdrop-blur-md rounded-xl p-3 inline-block max-w-full' : ''}`}>
+                                    {/* Show title if no cover image */}
+                                    {item.title && (
+                                        <h4 className={`font-bold text-base line-clamp-1 ${coverImage ? 'text-white drop-shadow-sm' : 'text-heading-dark'}`}>
+                                            {item.title}
+                                        </h4>
                                     )}
+                                    {item.content && (
+                                        <p className={`font-medium line-clamp-2 leading-snug ${coverImage ? 'text-white text-lg drop-shadow-sm' : 'text-body-soft text-base'}`}>
+                                            {coverImage ? `"${item.content}"` : item.content}
+                                        </p>
+                                    )}
+                                    {!item.content && !item.title && (
+                                        <p className={`text-xs ${coverImage ? 'text-white/70' : 'text-gray-400'}`}>Photo memory</p>
+                                    )}
+                                    <div className={`flex items-center gap-2 pt-2 text-[10px] font-medium ${coverImage ? 'text-white/90' : 'text-gray-500'}`}>
+                                        <UserAvatar
+                                            user={getUser(item.uploader_id)}
+                                            className="w-4 h-4 border-none"
+                                            iconClassName="w-3 h-3"
+                                        />
+                                        <span>Uploaded by {getAuthorLabel(item.uploader_id)}</span>
+                                        {item.location && (
+                                            <>
+                                                <span>•</span>
+                                                <div className="flex items-center gap-1">
+                                                    <MapPin className="w-3 h-3" />
+                                                    <span className="truncate max-w-[100px]">{item.location}</span>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-
                         ) : item.type === 'journal' ? (
                             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-gray-200 dark:border-gray-700 p-4 space-y-2 min-w-[75%] mx-auto">
                                 <div className="flex items-center gap-2">
@@ -408,7 +411,6 @@ export function ThrowbackTile() {
                                         </div>
                                     </div>
 
-                                    {/* Completion Status + Answers */}
                                     {/* Completion Status + Answers */}
                                     <div className="space-y-1.5 pt-1">
                                         {hasAnswers && (
@@ -592,7 +594,7 @@ export function ThrowbackTile() {
                         )}
                     </div>
                 </div>
-            </motion.div >
+            </motion.div>
 
             {/* Expanded Modal */}
             <AnimatePresence>
@@ -644,12 +646,14 @@ export function ThrowbackTile() {
                                     <div className="overflow-y-auto flex-1">
                                         {/* Image (if available) - Exclude journal and challenge as they have it inside the post */}
                                         {hasMedia && item.type !== 'journal' && item.type !== 'challenge' && (
-                                            <div className="relative h-64 w-full">
-                                                <img
-                                                    src={coverImage!}
-                                                    alt="Memory"
-                                                    className="h-full w-full object-cover"
-                                                />
+                                            <div className="w-full px-6 pt-6">
+                                                <div className="relative h-64 w-full rounded-2xl overflow-hidden shadow-sm">
+                                                    <img
+                                                        src={coverImage!}
+                                                        alt="Memory"
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                </div>
                                             </div>
                                         )}
 
