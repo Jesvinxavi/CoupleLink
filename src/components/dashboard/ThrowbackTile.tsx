@@ -471,14 +471,21 @@ export function ThrowbackTile() {
                                 </div>
                             </div>
                         ) : item.type === 'fantasy' ? (
-                            // Completed fantasy style - amber to match fantasy pill
-                            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 space-y-1">
-                                <p className="text-gray-800 dark:text-gray-200 line-clamp-2 font-bold text-base">
-                                    {item.title}
-                                </p>
-                                <p className="text-[10px] text-gray-400">
-                                    Suggested by {getAuthorLabel(item.requester_id)}
-                                </p>
+                            // Fantasy tile matching Event tab style (centered, not full width)
+                            <div className="relative flex items-start gap-2 px-3 py-2.5 rounded-xl self-center min-w-[240px] w-fit mx-auto overflow-hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                                <div className="flex-1 min-w-0 text-left">
+                                    <h4 className="font-bold text-gray-900 dark:text-white line-clamp-2 text-base leading-tight mb-2 text-left">
+                                        {item.title}
+                                    </h4>
+                                    <div className="flex items-center justify-start gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+                                        <UserAvatar
+                                            user={getUser(item.uploader_id)}
+                                            className="w-3.5 h-3.5 border-none"
+                                            iconClassName="w-2.5 h-2.5"
+                                        />
+                                        <span>Suggested by {getAuthorLabel(item.uploader_id)}</span>
+                                    </div>
+                                </div>
                             </div>
                         ) : item.type === 'voucher' ? (
                             // Pleasure coupon style from Coupon.tsx
@@ -741,23 +748,30 @@ export function ThrowbackTile() {
                                                     </div>
                                                 </div>
                                             ) : item.type === 'fantasy' ? (
-                                                <>
-                                                    {/* Completed fantasy style - amber to match fantasy pill */}
-                                                    <div className="p-6 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
-                                                        <div className="flex items-center gap-2 mb-4">
-                                                            <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
-                                                                ✓
-                                                            </span>
-                                                            <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">Completed Fantasy</span>
-                                                        </div>
-                                                        <p className="text-xl font-medium text-gray-800 dark:text-gray-200 mb-4">
+                                                <div className="relative overflow-hidden p-6 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+
+                                                    <div className="space-y-4 text-left">
+                                                        {/* Title */}
+                                                        <h3 className="text-2xl font-bold text-heading-dark">
                                                             {item.title}
-                                                        </p>
-                                                        <p className="text-sm text-gray-400">
-                                                            Suggested by {getAuthorLabel(item.requester_id)}
-                                                        </p>
+                                                        </h3>
+
+                                                        {/* Completion Indicator */}
+                                                        <div className="flex items-center justify-start gap-2 text-green-600 dark:text-green-500">
+                                                            <Check className="w-5 h-5 stroke-[3]" />
+                                                            <span className="font-bold text-sm uppercase">Fantasy Completed</span>
+                                                        </div>
+
+                                                        {/* Suggested By */}
+                                                        <div className="flex items-center justify-start gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                                            <UserAvatar
+                                                                user={getUser(item.uploader_id)}
+                                                                className="w-5 h-5"
+                                                            />
+                                                            <span>Suggested by {getAuthorLabel(item.uploader_id)}</span>
+                                                        </div>
                                                     </div>
-                                                </>
+                                                </div>
                                             ) : item.type === 'voucher' ? (
                                                 <>
                                                     {/* Pleasure coupon style from Coupon.tsx */}
