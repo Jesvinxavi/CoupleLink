@@ -272,7 +272,10 @@ export function SexplorationHistorySection({ monthYear }: SexplorationHistoryPro
 
     if (loading) {
         return (
-            <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+            <div className="flex flex-col items-center justify-center py-12 animate-in fade-in duration-500">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-pink-500 border-t-transparent shadow-sm"></div>
+                <p className="mt-4 text-gray-400 text-sm font-medium">Loading your stats...</p>
+            </div>
         );
     }
 

@@ -376,10 +376,9 @@ export function ChallengeHistory() {
 
     if (loading) {
         return (
-            <div className="space-y-6">
-                {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-40 bg-gray-200 dark:bg-gray-800 rounded-xl animate-pulse" />
-                ))}
+            <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-500">
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-rose-500 border-t-transparent shadow-sm"></div>
+                <p className="mt-4 text-gray-400 font-medium">Gathering your memories...</p>
             </div>
         );
     }
