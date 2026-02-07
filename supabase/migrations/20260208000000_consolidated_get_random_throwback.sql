@@ -1,0 +1,320 @@
+-- ============================================================================
+-- CONSOLIDATED MIGRATION: get_random_throwback (Production)
+-- ============================================================================
+-- This migration consolidates all fixes from the following migration files:
+-- - 20260102150000_fix_throwback_media_urls.sql
+-- - 20260207184500_fix_random_throwback_challenge_data.sql
+-- - 20260207185500_fix_random_throwback_content.sql
+-- - 20260207190500_fix_random_throwback_partner_completion.sql
+-- - 20260207191500_fix_random_throwback_position_category.sql
+-- - 20260207192500_fix_random_throwback_offset.sql
+-- - 20260207195000_fix_random_throwback_challenge_media.sql
+-- - 20260207200000_fix_challenge_media_aggregation.sql
+-- - 20260207202000_fix_challenge_media_final.sql
+-- - 20260207213000_force_fantasy_throwback.sql (fantasy_bucket_list UNION)
+-- - 20260207221500_fix_photo_throwback_relation.sql
+-- - 20260207222000_force_quiz_throwback.sql (quiz UNION)
+--
+-- FIXES INCLUDED:
+-- 1. Media URL coalescing for photos/journals
+-- 2. Challenge answer fetching with title fallback
+-- 3. Challenge content from caption
+-- 4. Partner completion flag for challenges
+-- 5. Challenge media aggregation from both partners
+-- 6. ROW_NUMBER selection method (fixed OFFSET bug)
+-- 7. Removed invalid cp.category reference
+-- 8. Fantasy bucket list items as throwback source
+-- 9. Quiz (Daily Questions) as throwback source
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION get_random_throwback(
+    p_couple_id uuid,
+    p_seed float8,
+    p_exclude_date date DEFAULT NULL
+)
+RETURNS TABLE (
+    id uuid,
+    type text,
+    title text,
+    content text,
+    created_at timestamptz,
+    media_urls text[],
+    location text,
+    uploader_id uuid,
+    extra_data jsonb
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH all_memories_raw AS (
+        -- ================================================================
+        -- PHOTO MEMORIES
+        -- ================================================================
+        SELECT 
+            m.id,
+            m.type::text as type,
+            m.title,
+            m.caption as content,
+            m.created_at,
+            -- FIX #1: Coalesce media_urls from array or single media_url
+            COALESCE(m.media_urls, CASE WHEN m.media_url IS NOT NULL THEN ARRAY[m.media_url] ELSE NULL END) as media_urls,
+            m.location,
+            m.uploader_id,
+            NULL::jsonb as extra_data
+        FROM memories m
+        WHERE m.couple_id = p_couple_id
+            AND m.type = 'photo'
+            AND (p_exclude_date IS NULL OR DATE(m.created_at) != p_exclude_date)
+        
+        UNION ALL
+        
+        -- ================================================================
+        -- JOURNAL MEMORIES
+        -- ================================================================
+        SELECT 
+            m.id,
+            'journal'::text as type,
+            m.title,
+            m.caption as content,
+            m.created_at,
+            COALESCE(m.media_urls, CASE WHEN m.media_url IS NOT NULL THEN ARRAY[m.media_url] ELSE NULL END) as media_urls,
+            m.location,
+            m.uploader_id,
+            NULL::jsonb as extra_data
+        FROM memories m
+        WHERE m.couple_id = p_couple_id
+            AND m.type = 'journal'
+            AND (p_exclude_date IS NULL OR DATE(m.created_at) != p_exclude_date)
+        
+        UNION ALL
+        
+        -- ================================================================
+        -- CHALLENGE MEMORIES
+        -- ================================================================
+        SELECT 
+            m.id,
+            'challenge'::text as type,
+            m.title,
+            -- FIX #3: Challenge content from caption
+            m.caption as content,
+            m.created_at,
+            -- FIX #5: Aggregate media from both partners
+            (
+                SELECT array_agg(DISTINCT url)
+                FROM (
+                    -- My media
+                    SELECT unnest(COALESCE(m.media_urls, CASE WHEN m.media_url IS NOT NULL THEN ARRAY[m.media_url] ELSE ARRAY[]::text[] END)) as url
+                    UNION ALL
+                    -- Partner's media
+                    SELECT pm.media_url as url
+                    FROM memories pm
+                    WHERE pm.couple_id = p_couple_id
+                    AND pm.type = 'challenge'
+                    AND pm.uploader_id != m.uploader_id
+                    AND pm.media_url IS NOT NULL
+                    AND (
+                        (m.challenge_id IS NOT NULL AND pm.challenge_id = m.challenge_id)
+                        OR
+                        (m.challenge_id IS NULL AND pm.title = m.title AND ABS(EXTRACT(EPOCH FROM (pm.created_at - m.created_at))) < 86400 * 7)
+                    )
+                ) media_collection
+                WHERE url IS NOT NULL
+            ) as media_urls,
+            NULL::text as location,
+            m.uploader_id,
+            jsonb_build_object(
+                'activity_question', m.title,
+                -- FIX #2: Challenge answer fetching with title fallback
+                'answers', (
+                    SELECT jsonb_agg(jsonb_build_object('user_id', ua.user_id, 'answer', ua.answer_text))
+                    FROM user_answers ua
+                    LEFT JOIN activities a ON ua.activity_id = a.id
+                    WHERE ua.couple_id = p_couple_id
+                    AND (
+                        (m.challenge_id IS NOT NULL AND ua.activity_id = m.challenge_id::uuid)
+                        OR
+                        (m.challenge_id IS NULL AND a.type = 'challenge' AND (a.content->>'title') = m.title)
+                    )
+                ),
+                'challenge_type', m.metadata->>'challenge_type',
+                'is_competition', (m.metadata->>'isCompetition')::boolean,
+                -- FIX #4: Partner completion flag
+                'partner_completed', (
+                    EXISTS (
+                        SELECT 1 FROM memories pm
+                        WHERE pm.couple_id = p_couple_id
+                        AND pm.type = 'challenge'
+                        AND pm.uploader_id != m.uploader_id
+                        AND (
+                            (m.challenge_id IS NOT NULL AND pm.challenge_id = m.challenge_id)
+                            OR
+                            (m.challenge_id IS NULL AND pm.title = m.title AND ABS(EXTRACT(EPOCH FROM (pm.created_at - m.created_at))) < 86400 * 7)
+                        )
+                    )
+                )
+            ) as extra_data
+        FROM memories m
+        WHERE m.couple_id = p_couple_id
+            AND m.type = 'challenge'
+            AND (p_exclude_date IS NULL OR DATE(m.created_at) != p_exclude_date)
+        
+        UNION ALL
+        
+        -- ================================================================
+        -- COMPLETED POSITIONS
+        -- ================================================================
+        SELECT 
+            cp.id,
+            'position'::text as type,
+            cp.position_id as title,
+            NULL::text as content,
+            cp.completed_at as created_at,
+            NULL::text[] as media_urls,
+            NULL::text as location,
+            NULL::uuid as uploader_id,
+            -- FIX #7: Removed invalid cp.category
+            jsonb_build_object(
+                'title', cp.position_id
+            ) as extra_data
+        FROM completed_positions cp
+        WHERE cp.couple_id = p_couple_id
+            AND (p_exclude_date IS NULL OR DATE(cp.completed_at) != p_exclude_date)
+
+        UNION ALL
+
+        -- ================================================================
+        -- FANTASY BUCKET LIST (FIX #8)
+        -- ================================================================
+        SELECT 
+            fbl.id,
+            'fantasy'::text as type,
+            fbl.fantasy_text as title,
+            NULL::text as content,
+            fbl.created_at,
+            NULL::text[] as media_urls,
+            NULL::text as location,
+            fbl.requester_id as uploader_id,
+            jsonb_build_object(
+                'status', fbl.status
+            ) as extra_data
+        FROM fantasy_bucket_list fbl
+        WHERE fbl.couple_id = p_couple_id
+            AND fbl.status = 'completed'
+            AND (p_exclude_date IS NULL OR DATE(fbl.created_at) != p_exclude_date)
+
+        UNION ALL
+
+        -- ================================================================
+        -- VOUCHERS (from memories table)
+        -- ================================================================
+        SELECT 
+            m.id,
+            'voucher'::text as type,
+            m.title,
+            m.caption as content,
+            m.created_at,
+            NULL::text[] as media_urls,
+            NULL::text as location,
+            m.uploader_id,
+            jsonb_build_object(
+                'assigned_to', (m.metadata->>'assigned_to')::uuid,
+                'redeemed_at', (m.metadata->>'redeemed_at')::timestamptz
+            ) as extra_data
+        FROM memories m
+        WHERE m.couple_id = p_couple_id
+            AND m.type = 'voucher'
+            AND (p_exclude_date IS NULL OR DATE(m.created_at) != p_exclude_date)
+
+        UNION ALL
+
+        -- ================================================================
+        -- STICKY NOTES
+        -- ================================================================
+        SELECT 
+            m.id,
+            'sticky_note'::text as type,
+            m.title,
+            m.caption as content,
+            m.created_at,
+            NULL::text[] as media_urls,
+            NULL::text as location,
+            m.uploader_id,
+            NULL::jsonb as extra_data
+        FROM memories m
+        WHERE m.couple_id = p_couple_id
+            AND m.type = 'sticky_note'
+            AND (p_exclude_date IS NULL OR DATE(m.created_at) != p_exclude_date)
+
+        UNION ALL
+
+        -- ================================================================
+        -- EVENTS
+        -- ================================================================
+        SELECT 
+            m.id,
+            'event'::text as type,
+            m.title,
+            m.caption as content,
+            m.created_at,
+            NULL::text[] as media_urls,
+            m.location,
+            m.uploader_id,
+            jsonb_build_object(
+                'event_color', m.metadata->>'event_color',
+                'category', m.metadata->>'category'
+            ) as extra_data
+        FROM memories m
+        WHERE m.couple_id = p_couple_id
+            AND m.type = 'event'
+            AND (p_exclude_date IS NULL OR DATE(m.created_at) != p_exclude_date)
+
+        UNION ALL
+
+        -- ================================================================
+        -- QUIZZES / DAILY QUESTIONS (FIX #9)
+        -- ================================================================
+        SELECT 
+            a.id,
+            'quiz'::text as type,
+            a.content->>'question' as title,
+            NULL::text as content,
+            MAX(ua.created_at) as created_at,
+            NULL::text[] as media_urls,
+            NULL::text as location,
+            NULL::uuid as uploader_id,
+            jsonb_build_object(
+                'answers', jsonb_agg(jsonb_build_object('user_id', ua.user_id, 'answer', ua.answer_text))
+            ) as extra_data
+        FROM activities a
+        JOIN user_answers ua ON ua.activity_id = a.id
+        WHERE ua.couple_id = p_couple_id
+            AND a.type = 'quiz'
+            AND (p_exclude_date IS NULL OR DATE(ua.created_at) != p_exclude_date)
+        GROUP BY a.id, a.content
+        HAVING COUNT(DISTINCT ua.user_id) >= 2
+    ),
+    -- FIX #6: ROW_NUMBER selection method (fixed OFFSET bug)
+    numbered_items AS (
+        SELECT 
+            am.*, 
+            ROW_NUMBER() OVER (ORDER BY am.created_at DESC) as rn,
+            COUNT(*) OVER () as total_count 
+        FROM all_memories_raw am
+    )
+    SELECT 
+        ni.id,
+        ni.type,
+        ni.title,
+        ni.content,
+        ni.created_at,
+        ni.media_urls,
+        ni.location,
+        ni.uploader_id,
+        ni.extra_data
+    FROM numbered_items ni
+    WHERE ni.total_count > 0 
+    AND ni.rn = (floor(p_seed * ni.total_count)::int + 1);
+END;
+$$;
