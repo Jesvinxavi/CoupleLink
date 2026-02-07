@@ -489,27 +489,42 @@ export function ThrowbackTile() {
                             </div>
                         ) : item.type === 'voucher' ? (
                             // Pleasure coupon style from Coupon.tsx
-                            <div className="relative w-full h-[90px] bg-pink-200 rounded-sm overflow-hidden">
+                            <div className="relative h-[90px] bg-pink-200 rounded-none overflow-hidden self-center min-w-[240px] w-fit mx-auto" style={{
+                                WebkitMaskImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 180' preserveAspectRatio='none'%3E%3Cpath fill='white' fill-rule='evenodd' d='M0,0 L300,0 L300,180 L0,180 Z M0,30 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,58 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,108 a18,18 0 0,0 0,-36 a18,18 0 0,0 0,36 M0,136 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,164 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M300,30 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,58 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,108 a18,18 0 0,1 0,-36 a18,18 0 0,1 0,36 M300,136 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,164 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16'/%3E%3C/svg%3E")`,
+                                maskImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 180' preserveAspectRatio='none'%3E%3Cpath fill='white' fill-rule='evenodd' d='M0,0 L300,0 L300,180 L0,180 Z M0,30 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,58 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,108 a18,18 0 0,0 0,-36 a18,18 0 0,0 0,36 M0,136 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M0,164 a8,8 0 0,0 0,-16 a8,8 0 0,0 0,16 M300,30 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,58 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,108 a18,18 0 0,1 0,-36 a18,18 0 0,1 0,36 M300,136 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16 M300,164 a8,8 0 0,1 0,-16 a8,8 0 0,1 0,16'/%3E%3C/svg%3E")`,
+                                maskSize: '100% 100%',
+                                WebkitMaskSize: '100% 100%',
+                            }}>
                                 {/* Header Banner */}
                                 <div className="absolute top-1 left-4 right-4 h-[18px] bg-pink-100 border-b border-red-600">
                                     <div className="w-full py-0.5 text-center font-normal tracking-[0.15em] uppercase text-[8px] text-[#FF1744]">
                                         Pleasure Coupon
                                     </div>
                                 </div>
+                                {/* Inner Red Box Outline */}
+                                <div className="absolute top-1 bottom-1 left-4 right-4 border border-red-600 opacity-50 pointer-events-none" />
                                 {/* Main Body */}
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pt-5 px-4">
-                                    <h3 className="text-base leading-tight text-[#FF1744] text-center line-clamp-1" style={{ fontFamily: "'Shrikhand', cursive" }}>
-                                        {item.title || "COUPON"}
-                                    </h3>
-                                    <p className="text-[8px] text-[#FF1744] font-bold uppercase tracking-wide line-clamp-1 mt-1">
-                                        {item.content || "Valid for one special request"}
-                                    </p>
-                                </div>
-                                {/* Redeemed Badge */}
-                                <div className="absolute bottom-1 left-4 right-4 text-center">
-                                    <span className="text-[8px] text-gray-500 font-medium">
-                                        Redeemed by {getAuthorLabel(item.assigned_to)}
-                                    </span>
+                                <div className="absolute inset-x-0 top-0 bottom-0 flex flex-col items-center pt-[22px] pb-1.5 px-4">
+                                    <div className="flex-1 flex flex-col items-center justify-center gap-0.5 w-full min-h-0">
+                                        <h3 className="text-base leading-tight text-[#FF1744] text-center line-clamp-1 w-full" style={{ fontFamily: "'Shrikhand', cursive" }}>
+                                            {item.title || "COUPON"}
+                                        </h3>
+                                        <p className="text-[8px] text-[#FF1744] font-bold uppercase tracking-wide line-clamp-1 w-full text-center">
+                                            {item.content || "Valid for one special request"}
+                                        </p>
+                                    </div>
+
+                                    {/* Redeemed Badge */}
+                                    <div className="flex items-center justify-center gap-1.5 shrink-0">
+                                        <UserAvatar
+                                            user={getUser(item.assigned_to)}
+                                            className="w-3.5 h-3.5 border-none"
+                                            iconClassName="w-2.5 h-2.5"
+                                        />
+                                        <span className="text-[8px] text-gray-500 font-medium">
+                                            Redeemed by {getAuthorLabel(item.assigned_to)}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         ) : item.type === 'sticky_note' ? (
@@ -800,7 +815,12 @@ export function ThrowbackTile() {
                                                                     {item.content || "Valid for one special request"}
                                                                 </p>
                                                             </div>
-                                                            <div className="p-2 w-full border-t border-gray-400 flex items-center justify-center gap-1 text-gray-400 text-xs font-bold uppercase">
+                                                            <div className="p-2 w-full border-t border-gray-400 flex items-center justify-center gap-2 text-gray-400 text-xs font-bold uppercase">
+                                                                <UserAvatar
+                                                                    user={getUser(item.assigned_to)}
+                                                                    className="w-4 h-4 border-none"
+                                                                    iconClassName="w-3 h-3"
+                                                                />
                                                                 <span>Redeemed by {getAuthorLabel(item.assigned_to)}</span>
                                                             </div>
                                                         </div>
