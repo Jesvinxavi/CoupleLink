@@ -11,7 +11,7 @@ import { ImageCarousel } from '../ui/ImageCarousel';
 
 interface MemoryItem {
     id: string;
-    type: 'journal' | 'photo' | 'challenge' | 'position' | 'fantasy' | 'voucher' | 'sticky_note' | 'event';
+    type: 'journal' | 'photo' | 'challenge' | 'position' | 'fantasy' | 'voucher' | 'sticky_note' | 'event' | 'quiz';
     content: string | null;
     title?: string | null;
     media_urls?: string[] | null;
@@ -120,7 +120,7 @@ export function ThrowbackTile() {
                     // Transform RPC result to MemoryItem
                     // Challenges need answer mapping
                     let challengeAnswers: any = {};
-                    if (selectedItem.type === 'challenge' && selectedItem.extra_data?.answers) {
+                    if ((selectedItem.type === 'challenge' || selectedItem.type === 'quiz') && selectedItem.extra_data?.answers) {
                         const answers = selectedItem.extra_data.answers as any[];
                         const userOne = answers.find((a: any) => a.user_id === couple.user_one_id);
                         const userTwo = answers.find((a: any) => a.user_id === couple.user_two_id);
@@ -196,6 +196,7 @@ export function ThrowbackTile() {
             case 'voucher': return <Ticket className={iconClasses} />;
             case 'sticky_note': return <StickyNote className={iconClasses} />;
             case 'event': return <CalendarDays className={iconClasses} />;
+            case 'quiz': return <HelpCircle className={iconClasses} />;
             default: return <Calendar className={iconClasses} />;
         }
     };
@@ -226,6 +227,8 @@ export function ThrowbackTile() {
                 return <span className={`${baseClasses} bg-pink-100 text-pink-600`}>Fantasy</span>;
             case 'voucher':
                 return <span className={`${baseClasses} bg-emerald-100 text-emerald-600`}>Voucher</span>;
+            case 'quiz':
+                return <span className={`${baseClasses} bg-rose-100 text-rose-600`}>Daily Question</span>;
             default:
                 return null;
         }
@@ -539,6 +542,28 @@ export function ThrowbackTile() {
                                     {item.content}
                                 </p>
                             </div>
+                        ) : item.type === 'quiz' ? (
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-gray-200 dark:border-gray-700 p-4 space-y-3 w-fit mx-auto relative overflow-hidden">
+                                {/* Tab Notch - Rose for Questions */}
+                                <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-100 dark:bg-rose-900/30" />
+
+                                <div className="space-y-1">
+                                    {/* Question Title */}
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                        <h4 className="font-bold text-gray-900 dark:text-white text-base leading-tight">
+                                            {item.title}
+                                        </h4>
+                                    </div>
+
+                                    {/* Status */}
+                                    <div className="space-y-1.5 pt-1">
+                                        <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 mt-1">
+                                            <Check className="w-4 h-4 text-green-600 dark:text-green-500 stroke-[3]" />
+                                            <p className="text-[10px] font-bold uppercase">Answered by both</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         ) : item.type === 'event' ? (
                             // Event tile style from CalendarView - uses dynamic event_color
                             <div className="relative flex items-start gap-2 px-1.5 py-2.5 rounded-xl self-center min-w-[240px] w-fit overflow-hidden">
@@ -736,6 +761,34 @@ export function ThrowbackTile() {
                                                                 </div>
                                                             </div>
                                                         ) : null}
+                                                    </div>
+                                                </div>
+                                            ) : item.type === 'quiz' ? (
+                                                <div className="space-y-6">
+                                                    <div className="space-y-3">
+                                                        <h3 className="text-2xl font-bold text-heading-dark">
+                                                            {item.title}
+                                                        </h3>
+                                                    </div>
+
+                                                    <div className="space-y-4">
+                                                        {myAnswer && (
+                                                            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                                                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase mb-2">You Answered</p>
+                                                                <p className="text-gray-900 dark:text-gray-100 italic text-lg leading-relaxed">"{myAnswer}"</p>
+                                                            </div>
+                                                        )}
+                                                        {partnerAnswerText && (
+                                                            <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-xl border border-rose-100 dark:border-rose-900/30">
+                                                                <p className="text-xs font-bold text-rose-400 dark:text-rose-500 uppercase mb-2">{partner?.first_name || 'Partner'} Answered</p>
+                                                                <p className="text-gray-900 dark:text-gray-100 italic text-lg leading-relaxed">"{partnerAnswerText}"</p>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-xl flex items-center gap-3 border border-green-100 dark:border-green-900/30">
+                                                            <Check className="w-5 h-5 text-green-600 dark:text-green-500 stroke-[3]" />
+                                                            <p className="text-green-800 dark:text-green-400 font-bold text-sm text-center">Answered by both</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ) : item.type === 'position' ? (
