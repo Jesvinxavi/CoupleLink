@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCoupleData } from '@/hooks/useCoupleData';
-import { Loader2, Calendar, CalendarDays, Quote, Image as ImageIcon, HelpCircle, X, MapPin, Heart, Sparkles, Ticket, StickyNote } from 'lucide-react';
+import { Loader2, Calendar, CalendarDays, Quote, Image as ImageIcon, HelpCircle, X, MapPin, Heart, Sparkles, Ticket, StickyNote, Trophy, Timer, CircleDashed, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { positions } from '@/data/positionsData';
 import { PositionSVG } from '../sexploration/PositionSVG';
@@ -30,6 +30,8 @@ interface MemoryItem {
     user_two_answer?: string | null;
     // Event color from calendar
     event_color?: string | null;
+    challenge_type?: 'daily' | 'weekly' | 'monthly' | null;
+    is_competition?: boolean;
 }
 
 export function ThrowbackTile() {
@@ -144,6 +146,9 @@ export function ThrowbackTile() {
                         category: selectedItem.extra_data?.category,
                         event_color: selectedItem.extra_data?.event_color,
                         activity_question: selectedItem.extra_data?.activity_question,
+                        challenge_type: selectedItem.extra_data?.challenge_type,
+                        is_competition: !!selectedItem.extra_data?.is_competition,
+                        partner_completed: !!selectedItem.extra_data?.partner_completed,
                         ...challengeAnswers
                     });
                 } else {
@@ -204,7 +209,13 @@ export function ThrowbackTile() {
             case 'journal':
                 return <span className={`${baseClasses} bg-amber-100 text-amber-600`}>Journal</span>;
             case 'challenge':
-                return <span className={`${baseClasses} bg-purple-100 text-purple-600`}>Challenge</span>;
+                return (
+                    <div className="flex items-center gap-1.5 ml-1">
+                        <span className={`${baseClasses} bg-purple-100 text-purple-600`}>
+                            Challenge
+                        </span>
+                    </div>
+                );
             case 'sticky_note':
                 return <span className={`${baseClasses} bg-yellow-100 text-yellow-600`}>Note</span>;
             case 'event':
@@ -234,7 +245,22 @@ export function ThrowbackTile() {
     // Compute challenge answers based on viewer
     const myAnswer = item.user_one_id === currentUser?.id ? item.user_one_answer : item.user_two_answer;
     const partnerAnswerText = item.user_one_id === currentUser?.id ? item.user_two_answer : item.user_one_answer;
-    const hasAnswers = myAnswer || partnerAnswerText;
+
+    // Logic for completion states
+    // A challenge is fully completed if the current user has a memory (evident by item existence) AND proper answer OR partner_completed flag is true
+    // However, this 'item' IS the current user's memory (usually). 
+    // If 'item.uploader_id' is me, then I have completed it.
+    // If 'item.uploader_id' is partner, then partner has completed it.
+
+    const uploaderIsMe = item.uploader_id === currentUser?.id;
+    const uploaderIsPartner = item.uploader_id === partner?.id;
+
+    const iHaveCompleted = uploaderIsMe || (!!myAnswer); // I uploaded it OR I have an answer recorded
+    const partnerHasCompleted = uploaderIsPartner || (!!partnerAnswerText) || (item as any).partner_completed; // Partner uploaded it OR partner has answer OR flag is true
+
+    const isFullyCompleted = iHaveCompleted && partnerHasCompleted;
+    const isPartiallyCompleted = !isFullyCompleted && (iHaveCompleted || partnerHasCompleted);
+    const hasAnswers = !!myAnswer || !!partnerAnswerText;
 
     const hasMedia = item.media_urls && item.media_urls.length > 0;
     const coverImage = hasMedia ? item.media_urls![0] : null;
@@ -330,53 +356,94 @@ export function ThrowbackTile() {
                             </div>
 
                         ) : item.type === 'journal' ? (
-                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 space-y-2 min-w-[75%] mx-auto">
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    Posted by {getAuthorLabel(item.uploader_id)}
-                                    {item.location && (
-                                        <span className="inline-flex items-center gap-1 ml-2">
-                                            <MapPin className="w-3 h-3 inline" />
-                                            <span className="truncate max-w-[100px]">{item.location}</span>
-                                        </span>
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-gray-200 dark:border-gray-700 p-4 space-y-2 min-w-[75%] mx-auto">
+                                <div className="flex items-center gap-2">
+                                    <UserAvatar
+                                        user={getUser(item.uploader_id)}
+                                        className="h-6 w-6 shrink-0"
+                                    />
+                                    {item.title ? (
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight break-words line-clamp-2">
+                                            {item.title}
+                                        </h3>
+                                    ) : (
+                                        <span className="text-gray-400 italic">Untitled Memory</span>
                                     )}
-                                </p>
-                                {item.title ? (
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight break-words line-clamp-2">
-                                        {item.title}
-                                    </h3>
-                                ) : (
-                                    <span className="text-gray-400 italic">Untitled Memory</span>
-                                )}
+                                </div>
                                 {item.content && (
                                     <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed line-clamp-3 text-sm">
                                         {item.content}
                                     </p>
                                 )}
+                                {item.location && (
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                        <MapPin className="w-3 h-3" />
+                                        <span className="truncate">{item.location}</span>
+                                    </p>
+                                )}
                             </div>
                         ) : item.type === 'challenge' ? (
-                            <div className="space-y-1">
-                                {/* Challenge Title */}
-                                <h4 className="font-bold text-heading-dark text-base line-clamp-2">
-                                    {item.title || item.activity_question || 'Challenge'}
-                                </h4>
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-gray-200 dark:border-gray-700 p-4 space-y-3 min-w-[75%] mx-auto relative overflow-hidden">
+                                {/* Tab Notch */}
+                                <div className="absolute top-0 left-0 w-full h-1.5 bg-purple-100 dark:bg-purple-900/30" />
 
-                                {/* Answers using new user-agnostic fields */}
-                                {hasAnswers ? (
-                                    <div className="space-y-1">
-                                        {myAnswer && (
-                                            <p className="text-body-soft text-base line-clamp-1 italic">
-                                                You: "{myAnswer}"
-                                            </p>
-                                        )}
-                                        {partnerAnswerText && (
-                                            <p className="text-body-soft text-base line-clamp-1 italic">
-                                                {partner?.first_name || 'Partner'}: "{partnerAnswerText}"
-                                            </p>
-                                        )}
+                                <div className="space-y-1">
+                                    {/* Challenge Title + Badges */}
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                        <h4 className="font-bold text-gray-900 dark:text-white text-base leading-tight">
+                                            {item.title || item.activity_question || 'Challenge'}
+                                        </h4>
+                                        <div className="flex items-center gap-1">
+                                            {item.challenge_type && (
+                                                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/30 text-[10px] font-bold text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800 uppercase">
+                                                    {item.challenge_type}
+                                                </span>
+                                            )}
+                                            {item.is_competition && (
+                                                <span className="p-1 rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800">
+                                                    <Trophy className="w-2.5 h-2.5" />
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                ) : (
-                                    <p className="text-sm text-green-600 font-medium">Challenge Completed ✓</p>
-                                )}
+
+                                    {/* Completion Status + Answers */}
+                                    {/* Completion Status + Answers */}
+                                    <div className="space-y-1.5 pt-1">
+                                        {hasAnswers && (
+                                            <div className="space-y-1">
+                                                {myAnswer && (
+                                                    <div className="flex items-start gap-1.5">
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase mt-0.5 shrink-0">You:</span>
+                                                        <p className="text-gray-600 dark:text-gray-300 text-[11px] line-clamp-1 italic leading-tight">
+                                                            "{myAnswer}"
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {partnerAnswerText && (
+                                                    <div className="flex items-start gap-1.5">
+                                                        <span className="text-[10px] font-bold text-rose-400 uppercase mt-0.5 shrink-0">{partner?.first_name?.charAt(0) || 'P'}:</span>
+                                                        <p className="text-gray-600 dark:text-gray-300 text-[11px] line-clamp-1 italic leading-tight">
+                                                            "{partnerAnswerText}"
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {isFullyCompleted ? (
+                                            <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 mt-1">
+                                                <Check className="w-4 h-4 text-green-600 dark:text-green-500 stroke-[3]" />
+                                                <p className="text-[10px] font-bold uppercase">Challenge completed by both</p>
+                                            </div>
+                                        ) : isPartiallyCompleted ? (
+                                            <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 mt-1">
+                                                <CircleDashed className="w-3.5 h-3.5" />
+                                                <p className="text-[10px] font-bold uppercase">Partially completed by {iHaveCompleted ? 'You' : (partner?.first_name || 'Partner')}</p>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </div>
                             </div>
                         ) : item.type === 'position' ? (
                             <div className="space-y-1">
@@ -543,8 +610,8 @@ export function ThrowbackTile() {
 
                                     {/* Scrollable Content */}
                                     <div className="overflow-y-auto flex-1">
-                                        {/* Image (if available) */}
-                                        {hasMedia && (
+                                        {/* Image (if available) - Exclude journal and challenge as they have it inside the post */}
+                                        {hasMedia && item.type !== 'journal' && item.type !== 'challenge' && (
                                             <div className="relative h-64 w-full">
                                                 <img
                                                     src={coverImage!}
@@ -556,34 +623,85 @@ export function ThrowbackTile() {
 
                                         <div className={`px-6 ${item.type === 'event' ? 'pt-2 pb-5' : 'py-3'} ${item.type === 'photo' ? 'space-y-2' : 'space-y-6'}`}>
                                             {item.type === 'challenge' ? (
-                                                <>
-                                                    <h3 className="text-xl font-bold text-heading-dark">
-                                                        {item.title || item.activity_question || 'Challenge'}
-                                                    </h3>
+                                                <div className="space-y-6">
+                                                    <div className="space-y-3">
+                                                        <div className="flex flex-wrap items-center gap-3">
+                                                            <h3 className="text-2xl font-bold text-heading-dark">
+                                                                {item.title || item.activity_question || 'Challenge'}
+                                                            </h3>
+                                                            <div className="flex items-center gap-2">
+                                                                {item.challenge_type && (
+                                                                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-900/30 text-sm font-bold text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800 uppercase">
+                                                                        {item.challenge_type}
+                                                                    </span>
+                                                                )}
+                                                                {item.is_competition && (
+                                                                    <span className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800">
+                                                                        <Trophy className="w-4 h-4" />
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {item.content && (
+                                                            <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed">
+                                                                {item.content}
+                                                            </p>
+                                                        )}
 
-                                                    {/* Show answers using computed values */}
-                                                    {hasAnswers ? (
-                                                        <div className="space-y-4">
-                                                            {myAnswer && (
-                                                                <div className="bg-gray-50 p-4 rounded-xl">
-                                                                    <p className="text-xs font-bold text-body-soft uppercase mb-2">You Answered</p>
-                                                                    <p className="text-heading-dark italic text-lg">"{myAnswer}"</p>
+                                                        {/* Photo Carousel for Challenges */}
+                                                        {item.media_urls && item.media_urls.length > 0 && (
+                                                            <div className="w-full">
+                                                                <div className="relative aspect-video w-full bg-gray-100 dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm">
+                                                                    <ImageCarousel
+                                                                        images={item.media_urls}
+                                                                        className="h-full w-full object-cover"
+                                                                    />
                                                                 </div>
-                                                            )}
-                                                            {partnerAnswerText && (
-                                                                <div className="bg-rose-50 p-4 rounded-xl">
-                                                                    <p className="text-xs font-bold text-rose-500 uppercase mb-2">{partner?.first_name || 'Partner'} Answered</p>
-                                                                    <p className="text-heading-dark italic text-lg">"{partnerAnswerText}"</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+
+
+                                                    {/* Show answers or completion status */}
+                                                    {/* Show completion status and answers */}
+                                                    {/* Show completion status and answers */}
+                                                    <div className="space-y-6">
+                                                        {hasAnswers && (
+                                                            <div className="space-y-4">
+                                                                {myAnswer && (
+                                                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                                                                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase mb-2">You Answered</p>
+                                                                        <p className="text-gray-900 dark:text-gray-100 italic text-lg leading-relaxed">"{myAnswer}"</p>
+                                                                    </div>
+                                                                )}
+                                                                {partnerAnswerText && (
+                                                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-xl border border-rose-100 dark:border-rose-900/30">
+                                                                        <p className="text-xs font-bold text-rose-400 dark:text-rose-500 uppercase mb-2">{partner?.first_name || 'Partner'} Answered</p>
+                                                                        <p className="text-gray-900 dark:text-gray-100 italic text-lg leading-relaxed">"{partnerAnswerText}"</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {isFullyCompleted ? (
+                                                            <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-xl flex items-center gap-3 border border-green-100 dark:border-green-900/30">
+                                                                <Check className="w-5 h-5 text-green-600 dark:text-green-500 stroke-[3]" />
+                                                                <p className="text-green-800 dark:text-green-400 font-bold text-sm text-center">Challenge completed by both</p>
+                                                            </div>
+                                                        ) : isPartiallyCompleted ? (
+                                                            <div className="bg-amber-50 dark:bg-amber-900/10 p-5 rounded-2xl flex items-center gap-4 border border-amber-100 dark:border-amber-900/30">
+                                                                <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                                                                    <CircleDashed className="w-7 h-7 text-amber-500" />
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="bg-green-50 p-4 rounded-xl flex items-center gap-3">
-                                                            <span className="text-green-500 text-2xl">✓</span>
-                                                            <p className="text-green-700 font-medium">You completed this challenge!</p>
-                                                        </div>
-                                                    )}
-                                                </>
+                                                                <div>
+                                                                    <p className="text-amber-800 dark:text-amber-400 font-bold text-lg">Partially completed</p>
+                                                                    <p className="text-amber-600 dark:text-amber-500 text-sm">Done by {(myAnswer ? currentUser : partner as any)?.first_name || 'Partner'}</p>
+                                                                </div>
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
                                             ) : item.type === 'position' ? (
                                                 <>
                                                     <div className="flex flex-col items-center gap-4">
@@ -669,7 +787,7 @@ export function ThrowbackTile() {
 
                                             ) : item.type === 'journal' ? (
                                                 <>
-                                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
                                                         <div className="p-5 space-y-2">
                                                             {/* Header: Date | Avatar Row */}
                                                             <div className="flex flex-col gap-2">
