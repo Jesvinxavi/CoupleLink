@@ -1,9 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 // VAPID public key for Web Push authentication
 // This should be replaced with your actual VAPID public key from `npx web-push generate-vapid-keys`
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'YOUR_VAPID_PUBLIC_KEY_HERE';
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+const isVapidKeyConfigured = Boolean(VAPID_PUBLIC_KEY) && VAPID_PUBLIC_KEY !== 'YOUR_VAPID_PUBLIC_KEY_HERE';
+
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 
 /**
  * Convert URL-safe base64 to Uint8Array for applicationServerKey
@@ -32,11 +38,25 @@ export interface UsePushSubscriptionReturn extends PushSubscriptionState {
     checkExistingSubscription: () => Promise<void>;
 }
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function usePushSubscription(): UsePushSubscriptionReturn {
     const [isSubscribed, setIsSubscribed] = useState<boolean | null>(null);
     const [isSupported, setIsSupported] = useState(false);
     const [permission, setPermission] = useState<NotificationPermission>('default');
     const [isLoading, setIsLoading] = useState(false);
+
+    const checkExistingSubscription = useCallback(async () => {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            setIsSubscribed(!!subscription);
+        } catch (error) {
+            logger.error('usePushSubscription', 'Error checking push subscription', error);
+            setIsSubscribed(false);
+        }
+    }, []);
 
     useEffect(() => {
         // Check browser support
@@ -47,28 +67,22 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
             setPermission(Notification.permission);
             checkExistingSubscription();
         }
-    }, []);
-
-    const checkExistingSubscription = async () => {
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            const subscription = await registration.pushManager.getSubscription();
-            setIsSubscribed(!!subscription);
-        } catch (error) {
-            console.error('Error checking push subscription:', error);
-            setIsSubscribed(false);
-        }
-    };
+    }, [checkExistingSubscription]);
 
     const subscribe = useCallback(async (): Promise<boolean> => {
         setIsLoading(true);
         try {
+            if (!isVapidKeyConfigured || !VAPID_PUBLIC_KEY) {
+                logger.error('usePushSubscription', 'Missing VAPID public key. Cannot subscribe to push.');
+                return false;
+            }
+
             // Request notification permission
             const permissionResult = await Notification.requestPermission();
             setPermission(permissionResult);
 
             if (permissionResult !== 'granted') {
-                console.warn('Notification permission denied');
+                logger.warn('usePushSubscription', 'Notification permission denied');
                 return false;
             }
 
@@ -116,7 +130,7 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
             setIsSubscribed(true);
             return true;
         } catch (error) {
-            console.error('Error subscribing to push:', error);
+            logger.error('usePushSubscription', 'Error subscribing to push', error);
             return false;
         } finally {
             setIsLoading(false);
@@ -147,14 +161,14 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
             setIsSubscribed(false);
             return true;
         } catch (error) {
-            console.error('Error unsubscribing from push:', error);
+            logger.error('usePushSubscription', 'Error unsubscribing from push', error);
             return false;
         } finally {
             setIsLoading(false);
         }
     }, []);
 
-    return {
+    return useMemo(() => ({
         isSubscribed,
         isSupported,
         permission,
@@ -162,5 +176,5 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
         subscribe,
         unsubscribe,
         checkExistingSubscription
-    };
+    }), [isSubscribed, isSupported, permission, isLoading, subscribe, unsubscribe, checkExistingSubscription]);
 }

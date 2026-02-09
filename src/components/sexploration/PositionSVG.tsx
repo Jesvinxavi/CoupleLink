@@ -1,30 +1,41 @@
-import type { Position } from '../../data/positionsData';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import type { Position } from "@/data/positionsData"
+
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
+type SizeKey = "xs" | "sm" | "md" | "lg"
 
 interface PositionSVGProps {
-    position: Position;
-    size?: 'xs' | 'sm' | 'md' | 'lg';
-    className?: string;
+    position: Position
+    size?: SizeKey
+    className?: string
 }
 
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
 // SVG path data for different position categories
 // Each position uses simple stick figure representations
 const positionPaths: Record<string, { figure1: string; figure2: string }> = {
     // Classic positions
-    'missionary': {
-        figure1: 'M20,35 L20,50 M15,42 L25,42 M17,55 L15,65 M23,55 L25,65',
-        figure2: 'M20,20 L20,35 M15,27 L25,27 M17,35 L15,45 M23,35 L25,45',
+    "missionary": {
+        figure1: "M20,35 L20,50 M15,42 L25,42 M17,55 L15,65 M23,55 L25,65",
+        figure2: "M20,20 L20,35 M15,27 L25,27 M17,35 L15,45 M23,35 L25,45",
     },
-    'cowgirl': {
-        figure1: 'M20,45 L20,60 M15,52 L25,52 M17,60 L15,70 M23,60 L25,70',
-        figure2: 'M20,20 L20,35 M15,27 L25,27 M15,35 L17,45 M25,35 L23,45',
+    "cowgirl": {
+        figure1: "M20,45 L20,60 M15,52 L25,52 M17,60 L15,70 M23,60 L25,70",
+        figure2: "M20,20 L20,35 M15,27 L25,27 M15,35 L17,45 M25,35 L23,45",
     },
-    'reverse-cowgirl': {
-        figure1: 'M20,45 L20,60 M15,52 L25,52 M17,60 L15,70 M23,60 L25,70',
-        figure2: 'M20,20 L20,35 M15,27 L25,27 M15,35 L17,45 M25,35 L23,45',
+    "reverse-cowgirl": {
+        figure1: "M20,45 L20,60 M15,52 L25,52 M17,60 L15,70 M23,60 L25,70",
+        figure2: "M20,20 L20,35 M15,27 L25,27 M15,35 L17,45 M25,35 L23,45",
     },
-    'doggy-style': {
-        figure1: 'M15,35 L30,35 M20,30 L20,40 M30,35 L35,45 M30,35 L35,25',
-        figure2: 'M35,35 L50,35 M45,30 L45,40 M50,35 L55,45 M50,35 L55,25',
+    "doggy-style": {
+        figure1: "M15,35 L30,35 M20,30 L20,40 M30,35 L35,45 M30,35 L35,25",
+        figure2: "M35,35 L50,35 M45,30 L45,40 M50,35 L55,45 M50,35 L55,25",
     },
     'lotus': {
         figure1: 'M20,40 L20,55 M15,47 L25,47 M15,55 L12,50 M25,55 L28,50',
@@ -130,23 +141,26 @@ const positionPaths: Record<string, { figure1: string; figure2: string }> = {
 
 // Category-based default paths for positions without specific illustrations
 const categoryDefaults: Record<string, { figure1: string; figure2: string }> = {
-    classic: positionPaths['missionary'],
-    spooning: positionPaths['spooning'],
-    standing: positionPaths['standing-facing'],
-    seated: positionPaths['the-throne'],
-    advanced: positionPaths['the-spider'],
-};
+    classic: positionPaths["missionary"],
+    spooning: positionPaths["spooning"],
+    standing: positionPaths["standing-facing"],
+    seated: positionPaths["the-throne"],
+    advanced: positionPaths["the-spider"],
+}
 
-export function PositionSVG({ position, size = 'md', className = '' }: PositionSVGProps) {
-    const sizeMap: Record<string, any> = {
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+export function PositionSVG({ position, size = "md", className = "" }: PositionSVGProps) {
+    const sizeMap: Record<SizeKey, { width: number; height: number; strokeWidth: number }> = {
         xs: { width: 32, height: 32, strokeWidth: 1.5 },
         sm: { width: 40, height: 40, strokeWidth: 2 },
         md: { width: 56, height: 56, strokeWidth: 2.5 },
         lg: { width: 96, height: 96, strokeWidth: 3 },
-    };
+    }
 
-    const { width, height, strokeWidth } = sizeMap[size];
-    const paths = positionPaths[position.id] || categoryDefaults[position.category];
+    const { width, height, strokeWidth } = sizeMap[size]
+    const paths = positionPaths[position.id] || categoryDefaults[position.category]
 
     return (
         <div
@@ -184,5 +198,5 @@ export function PositionSVG({ position, size = 'md', className = '' }: PositionS
                 />
             </svg>
         </div>
-    );
+    )
 }

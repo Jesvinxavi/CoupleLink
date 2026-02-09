@@ -1,10 +1,13 @@
+/* === Fonts === */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 
+/* === Tailwind Layers === */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* === Utility Classes === */
 .material-symbols-outlined {
   font-variation-settings:
     'FILL' 0,
@@ -24,6 +27,7 @@
   -moz-appearance: textfield;
 }
 
+/* === CSS Variables === */
 @layer base {
   :root {
     --background: 350 100% 96%;
@@ -76,6 +80,7 @@
   }
 }
 
+/* === Base Styles === */
 @layer base {
   * {
     @apply border-border;

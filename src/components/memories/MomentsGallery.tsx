@@ -1,232 +1,268 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { Card, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
-import { Input } from '../ui/input';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect, useMemo, useState, useCallback } from "react"
+import { createPortal } from "react-dom"
+import { motion, AnimatePresence } from "framer-motion"
+import { Plus, Image as ImageIcon, Folder, FolderPlus, ChevronLeft, Trash2, Pencil, X } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal"
+import { AddMomentsOverlay } from "@/components/memories/AddMomentsOverlay"
+import { CreateFolderOverlay } from "@/components/memories/CreateFolderOverlay"
 
-import { Textarea } from '../ui/textarea';
-import { Plus, Image as ImageIcon, Folder, FolderPlus, ChevronLeft, Trash2, Pencil, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { createPortal } from 'react-dom';
-import { ConfirmationModal } from '../ui/ConfirmationModal';
-
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface Moment {
-    id: string;
-    media_url: string | null;
-    caption: string | null;
-    created_at: string;
-    uploader_id: string | null;
-    folder_id: string | null;
+    id: string
+    media_url: string | null
+    caption: string | null
+    created_at: string
+    uploader_id: string | null
+    folder_id: string | null
 }
 
 interface FolderItem {
-    id: string;
-    name: string;
-    created_at: string;
+    id: string
+    name: string
+    created_at: string
 }
-
-// Imports for Overlays
-import { AddMomentsOverlay } from './AddMomentsOverlay';
-import { CreateFolderOverlay } from './CreateFolderOverlay';
 
 interface MomentsGalleryProps {
-    onOverlayFocusChange?: (isFocused: boolean) => void;
+    onOverlayFocusChange?: (isFocused: boolean) => void
 }
 
+const MOMENTS_PAGE_SIZE = 24
+
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
-    const { couple } = useCoupleData();
-    const [moments, setMoments] = useState<Moment[]>([]);
-    const [folders, setFolders] = useState<FolderItem[]>([]);
-    const [currentFolder, setCurrentFolder] = useState<FolderItem | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { couple } = useCoupleData()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [moments, setMoments] = useState<Moment[]>([])
+    const [folders, setFolders] = useState<FolderItem[]>([])
+    const [currentFolder, setCurrentFolder] = useState<FolderItem | null>(null)
+    const [loading, setLoading] = useState(true)
 
     // Overlay States
-    const [isUploadOpen, setIsUploadOpen] = useState(false);
-    const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+    const [isUploadOpen, setIsUploadOpen] = useState(false)
+    const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false)
 
     // Expansion & Management State
-    const [selectedMoment, setSelectedMoment] = useState<Moment | null>(null);
-    const [isEditCaptionOpen, setIsEditCaptionOpen] = useState(false);
-    const [editingCaption, setEditingCaption] = useState('');
-    const [isDeleteMomentOpen, setIsDeleteMomentOpen] = useState(false);
+    const [selectedMoment, setSelectedMoment] = useState<Moment | null>(null)
+    const [isEditCaptionOpen, setIsEditCaptionOpen] = useState(false)
+    const [editingCaption, setEditingCaption] = useState("")
+    const [isDeleteMomentOpen, setIsDeleteMomentOpen] = useState(false)
 
     // Folder Management State
-    const [isEditFolderOpen, setIsEditFolderOpen] = useState(false);
-    const [editingFolderName, setEditingFolderName] = useState('');
-    const [isDeleteFolderOpen, setIsDeleteFolderOpen] = useState(false);
+    const [isEditFolderOpen, setIsEditFolderOpen] = useState(false)
+    const [editingFolderName, setEditingFolderName] = useState("")
+    const [isDeleteFolderOpen, setIsDeleteFolderOpen] = useState(false)
+    const [visibleCount, setVisibleCount] = useState(MOMENTS_PAGE_SIZE)
 
-    const fetchData = async () => {
-        if (!couple) return;
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const fetchData = useCallback(async () => {
+        if (!couple) return
         try {
-            setLoading(true);
+            setLoading(true)
 
             // Fetch Folders (only if in root)
-            let foldersData: FolderItem[] = [];
+            let foldersData: FolderItem[] = []
             if (!currentFolder) {
                 const { data: fData, error: fError } = await supabase
-                    .from('folders')
-                    .select('*')
-                    .eq('couple_id', couple.id)
-                    .order('created_at', { ascending: false });
-                if (fError) throw fError;
-                foldersData = (fData as FolderItem[]) || [];
+                    .from("folders")
+                    .select("id, name, created_at")
+                    .eq("couple_id", couple.id)
+                    .order("created_at", { ascending: false })
+                if (fError) throw fError
+                foldersData = (fData as FolderItem[]) || []
             }
-            setFolders(foldersData);
+            setFolders(foldersData)
 
             // Fetch Moments
             let query = supabase
-                .from('memories')
-                .select('*')
-                .eq('couple_id', couple.id)
-                .eq('type', 'photo')
-                .order('created_at', { ascending: false });
+                .from("memories")
+                .select("id, media_url, caption, created_at, uploader_id, folder_id")
+                .eq("couple_id", couple.id)
+                .eq("type", "photo")
+                .order("created_at", { ascending: false })
 
             if (currentFolder) {
-                query = query.eq('folder_id', currentFolder.id);
+                query = query.eq("folder_id", currentFolder.id)
             } else {
-                query = query.is('folder_id', null);
+                query = query.is("folder_id", null)
             }
 
-            const { data: mData, error: mError } = await query;
-            if (mError) throw mError;
-            setMoments(mData as any || []);
-
+            const { data: mData, error: mError } = await query
+            if (mError) throw mError
+            setMoments(mData as any || [])
         } catch (err) {
-            console.error('Error fetching data:', err);
+            logger.error("MomentsGallery", "Error fetching data", err)
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }, [couple, currentFolder])
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    useEffect(() => {
+        fetchData()
+    }, [fetchData])
 
     useEffect(() => {
-        fetchData();
-    }, [couple, currentFolder]);
+        setVisibleCount(MOMENTS_PAGE_SIZE)
+    }, [currentFolder?.id, moments.length])
+
+    const visibleMoments = useMemo(() => {
+        return moments.slice(0, visibleCount)
+    }, [moments, visibleCount])
+
+    const canLoadMore = moments.length > visibleCount
+
+    const handleLoadMore = useCallback(() => {
+        setVisibleCount((prev) => Math.min(prev + MOMENTS_PAGE_SIZE, moments.length))
+    }, [moments.length])
 
     // Check for action=new_post in URL
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('action') === 'new_post') {
-            setIsUploadOpen(true);
+        const params = new URLSearchParams(window.location.search)
+        if (params.get("action") === "new_post") {
+            setIsUploadOpen(true)
             // Clean up URL
-            window.history.replaceState({}, '', window.location.pathname + '?tab=moments');
+            window.history.replaceState({}, "", window.location.pathname + "?tab=moments")
         }
-    }, []);
+    }, [])
 
     const handleUpdateMoment = async () => {
-        if (!selectedMoment) return;
+        if (!selectedMoment) return
         try {
             const { error } = await supabase
-                .from('memories')
+                .from("memories")
                 .update({ caption: editingCaption })
-                .eq('id', selectedMoment.id);
+                .eq("id", selectedMoment.id)
 
-            if (error) throw error;
+            if (error) throw error
 
             setMoments(prev => prev.map(m =>
                 m.id === selectedMoment.id ? { ...m, caption: editingCaption } : m
-            ));
-            setSelectedMoment(prev => prev ? { ...prev, caption: editingCaption } : null);
-            setIsEditCaptionOpen(false);
+            ))
+            setSelectedMoment(prev => prev ? { ...prev, caption: editingCaption } : null)
+            setIsEditCaptionOpen(false)
         } catch (error) {
-            console.error('Error updating caption:', error);
+            logger.error("MomentsGallery", "Error updating caption", error)
         }
-    };
+    }
 
     const handleDeleteMoment = async () => {
-        if (!selectedMoment) return;
+        if (!selectedMoment) return
         try {
             // 1. Delete file from storage if url exists
             if (selectedMoment.media_url) {
-                const path = selectedMoment.media_url.split('/memories/')[1];
+                const path = selectedMoment.media_url.split("/memories/")[1]
                 if (path) {
                     await supabase.storage
-                        .from('memories')
-                        .remove([path]); // Remove uses array of paths
+                        .from("memories")
+                        .remove([path]) // Remove uses array of paths
                 }
             }
 
             // 2. Delete record
             const { error } = await supabase
-                .from('memories')
+                .from("memories")
                 .delete()
-                .eq('id', selectedMoment.id);
+                .eq("id", selectedMoment.id)
 
-            if (error) throw error;
+            if (error) throw error
 
             setMoments(prev => prev.filter(m => m.id !== selectedMoment.id));
-            setSelectedMoment(null);
-            setIsDeleteMomentOpen(false);
+            setSelectedMoment(null)
+            setIsDeleteMomentOpen(false)
         } catch (error) {
-            console.error('Error deleting moment:', error);
+            logger.error("MomentsGallery", "Error deleting moment", error)
         }
-    };
+    }
 
     const handleUpdateFolder = async () => {
-        if (!currentFolder || !editingFolderName.trim()) return;
+        if (!currentFolder || !editingFolderName.trim()) return
         try {
             const { error } = await supabase
-                .from('folders')
+                .from("folders")
                 .update({ name: editingFolderName })
-                .eq('id', currentFolder.id);
+                .eq("id", currentFolder.id)
 
-            if (error) throw error;
+            if (error) throw error
 
-            setCurrentFolder({ ...currentFolder, name: editingFolderName });
-            setIsEditFolderOpen(false);
+            setCurrentFolder({ ...currentFolder, name: editingFolderName })
+            setIsEditFolderOpen(false)
         } catch (error) {
-            console.error('Error updating folder:', error);
+            logger.error("MomentsGallery", "Error updating folder", error)
         }
-    };
+    }
 
     const handleDeleteFolder = async () => {
-        if (!currentFolder) return;
+        if (!currentFolder) return
         try {
             // 1. Get all memories in folder to delete their files
             const { data: folderMoments } = await supabase
-                .from('memories')
-                .select('media_url')
-                .eq('folder_id', currentFolder.id);
+                .from("memories")
+                .select("media_url")
+                .eq("folder_id", currentFolder.id)
 
             if (folderMoments && folderMoments.length > 0) {
                 const pathsToRemove = folderMoments
                     .map(m => {
                         if (m.media_url) {
-                            return m.media_url.split('/memories/')[1];
+                            return m.media_url.split("/memories/")[1]
                         }
-                        return null;
+                        return null
                     })
-                    .filter((p): p is string => p !== null);
+                    .filter((p): p is string => p !== null)
 
                 if (pathsToRemove.length > 0) {
                     await supabase.storage
-                        .from('memories')
-                        .remove(pathsToRemove);
+                        .from("memories")
+                        .remove(pathsToRemove)
                 }
             }
 
             // 2. Delete Folder (Cascade should handle memories rows if set up, but let's be safe and delete memories rows first)
             await supabase
-                .from('memories')
+                .from("memories")
                 .delete()
-                .eq('folder_id', currentFolder.id);
+                .eq("folder_id", currentFolder.id)
 
             // 3. Delete Folder
             const { error } = await supabase
-                .from('folders')
+                .from("folders")
                 .delete()
-                .eq('id', currentFolder.id);
+                .eq("id", currentFolder.id)
 
-            if (error) throw error;
+            if (error) throw error
 
-            setCurrentFolder(null); // Go back to root
-            fetchData(); // Refresh root list
+            setCurrentFolder(null) // Go back to root
+            fetchData() // Refresh root list
         } catch (error) {
-            console.error('Error deleting folder:', error);
+            logger.error("MomentsGallery", "Error deleting folder", error)
         }
-    };
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="space-y-6">
             {/* Header / Breadcrumbs */}
@@ -316,7 +352,7 @@ export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
                     ))}
 
                     {/* Moments */}
-                    {moments.map((moment) => (
+                    {visibleMoments.map((moment) => (
                         <motion.div
                             layoutId={`moment-${moment.id}`}
                             key={moment.id}
@@ -327,9 +363,19 @@ export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
                                 src={moment.media_url || ''}
                                 alt={moment.caption || 'Moment'}
                                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                loading="lazy"
+                                decoding="async"
                             />
                         </motion.div>
                     ))}
+
+                    {canLoadMore && (
+                        <div className="col-span-full flex justify-center pt-4">
+                            <Button variant="outline" onClick={handleLoadMore}>
+                                Load more ({visibleMoments.length} of {moments.length})
+                            </Button>
+                        </div>
+                    )}
 
                     {/* Empty State */}
                     {!loading && moments.length === 0 && folders.length === 0 && (
@@ -401,6 +447,8 @@ export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
                                         src={selectedMoment.media_url || ''}
                                         alt={selectedMoment.caption || 'Expanded Moment'}
                                         className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
 
                                     {/* Bottom Control Bar - Caption */}

@@ -1,10 +1,24 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function Welcome() {
     const navigate = useNavigate()
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleGetStarted = () => navigate("/profile-setup")
+
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-[#FFF5F5] p-6 text-center">
             <motion.div
@@ -28,7 +42,7 @@ export default function Welcome() {
 
                 <div className="pt-8">
                     <Button
-                        onClick={() => navigate("/profile-setup")}
+                        onClick={handleGetStarted}
                         className="h-14 w-full rounded-full bg-[#EA2831] text-lg font-medium text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#D41F27]"
                     >
                         Get Started

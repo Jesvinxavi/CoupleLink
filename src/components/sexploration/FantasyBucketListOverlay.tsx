@@ -1,30 +1,47 @@
-import { useState, useRef, useEffect } from 'react';
-import { useSexplorationModals } from '@/context/SexplorationModalContext';
-import { createPortal } from 'react-dom';
-import { Input } from '../ui/input';
-import { Button } from '../ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
-import type { Fantasy } from '../../hooks/useFantasyBucketList';
-import { FantasyDetailModal } from './FantasyDetailModal';
-import { X, Loader2 } from 'lucide-react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useRef, useEffect, useMemo, useCallback, type FocusEvent, type FormEvent } from "react"
+import { createPortal } from "react-dom"
+import { motion, AnimatePresence } from "framer-motion"
+import { X, Loader2 } from "lucide-react"
+import { useSexplorationModals } from "@/context/SexplorationModalContext"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import type { Fantasy } from "@/hooks/useFantasyBucketList"
+import { FantasyDetailModal } from "@/components/sexploration/FantasyDetailModal"
+import { logger } from "@/lib/logger"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+const TAB_ORDER = { approved: 0, pending: 1, completed: 2 }
+const FANTASY_PAGE_SIZE = 12
+
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface FantasyBucketListOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    fantasies: Fantasy[];
-    pendingCount: number;
-    approvedCount: number;
-    completedCount: number;
-    loading: boolean;
-    addFantasy: (text: string) => Promise<void>;
-    approveFantasy: (id: string) => Promise<void>;
-    vetoFantasy: (id: string) => Promise<void>;
-    deleteFantasy: (id: string) => Promise<void>;
-    completeFantasy: (id: string) => Promise<void>;
-    isRequester: (fantasy: Fantasy) => boolean;
-    onFocusChange?: (isFocused: boolean) => void;
+    isOpen: boolean
+    onClose: () => void
+    fantasies: Fantasy[]
+    pendingCount: number
+    approvedCount: number
+    completedCount: number
+    loading: boolean
+    addFantasy: (text: string) => Promise<void>
+    approveFantasy: (id: string) => Promise<void>
+    vetoFantasy: (id: string) => Promise<void>
+    deleteFantasy: (id: string) => Promise<void>
+    completeFantasy: (id: string) => Promise<void>
+    isRequester: (fantasy: Fantasy) => boolean
+    onFocusChange?: (isFocused: boolean) => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function FantasyBucketListOverlay({
     isOpen,
     onClose,
@@ -41,11 +58,18 @@ export function FantasyBucketListOverlay({
     isRequester,
     onFocusChange
 }: FantasyBucketListOverlayProps) {
-    const [inputText, setInputText] = useState('');
-    const [selectedFantasy, setSelectedFantasy] = useState<Fantasy | null>(null);
-    const [isSending, setIsSending] = useState(false);
-    const [activeTab, setActiveTab] = useState<'approved' | 'pending' | 'completed'>('approved');
-    const [slideDirection, setSlideDirection] = useState(1);
+    useLockBodyScroll(isOpen)
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [inputText, setInputText] = useState("")
+    const [selectedFantasy, setSelectedFantasy] = useState<Fantasy | null>(null)
+    const [isSending, setIsSending] = useState(false)
+    const [errorMessage, setErrorMessage] = useState<string | null>(null)
+    const [activeTab, setActiveTab] = useState<"approved" | "pending" | "completed">("approved")
+    const [slideDirection, setSlideDirection] = useState(1)
+    const [visibleCount, setVisibleCount] = useState(FANTASY_PAGE_SIZE)
 
     // Seen Logic
     const {
@@ -53,35 +77,45 @@ export function FantasyBucketListOverlay({
         lastSeenFantasyApproved,
         lastSeenFantasyCompleted,
         markFantasiesSeen
-    } = useSexplorationModals();
+    } = useSexplorationModals()
 
-    const hasUnseenPending = fantasies.some(f => f.status === 'pending' && new Date(f.created_at || 0).getTime() > lastSeenFantasyPending);
-    const hasUnseenApproved = fantasies.some(f => f.status === 'approved' && new Date(f.responded_at || f.created_at || 0).getTime() > lastSeenFantasyApproved);
-    const hasUnseenCompleted = fantasies.some(f => f.status === 'completed' && new Date(f.completed_at || 0).getTime() > lastSeenFantasyCompleted);
+    // ═══════════════════════════════════════
+    // DERIVED DATA
+    // ═══════════════════════════════════════
+    const hasUnseenPending = useMemo(() => {
+        return fantasies.some(f => f.status === "pending" && new Date(f.created_at || 0).getTime() > lastSeenFantasyPending)
+    }, [fantasies, lastSeenFantasyPending])
+
+    const hasUnseenApproved = useMemo(() => {
+        return fantasies.some(f => f.status === "approved" && new Date(f.responded_at || f.created_at || 0).getTime() > lastSeenFantasyApproved)
+    }, [fantasies, lastSeenFantasyApproved])
+
+    const hasUnseenCompleted = useMemo(() => {
+        return fantasies.some(f => f.status === "completed" && new Date(f.completed_at || 0).getTime() > lastSeenFantasyCompleted)
+    }, [fantasies, lastSeenFantasyCompleted])
 
     // Mark current tab as seen on open or change
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         if (isOpen) {
-            markFantasiesSeen(activeTab);
+            markFantasiesSeen(activeTab)
         }
-    }, [isOpen, activeTab]);
+    }, [activeTab, isOpen, markFantasiesSeen])
 
     // Mobile Viewport Logic
-    const overlayRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const [isFocused, setIsFocused] = useState(false);
-    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
+    // ═══════════════════════════════════════
+    // REFS
+    // ═══════════════════════════════════════
+    const overlayRef = useRef<HTMLDivElement>(null)
+    const inputRef = useRef<HTMLInputElement>(null)
+    const [isFocused, setIsFocused] = useState(false)
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined)
 
-    // Combined body lock + viewport resize handler (Exactly like PostNoteModal)
+    // Viewport resize handler (Exactly like PostNoteModal)
     useEffect(() => {
         if (!isOpen) return;
-
-        // Robust Body Lock
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
 
         // Handle Visual Viewport for mobile keyboard
         const handleVisualResize = () => {
@@ -108,13 +142,6 @@ export function FantasyBucketListOverlay({
         handleVisualResize();
 
         return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-
             window.visualViewport?.removeEventListener('resize', handleVisualResize);
             window.visualViewport?.removeEventListener('scroll', handleVisualResize);
 
@@ -123,62 +150,89 @@ export function FantasyBucketListOverlay({
         };
     }, [isOpen]);
 
-    const handleOverlayFocus = (e: React.FocusEvent) => {
-        const target = e.target as HTMLElement;
-        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleOverlayFocus = (e: FocusEvent) => {
+        const target = e.target as HTMLElement
+        const isTextInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
         if (!isTextInput) return;
 
         if (overlayRef.current && window.visualViewport) {
             // Measure-Lock-Animate pattern
-            const rect = overlayRef.current.getBoundingClientRect();
-            setViewportStyle({ height: rect.height, top: rect.top });
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            const rect = overlayRef.current.getBoundingClientRect()
+            setViewportStyle({ height: rect.height, top: rect.top })
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
 
             requestAnimationFrame(() => {
                 setViewportStyle({
                     height: window.visualViewport!.height,
                     top: window.visualViewport!.offsetTop
-                });
-            });
+                })
+            })
         } else {
             // Fallback for environments without visualViewport (or desktop testing)
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
         }
-    };
+    }
 
-    const handleOverlayBlur = (e: React.FocusEvent) => {
-        if (overlayRef.current?.contains(e.relatedTarget as Node)) return;
-        setIsFocused(false);
-        if (onFocusChange) onFocusChange(false);
-        setViewportStyle(undefined);
-    };
+    const handleOverlayBlur = (e: FocusEvent) => {
+        if (overlayRef.current?.contains(e.relatedTarget as Node)) return
+        setIsFocused(false)
+        if (onFocusChange) onFocusChange(false)
+        setViewportStyle(undefined)
+    }
 
 
-    const tabOrder = { approved: 0, pending: 1, completed: 2 };
+    const handleTabChange = useCallback((newTab: "approved" | "pending" | "completed") => {
+        if (newTab === activeTab) return
+        setSlideDirection(TAB_ORDER[newTab] > TAB_ORDER[activeTab] ? 1 : -1)
+        setActiveTab(newTab)
+    }, [activeTab])
 
-    const handleTabChange = (newTab: 'approved' | 'pending' | 'completed') => {
-        if (newTab === activeTab) return;
-        setSlideDirection(tabOrder[newTab] > tabOrder[activeTab] ? 1 : -1);
-        setActiveTab(newTab);
-    };
+    const handleSubmit = useCallback(async (e: FormEvent) => {
+        e.preventDefault()
+        if (!inputText.trim() || isSending) return
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!inputText.trim() || isSending) return;
+        setIsSending(true)
+        setErrorMessage(null)
+        try {
+            setSlideDirection(1)
+            setActiveTab("pending")
+            await addFantasy(inputText.trim())
+            setInputText("")
+            inputRef.current?.blur()
+        } catch (error) {
+            logger.error("FantasyBucketListOverlay", "Failed to add fantasy", error)
+            setErrorMessage("Failed to add fantasy. Please try again.")
+        } finally {
+            setIsSending(false)
+        }
+    }, [addFantasy, inputText, isSending])
 
-        setIsSending(true);
-        setSlideDirection(1);
-        setActiveTab('pending');
-        await addFantasy(inputText.trim());
-        setInputText('');
-        setIsSending(false);
-        inputRef.current?.blur();
-    };
+    const filteredFantasies = useMemo(() => {
+        return fantasies.filter(f => f.status === activeTab)
+    }, [activeTab, fantasies])
 
-    const filteredFantasies = fantasies.filter(f => f.status === activeTab);
+    useEffect(() => {
+        setVisibleCount(FANTASY_PAGE_SIZE)
+    }, [activeTab, filteredFantasies.length])
 
+    const visibleFantasies = useMemo(() => {
+        return filteredFantasies.slice(0, visibleCount)
+    }, [filteredFantasies, visibleCount])
+
+    const canLoadMore = filteredFantasies.length > visibleCount
+
+    const handleLoadMore = useCallback(() => {
+        setVisibleCount((prev) => Math.min(prev + FANTASY_PAGE_SIZE, filteredFantasies.length))
+    }, [filteredFantasies.length])
+
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return createPortal(
         <>
             <AnimatePresence>
@@ -358,7 +412,7 @@ export function FantasyBucketListOverlay({
                                                     </div>
                                                 ) : (
                                                     <div className="space-y-3">
-                                                        {filteredFantasies.map((fantasy, index) => (
+                                                        {visibleFantasies.map((fantasy, index) => (
                                                             <motion.button
                                                                 key={fantasy.id}
                                                                 initial={index === 0 && fantasy.id.startsWith('temp-') ? { opacity: 0, y: -20 } : false}
@@ -386,6 +440,14 @@ export function FantasyBucketListOverlay({
                                                                 </div>
                                                             </motion.button>
                                                         ))}
+
+                                                        {canLoadMore && (
+                                                            <div className="flex justify-center pt-2">
+                                                                <Button variant="outline" onClick={handleLoadMore}>
+                                                                    Load more ({visibleFantasies.length} of {filteredFantasies.length})
+                                                                </Button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </motion.div>
@@ -396,6 +458,11 @@ export function FantasyBucketListOverlay({
                                 {/* Floating Footer Input */}
                                 <div className={`p-4 bg-transparent shrink-0 safe-area-bottom ${isFocused ? 'pb-2' : 'pb-8'}`}>
                                     <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-lg border border-gray-100 dark:border-gray-700">
+                                        {errorMessage && (
+                                            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+                                                {errorMessage}
+                                            </div>
+                                        )}
                                         <form onSubmit={handleSubmit} className="flex gap-2">
                                             <Input
                                                 ref={inputRef}

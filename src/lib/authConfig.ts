@@ -8,6 +8,9 @@
  * In production, set VITE_AUTH_TESTING_MODE=false or remove it entirely
  */
 
+// ═══════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════
 export const authConfig = {
     // When true: skip password & email verification (for testing)
     // When false: require password & email verification (for production)
@@ -17,6 +20,9 @@ export const authConfig = {
     minPasswordLength: 6,
 }
 
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
 export const getAuthConfig = () => authConfig
 
 

@@ -1,10 +1,9 @@
 -- Seed Daily Questions (Quizzes)
 -- Categories: fun, deep, spicy, romantic
 
-DELETE FROM public.user_answers WHERE activity_id IN (SELECT id FROM public.activities WHERE type = 'quiz');
-DELETE FROM public.activities WHERE type = 'quiz';
-
-INSERT INTO public.activities (category, type, content) VALUES
+INSERT INTO public.activities (category, type, content)
+SELECT v.category, v.type, v.content
+FROM (VALUES
 -- FUN & HYPOTHETICAL
 ('fun', 'quiz', '{"question": "If you could be any fictional character for a day, who would you choose?", "options": []}'),
 ('fun', 'quiz', '{"question": "What''s the most ridiculous outfit you''ve ever worn?", "options": []}'),
@@ -351,5 +350,10 @@ INSERT INTO public.activities (category, type, content) VALUES
 ('romantic', 'quiz', '{"question": "What is your favorite thing to think for?", "options": []}'),
 ('romantic', 'quiz', '{"question": "What is your favorite thing to speak for?", "options": []}'),
 ('romantic', 'quiz', '{"question": "What is your favorite thing to act for?", "options": []}'),
-('romantic', 'quiz', '{"question": "What is your favorite thing to be?", "options": []}');
+('romantic', 'quiz', '{"question": "What is your favorite thing to be?", "options": []}')
+) AS v(category, type, content)
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.activities a
+    WHERE a.type = v.type AND a.content = v.content
+);
 

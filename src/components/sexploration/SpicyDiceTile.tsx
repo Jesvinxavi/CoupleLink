@@ -1,16 +1,30 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { SpicyDiceModal } from './SpicyDiceModal';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useCallback } from "react"
+import { motion } from "framer-motion"
+import { SpicyDiceModal } from "@/components/sexploration/SpicyDiceModal"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function SpicyDiceTile() {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false)
+
+    const handleOpen = useCallback(() => {
+        setIsModalOpen(true)
+    }, [])
+
+    const handleClose = useCallback(() => {
+        setIsModalOpen(false)
+    }, [])
 
     return (
         <>
             <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleOpen}
                 className="relative w-full h-full min-h-[160px] overflow-hidden rounded-3xl bg-gradient-to-br from-rose-400 to-pink-600 p-6 text-left shadow-lg shadow-rose-500/20 group"
             >
                 {/* Background Pattern */}
@@ -50,8 +64,8 @@ export function SpicyDiceTile() {
 
             <SpicyDiceModal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={handleClose}
             />
         </>
-    );
+    )
 }

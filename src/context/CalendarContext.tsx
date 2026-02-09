@@ -1,11 +1,15 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import { useCoupleData } from '../hooks/useCoupleData';
-import type { CalendarEvent } from '../types/calendar';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { useCoupleData } from '@/hooks/useCoupleData';
+import type { CalendarEvent } from '@/types/calendar';
 
 // Re-export for convenience if needed, or consumers should import from types
 export type { CalendarEvent };
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface CalendarContextType {
     events: CalendarEvent[];
     loading: boolean;
@@ -14,8 +18,14 @@ interface CalendarContextType {
     deleteEvent: (eventId: string) => Promise<void>;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export function CalendarProvider({ children }: { children: ReactNode }) {
     const { couple } = useCoupleData();
     // Removed unused user hook
@@ -34,7 +44,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
 
             const { data, error } = await supabase
                 .from('calendar_events')
-                .select('*')
+                .select('id, title, event_date, end_date, category, color, location, description, recurrence')
                 .eq('couple_id', couple.id);
 
             if (error) throw error;
@@ -54,7 +64,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
             setEvents(mappedEvents);
             hasLoaded.current = true;
         } catch (error) {
-            console.error('Error fetching calendar events:', error);
+            logger.error('CalendarContext', 'Error fetching calendar events', error);
         } finally {
             setLoading(false);
         }
@@ -110,7 +120,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
         };
     }, [couple, fetchEvents]);
 
-    const saveEvent = async (event: CalendarEvent) => {
+    const saveEvent = useCallback(async (event: CalendarEvent) => {
         if (!couple) throw new Error('No couple found');
 
         try {
@@ -154,12 +164,12 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
             fetchEvents();
 
         } catch (error) {
-            console.error('Error saving event:', error);
+            logger.error('CalendarContext', 'Error saving event', error);
             throw error;
         }
-    };
+    }, [couple, fetchEvents]);
 
-    const deleteEvent = async (eventId: string) => {
+    const deleteEvent = useCallback(async (eventId: string) => {
         try {
             const { error } = await supabase
                 .from('calendar_events')
@@ -179,24 +189,29 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
 
             fetchEvents();
         } catch (error) {
-            console.error('Error deleting event:', error);
+            logger.error('CalendarContext', 'Error deleting event', error);
             throw error;
         }
-    };
+    }, [fetchEvents]);
+
+    const contextValue = useMemo(() => ({
+        events,
+        loading,
+        refreshEvents: fetchEvents,
+        saveEvent,
+        deleteEvent
+    }), [events, loading, fetchEvents, saveEvent, deleteEvent]);
 
     return (
-        <CalendarContext.Provider value={{
-            events,
-            loading,
-            refreshEvents: fetchEvents,
-            saveEvent,
-            deleteEvent
-        }}>
+        <CalendarContext.Provider value={contextValue}>
             {children}
         </CalendarContext.Provider>
     );
 }
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useCalendarContext() {
     const context = useContext(CalendarContext);
     if (context === undefined) {

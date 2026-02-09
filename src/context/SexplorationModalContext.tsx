@@ -1,14 +1,18 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useFantasyBucketList } from '../hooks/useFantasyBucketList';
-import { useSexploration } from '../hooks/useSexploration';
-import { WalletOverlay } from '../components/sexploration/WalletOverlay';
-import { PositionsOverlay } from '../components/sexploration/PositionsOverlay';
-import { FantasyBucketListOverlay } from '../components/sexploration/FantasyBucketListOverlay';
-import { GiftCouponOverlay } from '../components/sexploration/GiftCouponOverlay';
-import { useCoupleData } from '../hooks/useCoupleData';
-import { supabase } from '../lib/supabase';
+import { useFantasyBucketList } from '@/hooks/useFantasyBucketList';
+import { useSexploration } from '@/hooks/useSexploration';
+import { WalletOverlay } from '@/components/sexploration/WalletOverlay';
+import { PositionsOverlay } from '@/components/sexploration/PositionsOverlay';
+import { FantasyBucketListOverlay } from '@/components/sexploration/FantasyBucketListOverlay';
+import { GiftCouponOverlay } from '@/components/sexploration/GiftCouponOverlay';
+import { useCoupleData } from '@/hooks/useCoupleData';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface SexplorationModalContextType {
     openWallet: () => void;
     openPositions: () => void;
@@ -31,8 +35,14 @@ interface SexplorationModalContextType {
     isExplorationLoading: boolean;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const SexplorationModalContext = createContext<SexplorationModalContextType | null>(null);
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useSexplorationModals() {
     const context = useContext(SexplorationModalContext);
     if (!context) {
@@ -45,6 +55,9 @@ interface SexplorationModalProviderProps {
     children: ReactNode;
 }
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export function SexplorationModalProvider({ children }: SexplorationModalProviderProps) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -76,7 +89,7 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
         ? new Date(userProfile.last_seen_coupons).getTime()
         : Date.now();
 
-    const markFantasiesSeen = async (status: 'pending' | 'approved' | 'completed') => {
+    const markFantasiesSeen = useCallback(async (status: 'pending' | 'approved' | 'completed') => {
         if (!userProfile?.id) return;
         try {
             const now = new Date().toISOString();
@@ -91,11 +104,11 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
             // Silent refresh
             refreshCoupleData(true);
         } catch (error) {
-            console.error(`Error updating ${status} last seen`, error);
+            logger.error('SexplorationModalContext', `Error updating ${status} last seen`, error);
         }
-    };
+    }, [userProfile?.id, refreshCoupleData]);
 
-    const updateLastSeenCoupons = async () => {
+    const updateLastSeenCoupons = useCallback(async () => {
         if (!userProfile?.id) return;
         try {
             const now = new Date().toISOString();
@@ -105,9 +118,9 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
                 .eq('id', userProfile.id);
             refreshCoupleData(true);
         } catch (error) {
-            console.error('Error updating last_seen_coupons', error);
+            logger.error('SexplorationModalContext', 'Error updating last_seen_coupons', error);
         }
-    };
+    }, [userProfile?.id, refreshCoupleData]);
 
     // Data for modals
     const { isPositionCompleted, togglePositionComplete, completedPositions, loading: explorationLoading } = useSexploration();
@@ -126,7 +139,7 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
     } = useFantasyBucketList();
 
     // Open modal and navigate to sexploration
-    const openWithNavigation = (openFn: () => void) => {
+    const openWithNavigation = useCallback((openFn: () => void) => {
         openFn();
         // Navigate after modal opens (while backdrop is blurring)
         setTimeout(() => {
@@ -134,51 +147,71 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
                 navigate('/sexploration', { replace: true });
             }
         }, 100);
-    };
+    }, [location.pathname, navigate]);
 
-    const openWallet = () => openWithNavigation(() => {
+    const openWallet = useCallback(() => openWithNavigation(() => {
         setShowWallet(true);
         updateLastSeenCoupons();
-    });
-    const openPositions = () => openWithNavigation(() => setShowPositions(true));
-    const openFantasies = () => openWithNavigation(() => {
+    }), [openWithNavigation, updateLastSeenCoupons]);
+    const openPositions = useCallback(() => openWithNavigation(() => setShowPositions(true)), [openWithNavigation]);
+    const openFantasies = useCallback(() => openWithNavigation(() => {
         setShowFantasies(true);
         // Do NOT update timestamps here anymore; handled in Overlay tabs
-    });
-    const openGiftCoupon = () => openWithNavigation(() => {
+    }), [openWithNavigation]);
+    const openGiftCoupon = useCallback(() => openWithNavigation(() => {
         setShowGiftCoupon(true);
         // Maybe treat opening gift coupon as seeing coupons too? Or separate? 
         // User asked for "Vouchers available", which usually implies the Wallet. 
         // I'll stick to Wallet for now.
-    });
+    }), [openWithNavigation]);
 
-    const handleWalletClose = () => setShowWallet(false);
-    const handlePositionsClose = () => setShowPositions(false);
-    const handleFantasiesClose = () => setShowFantasies(false);
-    const handleGiftCouponClose = () => setShowGiftCoupon(false);
+    const handleWalletClose = useCallback(() => setShowWallet(false), []);
+    const handlePositionsClose = useCallback(() => setShowPositions(false), []);
+    const handleFantasiesClose = useCallback(() => setShowFantasies(false), []);
+    const handleGiftCouponClose = useCallback(() => setShowGiftCoupon(false), []);
 
     const isAnyOverlayOpen = showWallet || showPositions || showFantasies || showGiftCoupon;
 
+    const contextValue = useMemo(() => ({
+        openWallet,
+        openPositions,
+        openFantasies,
+        openGiftCoupon,
+        isFantasyOpen: showFantasies,
+        isFantasyFocused,
+        setFantasyFocused,
+        isAnyOverlayOpen,
+        lastSeenFantasyPending,
+        lastSeenFantasyApproved,
+        lastSeenFantasyCompleted,
+        lastSeenCoupons,
+        markFantasiesSeen,
+        completedPositions,
+        togglePositionComplete,
+        isPositionCompleted,
+        isExplorationLoading: explorationLoading
+    }), [
+        openWallet,
+        openPositions,
+        openFantasies,
+        openGiftCoupon,
+        showFantasies,
+        isFantasyFocused,
+        setFantasyFocused,
+        isAnyOverlayOpen,
+        lastSeenFantasyPending,
+        lastSeenFantasyApproved,
+        lastSeenFantasyCompleted,
+        lastSeenCoupons,
+        markFantasiesSeen,
+        completedPositions,
+        togglePositionComplete,
+        isPositionCompleted,
+        explorationLoading
+    ]);
+
     return (
-        <SexplorationModalContext.Provider value={{
-            openWallet,
-            openPositions,
-            openFantasies,
-            openGiftCoupon,
-            isFantasyOpen: showFantasies,
-            isFantasyFocused,
-            setFantasyFocused,
-            isAnyOverlayOpen,
-            lastSeenFantasyPending,
-            lastSeenFantasyApproved,
-            lastSeenFantasyCompleted,
-            lastSeenCoupons,
-            markFantasiesSeen,
-            completedPositions,
-            togglePositionComplete,
-            isPositionCompleted,
-            isExplorationLoading: explorationLoading
-        }}>
+        <SexplorationModalContext.Provider value={contextValue}>
             {children}
 
             {/* Global Modals - persist across page navigation */}

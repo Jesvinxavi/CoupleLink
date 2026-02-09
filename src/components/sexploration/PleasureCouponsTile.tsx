@@ -1,49 +1,89 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useCoupons } from '../../hooks/useCoupons';
-import { useCoupleContext } from '../../context/CoupleContext';
-import { useSexplorationModals } from '@/context/SexplorationModalContext';
-
-// import { GiftReceivedModal } from './GiftReceivedModal';
-import { CouponEarnedModal } from './CouponEarnedModal';
-import { CouponCollectionModal } from './CouponCollectionModal';
-import { Ticket, Gift, Wallet, PartyPopper } from 'lucide-react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { motion } from "framer-motion"
+import { Ticket, Gift, Wallet, PartyPopper } from "lucide-react"
+import { useCoupons } from "@/hooks/useCoupons"
+import { useCoupleContext } from "@/context/CoupleContext"
+import { useSexplorationModals } from "@/context/SexplorationModalContext"
+import { logger } from "@/lib/logger"
+import { CouponEarnedModal } from "@/components/sexploration/CouponEarnedModal"
+import { CouponCollectionModal } from "@/components/sexploration/CouponCollectionModal"
 
 interface PleasureCouponsTileProps {
-    initialOpenWallet?: boolean;
+    initialOpenWallet?: boolean
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function PleasureCouponsTile({ initialOpenWallet = false }: PleasureCouponsTileProps) {
-    const { coupons, refreshCoupons, claimCoupon } = useCoupons();
-    const { userProfile } = useCoupleContext();
-    const { openWallet, openGiftCoupon, lastSeenCoupons } = useSexplorationModals();
+    const { coupons, refreshCoupons, claimCoupon } = useCoupons()
+    const { userProfile } = useCoupleContext()
+    const { openWallet, openGiftCoupon, lastSeenCoupons } = useSexplorationModals()
 
     // Modal States
-    const [showEarnedModal, setShowEarnedModal] = useState(false);
-    const [showCollectionModal, setShowCollectionModal] = useState(false);
+    const [showEarnedModal, setShowEarnedModal] = useState(false)
+    const [showCollectionModal, setShowCollectionModal] = useState(false)
 
-    // Handle initial open wallet via effect if needed, or simple redirect if it was a prop used for deep linking
-    if (initialOpenWallet) {
-        // Since we changed to a page, we might want to redirect immediately if this prop is true
-        // But for now let's just ignore it as it looks like it was for the modal
-    }
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    useEffect(() => {
+        if (initialOpenWallet) {
+            openWallet()
+        }
+    }, [initialOpenWallet, openWallet])
 
     // Realtime subscription moved to CouponsContext for robust syncing and polling
     // No local subscription needed here anymore
 
-    // Get stats
-    const activeCoupons = coupons.filter(c =>
-        (c.status === 'active' || !c.status) &&
-        (!c.redeemed_at)
-    );
-    const activeCount = activeCoupons.length;
-    const unclaimedCoupons = (userProfile as any)?.unclaimed_vouchers || 0;
+    // ═══════════════════════════════════════
+    // DERIVED DATA
+    // ═══════════════════════════════════════
+    const activeCoupons = useMemo(() => {
+        return coupons.filter(c =>
+            (c.status === "active" || !c.status) &&
+            !c.redeemed_at
+        )
+    }, [coupons])
 
-    // Check for unseen vouchers (created after last viewed wallet)
-    const hasUnseenVouchers = coupons.some(c =>
-        ((c.status === 'active' || !c.status) && !c.redeemed_at) &&
-        new Date(c.created_at).getTime() > lastSeenCoupons
-    );
+    const activeCount = activeCoupons.length
+    const unclaimedCoupons = (userProfile as any)?.unclaimed_vouchers || 0
+
+    const hasUnseenVouchers = useMemo(() => {
+        return coupons.some(c =>
+            ((c.status === "active" || !c.status) && !c.redeemed_at) &&
+            new Date(c.created_at).getTime() > lastSeenCoupons
+        )
+    }, [coupons, lastSeenCoupons])
+
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleEarnedModalClose = useCallback(async () => {
+        try {
+            await claimCoupon({
+                id: "free-reign-earned",
+                title: "Free Reign",
+                description: "Redeem this for any pleasure of your choice! You have complete control.",
+                category: "fun",
+                intensity: 1,
+                icon: null
+            })
+            await refreshCoupons()
+        } catch (err) {
+            logger.error("PleasureCouponsTile", "Failed to create Free Reign coupon", err)
+        } finally {
+            setShowEarnedModal(false)
+        }
+    }, [claimCoupon, refreshCoupons])
+
+    const handleOpenCollection = useCallback(() => {
+        setShowEarnedModal(false)
+        setShowCollectionModal(true)
+    }, [])
 
     return (
         <>
@@ -112,28 +152,8 @@ export function PleasureCouponsTile({ initialOpenWallet = false }: PleasureCoupo
             {/* Modals */}
             <CouponEarnedModal
                 isOpen={showEarnedModal}
-                onClose={async () => {
-                    // User tapped backdrop - save as Free Reign coupon
-                    try {
-                        await claimCoupon({
-                            id: 'free-reign-earned',
-                            title: 'Free Reign',
-                            description: 'Redeem this for any pleasure of your choice! You have complete control.',
-                            category: 'fun',
-                            intensity: 1,
-                            icon: null
-                        });
-                        refreshCoupons();
-                    } catch (err) {
-                        console.error('Failed to create Free Reign coupon:', err);
-                    }
-                    setShowEarnedModal(false);
-                }}
-                onCollect={() => {
-                    // Select Coupon button - open collection modal
-                    setShowEarnedModal(false);
-                    setShowCollectionModal(true);
-                }}
+                onClose={handleEarnedModalClose}
+                onCollect={handleOpenCollection}
             />
 
             <CouponCollectionModal
@@ -145,5 +165,5 @@ export function PleasureCouponsTile({ initialOpenWallet = false }: PleasureCoupo
                 }}
             />
         </>
-    );
+    )
 }

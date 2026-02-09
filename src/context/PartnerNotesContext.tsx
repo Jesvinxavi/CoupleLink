@@ -1,7 +1,12 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import { useCoupleData } from '../hooks/useCoupleData';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { useCoupleData } from '@/hooks/useCoupleData';
 import { useAuth } from './AuthContext';
+
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 
 export interface Note {
     id: string;
@@ -20,7 +25,14 @@ interface PartnerNotesContextType {
     markAsSeen: (note: Note) => Promise<void>;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const PartnerNotesContext = createContext<PartnerNotesContextType | undefined>(undefined);
+
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 
 export function PartnerNotesProvider({ children }: { children: ReactNode }) {
     const { couple } = useCoupleData();
@@ -65,7 +77,7 @@ export function PartnerNotesProvider({ children }: { children: ReactNode }) {
                 setPartnerLastNote(partnerData as Note | null);
             }
         } catch (error) {
-            console.error('Error fetching notes:', error);
+            logger.error('PartnerNotesContext', 'Error fetching notes', error);
         } finally {
             setLoading(false);
         }
@@ -129,7 +141,7 @@ export function PartnerNotesProvider({ children }: { children: ReactNode }) {
         };
     }, [couple, fetchNotes]);
 
-    const sendNote = async (caption: string) => {
+    const sendNote = useCallback(async (caption: string) => {
         if (!couple || !user) return;
 
         try {
@@ -158,12 +170,12 @@ export function PartnerNotesProvider({ children }: { children: ReactNode }) {
             fetchNotes();
 
         } catch (error) {
-            console.error('Error sending note:', error);
+            logger.error('PartnerNotesContext', 'Error sending note', error);
             throw error;
         }
-    };
+    }, [couple, user, fetchNotes]);
 
-    const markAsSeen = async (note: Note) => {
+    const markAsSeen = useCallback(async (note: Note) => {
         if (!couple || !user) return;
 
         // Prevent double marking
@@ -196,23 +208,28 @@ export function PartnerNotesProvider({ children }: { children: ReactNode }) {
             }
 
         } catch (error) {
-            console.error('Error marking note seen:', error);
+            logger.error('PartnerNotesContext', 'Error marking note seen', error);
         }
-    };
+    }, [couple, user]);
+
+    const contextValue = useMemo(() => ({
+        myLastNote,
+        partnerLastNote,
+        loading,
+        sendNote,
+        markAsSeen
+    }), [myLastNote, partnerLastNote, loading, sendNote, markAsSeen]);
 
     return (
-        <PartnerNotesContext.Provider value={{
-            myLastNote,
-            partnerLastNote,
-            loading,
-            sendNote,
-            markAsSeen
-        }}>
+        <PartnerNotesContext.Provider value={contextValue}>
             {children}
         </PartnerNotesContext.Provider>
     );
 }
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function usePartnerNotesContext() {
     const context = useContext(PartnerNotesContext);
     if (context === undefined) {

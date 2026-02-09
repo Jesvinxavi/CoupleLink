@@ -1,8 +1,12 @@
-import { createContext, useContext, useState, useEffect, type ReactNode, useCallback, useRef } from 'react';
-import { supabase } from '../lib/supabase';
-import { useCoupleData } from '../hooks/useCoupleData';
-import { type Coupon, type CouponTemplate } from '../hooks/useCoupons';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { useCoupleData } from '@/hooks/useCoupleData';
+import { type Coupon, type CouponTemplate } from '@/hooks/useCoupons';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface CouponsContextType {
     coupons: Coupon[];
     templates: CouponTemplate[];
@@ -24,8 +28,14 @@ interface CouponsContextType {
     fetchTemplates: () => Promise<void>;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const CouponsContext = createContext<CouponsContextType | undefined>(undefined);
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export function CouponsProvider({ children }: { children: ReactNode }) {
     const { couple, userProfile, loading: coupleLoading, refreshCoupleData } = useCoupleData();
     const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -45,7 +55,25 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
 
             const { data, error } = await supabase
                 .from('coupons')
-                .select('*')
+                .select([
+                    'id',
+                    'couple_id',
+                    'assigned_to',
+                    'title',
+                    'description',
+                    'category',
+                    'template_id',
+                    'status',
+                    'is_redeemed',
+                    'redeemed_at',
+                    'created_at',
+                    'expires_at',
+                    'activated_at',
+                    'is_gift',
+                    'gifted_by',
+                    'gift_message',
+                    'acknowledged_at'
+                ].join(', '))
                 .eq('assigned_to', userProfile.id) // Only show my coupons
                 .eq('couple_id', couple.id) // Strict Scope: Only this couple
                 .order('created_at', { ascending: false });
@@ -64,8 +92,8 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             setCoupons(typedCoupons);
             hasLoaded.current = true;
         } catch (err: any) {
-            console.error('Error fetching coupons:', err);
-            setError(err.message);
+            logger.error('CouponsContext', 'Error fetching coupons', err);
+            setError(err?.message || 'Failed to fetch coupons');
         } finally {
             setLoading(false);
         }
@@ -75,14 +103,22 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
         try {
             const { data, error } = await (supabase
                 .from('coupon_templates' as any)
-                .select('*') as any)
+                .select([
+                    'id',
+                    'created_at',
+                    'title',
+                    'description',
+                    'category',
+                    'intensity',
+                    'icon'
+                ].join(', ')) as any)
                 .order('intensity', { ascending: true });
 
             if (error) throw error;
 
             setTemplates((data || []) as any as CouponTemplate[]);
         } catch (err: any) {
-            console.error('Error fetching templates:', err);
+            logger.error('CouponsContext', 'Error fetching templates', err);
         }
     }, []);
 
@@ -162,7 +198,7 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
         };
     }, [couple?.id, userProfile?.id, fetchCoupons, fetchTemplates, checkGifts]);
 
-    const createCoupon = async (title: string, description: string, assignedTo?: string) => {
+    const createCoupon = useCallback(async (title: string, description: string, assignedTo?: string) => {
         if (!couple?.id) throw new Error('No couple found');
 
         try {
@@ -187,12 +223,12 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             setCoupons(prevCoupons => [newCoupon, ...prevCoupons]);
             return newCoupon;
         } catch (err: any) {
-            console.error('Error creating coupon:', err);
+            logger.error('CouponsContext', 'Error creating coupon', err);
             throw err;
         }
-    };
+    }, [couple?.id]);
 
-    const claimCoupon = async (template: CouponTemplate) => {
+    const claimCoupon = useCallback(async (template: CouponTemplate) => {
         if (!couple?.id || !userProfile?.id) throw new Error('No user profile');
 
         try {
@@ -229,12 +265,12 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             setCoupons(prevCoupons => [newCoupon, ...prevCoupons]);
             return newCoupon;
         } catch (err: any) {
-            console.error('Error claiming coupon:', err);
+            logger.error('CouponsContext', 'Error claiming coupon', err);
             throw err;
         }
-    };
+    }, [couple?.id, userProfile, refreshCoupleData]);
 
-    const giftCoupon = async (
+    const giftCoupon = useCallback(async (
         recipientId: string,
         type: 'specific' | 'random' | 'create',
         template?: CouponTemplate,
@@ -292,7 +328,7 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
                     payload: { giftId: anyData.id, sentAt: now }
                 });
             } else {
-                console.warn('Sender: No channelRef available to broadcast');
+                logger.warn('CouponsContext', 'No channelRef available to broadcast');
             }
 
             // Note: We don't add to *our* list because we gifted it to partner
@@ -302,12 +338,12 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             return newCoupon;
 
         } catch (err: any) {
-            console.error('Error gifting coupon:', err);
+            logger.error('CouponsContext', 'Error gifting coupon', err);
             throw err;
         }
-    };
+    }, [couple?.id, userProfile, templates]);
 
-    const activateCoupon = async (id: string) => {
+    const activateCoupon = useCallback(async (id: string) => {
         try {
             const now = new Date();
             const expires = new Date(now.getTime() + 48 * 60 * 60 * 1000); // 48 hours
@@ -329,12 +365,12 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             setCoupons(prevCoupons => prevCoupons.map(c => c.id === id ? updatedCoupon : c));
             return updatedCoupon;
         } catch (err: any) {
-            console.error('Error activating coupon:', err);
+            logger.error('CouponsContext', 'Error activating coupon', err);
             throw err;
         }
-    };
+    }, []);
 
-    const redeemCoupon = async (id: string) => {
+    const redeemCoupon = useCallback(async (id: string) => {
         try {
             const { data, error } = await (supabase
                 .from('coupons' as any)
@@ -353,12 +389,12 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             setCoupons(prevCoupons => prevCoupons.map(c => c.id === id ? updatedCoupon : c));
             return updatedCoupon;
         } catch (err: any) {
-            console.error('Error redeeming coupon:', err);
+            logger.error('CouponsContext', 'Error redeeming coupon', err);
             throw err;
         }
-    };
+    }, []);
 
-    const updateCoupon = async (id: string, updates: Partial<Coupon>) => {
+    const updateCoupon = useCallback(async (id: string, updates: Partial<Coupon>) => {
         try {
             const { data, error } = await supabase
                 .from('coupons')
@@ -374,12 +410,12 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             setCoupons(prevCoupons => prevCoupons.map(c => c.id === id ? updatedCoupon : c));
             return updatedCoupon;
         } catch (err: any) {
-            console.error('Error updating coupon:', err);
+            logger.error('CouponsContext', 'Error updating coupon', err);
             throw err;
         }
-    };
+    }, []);
 
-    const acknowledgeCoupon = async (id: string) => {
+    const acknowledgeCoupon = useCallback(async (id: string) => {
         try {
             const { data, error } = await supabase
                 .from('coupons')
@@ -395,12 +431,12 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             setCoupons(prevCoupons => prevCoupons.map(c => c.id === id ? updatedCoupon : c));
             return updatedCoupon;
         } catch (err: any) {
-            console.error('Error acknowledging coupon:', err);
+            logger.error('CouponsContext', 'Error acknowledging coupon', err);
             throw err;
         }
-    };
+    }, []);
 
-    const value = {
+    const value = useMemo(() => ({
         coupons,
         templates,
         loading: loading || coupleLoading,
@@ -414,7 +450,22 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
         acknowledgeCoupon,
         refreshCoupons: fetchCoupons,
         fetchTemplates
-    };
+    }), [
+        coupons,
+        templates,
+        loading,
+        coupleLoading,
+        error,
+        createCoupon,
+        claimCoupon,
+        giftCoupon,
+        activateCoupon,
+        redeemCoupon,
+        updateCoupon,
+        acknowledgeCoupon,
+        fetchCoupons,
+        fetchTemplates
+    ]);
 
     return (
         <CouponsContext.Provider value={value}>
@@ -423,6 +474,9 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useCouponsContext() {
     const context = useContext(CouponsContext);
     if (context === undefined) {

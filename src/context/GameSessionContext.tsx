@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import { useCoupleData } from '../hooks/useCoupleData';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { useCoupleData } from '@/hooks/useCoupleData';
 import {
     gameTypeLabels,
     getRandomQuestions,
@@ -9,8 +10,11 @@ import {
     rapidFireQuestions,
     drawPrompts,
     type GameType
-} from '../data/gameQuestions';
+} from '@/data/gameQuestions';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 export interface GameSession {
     id: string;
     couple_id: string;
@@ -52,6 +56,26 @@ interface GameSessionContextType {
     // Helpers
     getGameLabel: (gameType: GameType) => string;
 }
+
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+const GAME_SESSION_FIELDS = [
+    'id',
+    'couple_id',
+    'created_at',
+    'created_by',
+    'current_round',
+    'ended_at',
+    'game_state',
+    'game_type',
+    'player_one_id',
+    'player_one_joined_at',
+    'player_two_id',
+    'player_two_joined_at',
+    'status',
+    'total_rounds'
+].join(', ');
 
 // Helper to generate unique questions for a session
 const generateSessionQuestions = async (gameType: string, coupleId: string, count: number, spicyMode: boolean) => {
@@ -178,8 +202,14 @@ const generateSessionQuestions = async (gameType: string, coupleId: string, coun
     return selectedQuestions.map(q => q.id);
 };
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const GameSessionContext = createContext<GameSessionContextType | undefined>(undefined);
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export function GameSessionProvider({ children }: { children: ReactNode }) {
     const { couple, currentUser } = useCoupleData();
     const [activeSession, setActiveSession] = useState<GameSession | null>(null);
@@ -211,7 +241,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
         try {
             const { data, error: fetchError } = await supabase
                 .from('game_sessions')
-                .select('*')
+                .select(GAME_SESSION_FIELDS)
                 .eq('couple_id', couple.id)
                 .in('status', ['waiting', 'active'])
                 .order('created_at', { ascending: false })
@@ -221,8 +251,8 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
             if (fetchError) throw fetchError;
             setActiveSession(data as GameSession | null);
         } catch (err: any) {
-            console.error('Error fetching game session:', err);
-            setError(err.message);
+            logger.error('GameSessionContext', 'Error fetching game session', err);
+            setError(err?.message || 'Failed to fetch game session');
         } finally {
             setIsLoading(false);
         }
@@ -354,8 +384,8 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
             setActiveSession(data as GameSession);
             return data as GameSession;
         } catch (err: any) {
-            console.error('Error creating game session:', err);
-            setError(err.message);
+            logger.error('GameSessionContext', 'Error creating game session', err);
+            setError(err?.message || 'Failed to create game session');
             return null;
         }
     }, [couple?.id, currentUser?.id, generateSessionQuestions]); // Added generateSessionQuestions to dependencies
@@ -387,8 +417,8 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
             setActiveSession(data as GameSession);
             return true;
         } catch (err: any) {
-            console.error('Error joining game session:', err);
-            setError(err.message);
+            logger.error('GameSessionContext', 'Error joining game session', err);
+            setError(err?.message || 'Failed to join game session');
             return false;
         }
     }, [currentUser?.id]);
@@ -410,7 +440,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
             // CRITICAL: Fetch latest session state from DB to avoid stale state issues
             const { data: latestSession, error: fetchError } = await supabase
                 .from('game_sessions')
-                .select('*')
+                .select(GAME_SESSION_FIELDS)
                 .eq('id', sessionId)
                 .single();
 
@@ -468,8 +498,8 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
 
         } catch (err: any) {
-            console.error('Error leaving game session:', err);
-            setError(err.message);
+            logger.error('GameSessionContext', 'Error leaving game session', err);
+            setError(err?.message || 'Failed to leave game session');
         }
     }, [activeSession, currentUser?.id]);
 
@@ -494,8 +524,8 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
 
         } catch (err: any) {
-            console.error('Error ending game session:', err);
-            setError(err.message);
+            logger.error('GameSessionContext', 'Error ending game session', err);
+            setError(err?.message || 'Failed to end game session');
         }
     }, [activeSession]);
 
@@ -547,8 +577,8 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
             setActiveSession(prev => prev ? { ...prev, game_state: finalState } : null);
         } catch (err: any) {
-            console.error('Error updating game state:', err);
-            setError(err.message);
+            logger.error('GameSessionContext', 'Error updating game state', err);
+            setError(err?.message || 'Failed to update game state');
         }
     }, [activeSession]);
 
@@ -563,7 +593,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
             // Fetch Latest State first to ensure we don't overwrite recent updates (like all_answers)
             const { data: latestData, error: fetchError } = await supabase
                 .from('game_sessions')
-                .select('*')
+                .select(GAME_SESSION_FIELDS)
                 .eq('id', activeSession.id)
                 .single();
 
@@ -590,8 +620,8 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
             setActiveSession(prev => prev ? { ...prev, current_round: newRound, game_state: nextGameState } : null);
         } catch (err: any) {
-            console.error('Error advancing round:', err);
-            setError(err.message);
+            logger.error('GameSessionContext', 'Error advancing round', err);
+            setError(err?.message || 'Failed to advance round');
         }
     }, [activeSession, endSession]);
 
@@ -600,7 +630,33 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
         return gameTypeLabels[gameType] || gameType;
     }, []);
 
-    const value = {
+    const joinOrStartSession = useCallback(async (gameType: GameType) => {
+        // 1. Check if there's a waiting session for this couple created by partner
+        if (!couple?.id || !currentUser?.id) return null;
+
+        try {
+            // Check for existing waiting session that is NOT created by me (so I can join it)
+            const { data: existingSession } = await supabase
+                .from('game_sessions')
+                .select(GAME_SESSION_FIELDS)
+                .eq('couple_id', couple.id)
+                .eq('game_type', gameType)
+                .eq('status', 'waiting')
+                .neq('created_by', currentUser.id) // Important: Join partner's session
+                .maybeSingle();
+
+            if (existingSession) {
+                await joinSession(existingSession.id);
+                return existingSession as GameSession;
+            }
+            return await createSession(gameType);
+        } catch (err) {
+            logger.error('GameSessionContext', 'Error in joinOrStartSession', err);
+            return null;
+        }
+    }, [couple?.id, currentUser?.id, joinSession, createSession]);
+
+    const value = useMemo(() => ({
         activeSession,
         isLoading,
         error,
@@ -615,34 +671,24 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
         updateGameState,
         nextRound,
         getGameLabel,
-        // Smart Play Again Logic
-        joinOrStartSession: async (gameType: GameType) => {
-            // 1. Check if there's a waiting session for this couple created by partner
-            if (!couple?.id || !currentUser?.id) return null;
-
-            try {
-                // Check for existing waiting session that is NOT created by me (so I can join it)
-                const { data: existingSession } = await supabase
-                    .from('game_sessions')
-                    .select('*')
-                    .eq('couple_id', couple.id)
-                    .eq('game_type', gameType)
-                    .eq('status', 'waiting')
-                    .neq('created_by', currentUser.id) // Important: Join partner's session
-                    .maybeSingle();
-
-                if (existingSession) {
-                    await joinSession(existingSession.id);
-                    return existingSession as GameSession;
-                } else {
-                    return await createSession(gameType);
-                }
-            } catch (err) {
-                console.error('[GameSessionContext] Error in joinOrStartSession:', err);
-                return null;
-            }
-        }
-    };
+        joinOrStartSession,
+    }), [
+        activeSession,
+        isLoading,
+        error,
+        isPlayerOne,
+        isPlayerTwo,
+        isInSession,
+        partnerInSession,
+        createSession,
+        joinSession,
+        leaveSession,
+        endSession,
+        updateGameState,
+        nextRound,
+        getGameLabel,
+        joinOrStartSession,
+    ]);
 
     return (
         <GameSessionContext.Provider value={value}>
@@ -651,6 +697,9 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useGameSession() {
     const context = useContext(GameSessionContext);
     if (context === undefined) {

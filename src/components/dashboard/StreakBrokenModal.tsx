@@ -1,14 +1,23 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
-import { Button } from "../ui/button";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface StreakBrokenModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onRestore: () => void;
-    tokensAvailable: number;
-    previousStreak: number;
+    isOpen: boolean
+    onClose: () => void
+    onRestore: () => void
+    tokensAvailable: number
+    previousStreak: number
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function StreakBrokenModal({ isOpen, onClose, onRestore, tokensAvailable, previousStreak }: StreakBrokenModalProps) {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -70,5 +79,5 @@ export function StreakBrokenModal({ isOpen, onClose, onRestore, tokensAvailable,
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    );
+    )
 }

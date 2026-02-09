@@ -1,111 +1,116 @@
-import { useState, useEffect, useMemo } from 'react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useMemo } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Heart, Check, Clock, Trophy } from "lucide-react"
+import { useGameSession, type GameSession } from "@/hooks/useGameSession"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { supabase } from "@/lib/supabase"
+import { wouldYouRatherQuestions } from "@/data/gameQuestions"
 
-
-import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Check, Clock, Trophy } from 'lucide-react';
-import type { GameSession } from '../../hooks/useGameSession';
-import { useGameSession } from '../../hooks/useGameSession';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { supabase } from '../../lib/supabase';
-
-import { wouldYouRatherQuestions } from '../../data/gameQuestions';
-
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface WouldYouRatherGameProps {
-    session: GameSession;
+    session: GameSession
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
-    const { updateGameState, nextRound, isPlayerOne } = useGameSession();
-    const { partner, currentUser } = useCoupleData();
+    const { updateGameState, nextRound, isPlayerOne } = useGameSession()
+    const { partner, currentUser } = useCoupleData()
 
 
-    const [gameComplete, setGameComplete] = useState(false);
+    const [gameComplete, setGameComplete] = useState(false)
 
 
     // Determine player IDs from session
-    const myId = currentUser?.id;
-    const partnerId = session.player_one_id === myId ? session.player_two_id : session.player_one_id;
+    const myId = currentUser?.id
+    const partnerId = session.player_one_id === myId ? session.player_two_id : session.player_one_id
 
     // Get current question ID from session state
-    const questionIds = session.game_state?.question_ids || [];
-    const currentQuestionId = questionIds[session.current_round - 1];
+    const questionIds = session.game_state?.question_ids || []
+    const currentQuestionId = questionIds[session.current_round - 1]
 
     // Find the question object
     const currentQuestion = useMemo(() => {
-        if (!currentQuestionId) return null;
-        return wouldYouRatherQuestions.find(q => q.id === currentQuestionId);
-    }, [currentQuestionId]);
+        if (!currentQuestionId) return null
+        return wouldYouRatherQuestions.find((q) => q.id === currentQuestionId)
+    }, [currentQuestionId])
 
 
-    const gameState = session.game_state || {};
-    const roundAnswers = gameState.round_answers || {};
-    const allAnswers = gameState.all_answers || [];
+    const gameState = session.game_state || {}
+    const roundAnswers = gameState.round_answers || {}
+    const allAnswers = gameState.all_answers || []
 
-    const myAnswer = roundAnswers[myId || ''];
-    const partnerAnswer = roundAnswers[partnerId || ''];
-    const bothAnswered = myAnswer !== undefined && partnerAnswer !== undefined;
+    const myAnswer = roundAnswers[myId || ""]
+    const partnerAnswer = roundAnswers[partnerId || ""]
+    const bothAnswered = myAnswer !== undefined && partnerAnswer !== undefined
 
-    const [isAdvancing, setIsAdvancing] = useState(false);
+    const [isAdvancing, setIsAdvancing] = useState(false)
 
     // Auto-advance when both answered
     useEffect(() => {
         if (bothAnswered && !gameComplete && isPlayerOne && !isAdvancing) {
             const timer = setTimeout(() => {
-                handleNextRound();
-            }, 1500); // 1.5s delay before moving to next round
-            return () => clearTimeout(timer);
+                handleNextRound()
+            }, 1500) // 1.5s delay before moving to next round
+            return () => clearTimeout(timer)
         }
-    }, [bothAnswered, gameComplete, isPlayerOne, isAdvancing]);
+    }, [bothAnswered, gameComplete, isPlayerOne, isAdvancing])
 
     // Check if game is complete
     useEffect(() => {
         if (session.current_round > session.total_rounds) {
-            setGameComplete(true);
+            setGameComplete(true)
         }
-    }, [session.current_round, session.total_rounds]);
+    }, [session.current_round, session.total_rounds])
 
     const handleSelectOption = async (optionIndex: 0 | 1) => {
-        if (myAnswer !== undefined || !myId) return;
+        if (myAnswer !== undefined || !myId) return
 
         await updateGameState({
             round_answers: {
                 ...roundAnswers,
                 [myId]: optionIndex
             }
-        });
-    };
+        })
+    }
 
     const handleNextRound = async () => {
-        if (isAdvancing) return;
-        setIsAdvancing(true);
+        if (isAdvancing) return
+        setIsAdvancing(true)
 
         try {
             // Fetch latest game state to ensure we don't lose history and have exact answers
             const { data } = await supabase
-                .from('game_sessions')
-                .select('game_state')
-                .eq('id', session.id)
-                .single();
+                .from("game_sessions")
+                .select("game_state")
+                .eq("id", session.id)
+                .single()
 
-            const latestGameState = data?.game_state as any || {};
-            const currentAllAnswers = latestGameState.all_answers || [];
-            const latestRoundAnswers = latestGameState.round_answers || {};
+            const latestGameState = data?.game_state as any || {}
+            const currentAllAnswers = latestGameState.all_answers || []
+            const latestRoundAnswers = latestGameState.round_answers || {}
 
 
 
             // Derive answers from the DB state, not local props (to be 100% safe)
-            const dbMyAnswer = latestRoundAnswers[myId || ''];
-            const dbPartnerAnswer = latestRoundAnswers[partnerId || ''];
+            const dbMyAnswer = latestRoundAnswers[myId || ""]
+            const dbPartnerAnswer = latestRoundAnswers[partnerId || ""]
 
-            const isMatch = dbMyAnswer === dbPartnerAnswer && dbMyAnswer !== undefined;
+            const isMatch = dbMyAnswer === dbPartnerAnswer && dbMyAnswer !== undefined
 
             const roundResult = {
                 round: session.current_round,
                 question: currentQuestion?.question,
                 // Store explicit answers by ID to prevent "You/Partner" swap issues
                 answers: {
-                    [myId || '']: dbMyAnswer,
-                    [partnerId || '']: dbPartnerAnswer
+                    [myId || ""]: dbMyAnswer,
+                    [partnerId || ""]: dbPartnerAnswer
                 },
                 // Keep these for backward compatibility
                 myAnswer: dbMyAnswer,
@@ -113,31 +118,31 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
                 matched: isMatch
             };
 
-            const newAllAnswers = [...currentAllAnswers, roundResult];
+            const newAllAnswers = [...currentAllAnswers, roundResult]
 
             if (session.current_round >= session.total_rounds) {
                 await updateGameState({
                     round_answers: {},
                     all_answers: newAllAnswers
-                });
-                await nextRound(); // Push to total+1 so partner sees game over
-                setGameComplete(true);
+                })
+                await nextRound() // Push to total+1 so partner sees game over
+                setGameComplete(true)
             } else {
                 await updateGameState({
                     round_answers: {},
                     all_answers: newAllAnswers
-                });
-                await nextRound();
+                })
+                await nextRound()
             }
         } finally {
-            setIsAdvancing(false);
+            setIsAdvancing(false)
         }
-    };
+    }
 
 
     // Calculate results
-    const matchCount = allAnswers.filter((a: any) => a.matched).length;
-    const matchPercentage = allAnswers.length > 0 ? Math.round((matchCount / allAnswers.length) * 100) : 0;
+    const matchCount = allAnswers.filter((a: any) => a.matched).length
+    const matchPercentage = allAnswers.length > 0 ? Math.round((matchCount / allAnswers.length) * 100) : 0
 
     // Game Complete Results Screen
     if (gameComplete || !currentQuestion) {
@@ -146,7 +151,7 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
                 <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ type: 'spring', damping: 10 }}
+                    transition={{ type: "spring", damping: 10 }}
                 >
                     <Trophy className="w-20 h-20 text-rose-500 mx-auto mb-4" />
                 </motion.div>
@@ -171,16 +176,16 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
                             {allAnswers.map((answer: any, idx: number) => (
                                 <div
                                     key={idx}
-                                    className={`p-3 rounded-lg text-sm ${answer.matched
-                                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                                        : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
+                                className={`p-3 rounded-lg text-sm ${answer.matched
+                                        ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                                        : "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800"
                                         }`}
                                 >
                                     <p className="font-medium text-gray-800 dark:text-gray-200 mb-1">
                                         Q{answer.round}: {answer.question?.substring(0, 50)}...
                                     </p>
                                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                                        {answer.matched ? '✅ Both chose the same!' : `❌ Different choices`}
+                                        {answer.matched ? "✅ Both chose the same!" : `❌ Different choices`}
                                     </p>
                                 </div>
                             ))}
@@ -188,7 +193,7 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
                     </div>
                 </div>
             </div>
-        );
+        )
     }
 
     return (

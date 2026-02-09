@@ -1,5 +1,8 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 export type ModalType = 'raincheck' | 'streak_broken' | 'gift' | 'coupon_earned';
 
 interface QueueItem {
@@ -14,8 +17,14 @@ interface GlobalModalQueueContextType {
     currentModal: QueueItem | null;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const GlobalModalQueueContext = createContext<GlobalModalQueueContextType | undefined>(undefined);
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useGlobalModalQueue() {
     const context = useContext(GlobalModalQueueContext);
     if (!context) {
@@ -24,6 +33,9 @@ export function useGlobalModalQueue() {
     return context;
 }
 
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
 // Priority mapping: Higher is more important
 const PRIORITY_MAP: Record<ModalType, number> = {
     'raincheck': 100,      // Critical Notification
@@ -32,6 +44,9 @@ const PRIORITY_MAP: Record<ModalType, number> = {
     'gift': 50,            // Nice to have
 };
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export const GlobalModalQueueProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [queue, setQueue] = useState<QueueItem[]>([]);
 
@@ -62,8 +77,13 @@ export const GlobalModalQueueProvider: React.FC<{ children: React.ReactNode }> =
         return queue.length > 0 ? queue[0] : null;
     }, [queue]);
 
+    const contextValue = useMemo(
+        () => ({ enqueueModal, ackModal, currentModal }),
+        [enqueueModal, ackModal, currentModal]
+    );
+
     return (
-        <GlobalModalQueueContext.Provider value={{ enqueueModal, ackModal, currentModal }}>
+        <GlobalModalQueueContext.Provider value={contextValue}>
             {children}
         </GlobalModalQueueContext.Provider>
     );

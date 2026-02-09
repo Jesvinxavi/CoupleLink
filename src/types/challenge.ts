@@ -1,3 +1,6 @@
+/**
+ * Challenge model used by challenge contexts and UI.
+ */
 export interface Challenge {
     id: string;
     type: 'daily' | 'weekly' | 'monthly';

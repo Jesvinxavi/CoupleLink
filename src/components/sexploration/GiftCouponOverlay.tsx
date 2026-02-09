@@ -1,58 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useCoupons, type CouponTemplate } from '../../hooks/useCoupons';
-import { useCoupleContext } from '../../context/CoupleContext';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Gift, Shuffle, PenTool, Globe, ArrowLeft, Loader2, Send, CheckCircle, X } from 'lucide-react';
-import { Coupon } from './Coupon';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useRef, useCallback, type FocusEvent } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Gift, Shuffle, PenTool, Globe, ArrowLeft, Loader2, Send, CheckCircle, X } from "lucide-react"
+import { useCoupons, type CouponTemplate } from "@/hooks/useCoupons"
+import { useCoupleContext } from "@/context/CoupleContext"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Coupon } from "@/components/sexploration/Coupon"
+import { logger } from "@/lib/logger"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface GiftCouponOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onGiftSuccess: () => void;
-    onFocusChange?: (isFocused: boolean) => void;
+    isOpen: boolean
+    onClose: () => void
+    onGiftSuccess: () => void
+    onFocusChange?: (isFocused: boolean) => void
 }
 
-export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+export function GiftCouponOverlay({
     isOpen,
     onClose,
     onGiftSuccess,
     onFocusChange
-}) => {
-    const { templates, giftCoupon, fetchTemplates } = useCoupons();
-    const { partner } = useCoupleContext();
+}: GiftCouponOverlayProps) {
+    useLockBodyScroll(isOpen)
+
+    const { templates, giftCoupon, fetchTemplates } = useCoupons()
+    const { partner } = useCoupleContext()
 
     // Steps: 'main' (select type + send simple), 'template-select' (specific), 'create-custom' (custom)
-    const [step, setStep] = useState<'main' | 'template-select' | 'create-custom'>('main');
+    const [step, setStep] = useState<"main" | "template-select" | "create-custom">("main")
 
     // For 'main' selection
-    const [selectedType, setSelectedType] = useState<'specific' | 'random' | 'create' | 'free_reign' | null>(null);
+    const [selectedType, setSelectedType] = useState<"specific" | "random" | "create" | "free_reign" | null>(null)
 
     // For specific flow
-    const [selectedTemplate, setSelectedTemplate] = useState<CouponTemplate | null>(null);
+    const [selectedTemplate, setSelectedTemplate] = useState<CouponTemplate | null>(null)
 
     // For custom flow
-    const [customData, setCustomData] = useState({ title: '', description: '' });
+    const [customData, setCustomData] = useState({ title: "", description: "" })
 
-    const [isSending, setIsSending] = useState(false);
+    const [isSending, setIsSending] = useState(false)
+    const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
     // Mobile Viewport Logic
-    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
-    const overlayRef = useRef<HTMLDivElement>(null);
-    const [isFocused, setIsFocused] = useState(false);
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined)
+    const overlayRef = useRef<HTMLDivElement>(null)
+    const [isFocused, setIsFocused] = useState(false)
 
-    // Combined body lock + viewport resize handler (matches FantasyBucketListOverlay)
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    // Viewport resize handler (matches FantasyBucketListOverlay)
     useEffect(() => {
         if (!isOpen) return;
-
-        // Robust Body Lock (save scroll position)
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
 
         // Handle Visual Viewport for mobile keyboard
         const handleVisualResize = () => {
@@ -84,34 +94,28 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
         handleVisualResize();
 
         return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-
-            // Restore scroll position
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-
             window.visualViewport?.removeEventListener('resize', handleVisualResize);
             window.visualViewport?.removeEventListener('scroll', handleVisualResize);
         };
-    }, [isOpen]); // Only depends on isOpen
+    }, [isOpen]) // Only depends on isOpen
 
     // Initial fetch if needed
     useEffect(() => {
         if (isOpen && templates.length === 0) {
-            fetchTemplates();
+            fetchTemplates()
         }
-    }, [isOpen]);
+    }, [fetchTemplates, isOpen, templates.length])
 
-    const handleOverlayFocus = (e: React.FocusEvent) => {
-        const target = e.target as HTMLElement;
-        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleOverlayFocus = (e: FocusEvent) => {
+        const target = e.target as HTMLElement
+        const isTextInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
 
         // Exclude input types that don't trigger keyboard
-        const nonKeyboardInputTypes = ['date', 'time', 'datetime-local', 'month', 'week', 'color', 'file'];
-        const isNonKeyboardInput = target.tagName === 'INPUT' && nonKeyboardInputTypes.includes((target as HTMLInputElement).type);
+        const nonKeyboardInputTypes = ["date", "time", "datetime-local", "month", "week", "color", "file"]
+        const isNonKeyboardInput = target.tagName === "INPUT" && nonKeyboardInputTypes.includes((target as HTMLInputElement).type)
 
         // Skip if not a text input or if it's a non-keyboard input type
         if (!isTextInput || isNonKeyboardInput) {
@@ -120,107 +124,113 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
 
         if (overlayRef.current && window.visualViewport) {
             // Measure-Lock-Animate pattern
-            const rect = overlayRef.current.getBoundingClientRect();
-            setViewportStyle({ height: rect.height, top: rect.top });
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            const rect = overlayRef.current.getBoundingClientRect()
+            setViewportStyle({ height: rect.height, top: rect.top })
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
 
             // Animate to target visual viewport in next frame
             requestAnimationFrame(() => {
                 setViewportStyle({
                     height: window.visualViewport!.height,
                     top: window.visualViewport!.offsetTop
-                });
+                })
             });
         } else {
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
         }
 
         // Smart scroll - only if not fully visible
         setTimeout(() => {
-            const scrollContainer = overlayRef.current?.querySelector('.flex-1.overflow-y-auto');
+            const scrollContainer = overlayRef.current?.querySelector(".flex-1.overflow-y-auto")
             if (scrollContainer && target) {
-                const targetRect = target.getBoundingClientRect();
-                const containerRect = scrollContainer.getBoundingClientRect();
+                const targetRect = target.getBoundingClientRect()
+                const containerRect = scrollContainer.getBoundingClientRect()
 
                 const isFullyVisible =
                     targetRect.top >= containerRect.top &&
                     targetRect.bottom <= containerRect.bottom;
 
                 if (!isFullyVisible) {
-                    const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+                    const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop
                     scrollContainer.scrollTo({
                         top: Math.max(0, targetTop - 20), // 20px padding from top
-                        behavior: 'smooth'
-                    });
+                        behavior: "smooth"
+                    })
                 }
             }
-        }, 350);
-    };
+        }, 350)
+    }
 
-    const handleOverlayBlur = (e: React.FocusEvent) => {
-        const relatedTarget = e.relatedTarget as Node | null;
-        const isStillInOverlay = overlayRef.current?.contains(relatedTarget);
+    const handleOverlayBlur = (e: FocusEvent) => {
+        const relatedTarget = e.relatedTarget as Node | null
+        const isStillInOverlay = overlayRef.current?.contains(relatedTarget)
 
         if (isStillInOverlay) return;
 
-        setIsFocused(false);
-        if (onFocusChange) onFocusChange(false);
-        setViewportStyle(undefined);
-    };
+        setIsFocused(false)
+        if (onFocusChange) onFocusChange(false)
+        setViewportStyle(undefined)
+    }
 
-    const reset = () => {
-        setStep('main');
-        setSelectedType(null);
-        setSelectedTemplate(null);
-        setCustomData({ title: '', description: '' });
-    };
+    const reset = useCallback(() => {
+        setStep("main")
+        setSelectedType(null)
+        setSelectedTemplate(null)
+        setCustomData({ title: "", description: "" })
+        setErrorMessage(null)
+    }, [])
 
-    const handleClose = () => {
-        onClose();
-        setTimeout(reset, 500); // Wait for animation
-    };
+    const handleClose = useCallback(() => {
+        onClose()
+        setTimeout(reset, 500) // Wait for animation
+    }, [onClose, reset])
 
-    const handleTypeSelect = (type: 'specific' | 'random' | 'create' | 'free_reign') => {
-        if (selectedType === type) return;
-        setSelectedType(type);
-    };
+    const handleTypeSelect = useCallback((type: "specific" | "random" | "create" | "free_reign") => {
+        if (selectedType === type) return
+        setSelectedType(type)
+    }, [selectedType])
 
-    const executeSend = async () => {
-        if (!partner?.id || !selectedType) return;
-        setIsSending(true);
+    const executeSend = useCallback(async () => {
+        if (!partner?.id || !selectedType) return
+        setIsSending(true)
+        setErrorMessage(null)
 
         try {
-            let result;
-            if (selectedType === 'specific' && selectedTemplate) {
-                result = await giftCoupon(partner.id, 'specific', selectedTemplate);
-            } else if (selectedType === 'random') {
-                result = await giftCoupon(partner.id, 'random');
-            } else if (selectedType === 'create') {
-                result = await giftCoupon(partner.id, 'create', undefined, customData);
-            } else if (selectedType === 'free_reign') {
-                result = await giftCoupon(partner.id, 'create', undefined, {
+            let result
+            if (selectedType === "specific" && selectedTemplate) {
+                result = await giftCoupon(partner.id, "specific", selectedTemplate)
+            } else if (selectedType === "random") {
+                result = await giftCoupon(partner.id, "random")
+            } else if (selectedType === "create") {
+                result = await giftCoupon(partner.id, "create", undefined, customData)
+            } else if (selectedType === "free_reign") {
+                result = await giftCoupon(partner.id, "create", undefined, {
                     title: "Free Reign",
                     description: "Redeem this for any pleasure of your choice! You have complete control."
-                });
+                })
             }
 
             if (result) {
-                onGiftSuccess();
-                handleClose();
+                onGiftSuccess()
+                handleClose()
             }
         } catch (error) {
-            console.error('[GiftCouponOverlay] Error sending gift:', error);
+            logger.error("GiftCouponOverlay", "Error sending gift", error)
+            setErrorMessage("Failed to send gift. Please try again.")
         } finally {
-            setIsSending(false);
+            setIsSending(false)
         }
-    };
+    }, [customData, giftCoupon, handleClose, onGiftSuccess, partner?.id, selectedTemplate, selectedType])
 
-    const handleTemplateSelect = (t: CouponTemplate) => {
-        setSelectedTemplate(t);
-    };
+    const handleTemplateSelect = useCallback((t: CouponTemplate) => {
+        setSelectedTemplate(t)
+    }, [])
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <AnimatePresence>
             {isOpen && (
@@ -553,11 +563,19 @@ export const GiftCouponOverlay: React.FC<GiftCouponOverlayProps> = ({
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
+
+                                {errorMessage && (
+                                    <div className="px-6 pb-6">
+                                        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+                                            {errorMessage}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </motion.div>
                 </>
             )}
         </AnimatePresence>
-    );
+    )
 }

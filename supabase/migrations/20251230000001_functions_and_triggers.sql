@@ -52,8 +52,8 @@ BEGIN
             -- Robust match: Both have the same non-null challenge_id
             (m.challenge_id IS NOT NULL AND partner_m.challenge_id = m.challenge_id)
             OR 
-            -- Fallback match: If ID missing, match by Title
-            (m.challenge_id IS NULL AND partner_m.title = m.title)
+            -- Fallback match: Only when BOTH IDs are missing, match by title + date
+            (m.challenge_id IS NULL AND partner_m.challenge_id IS NULL AND partner_m.title = m.title AND partner_m.created_at::DATE = m.created_at::DATE)
         )
     );
 
@@ -116,10 +116,19 @@ DECLARE
   duration_days int;
 BEGIN
   current_user_id := auth.uid();
+
+  -- Check if user is already in an active couple
+  IF EXISTS (
+      SELECT 1 FROM profiles p
+      JOIN couples c ON p.couple_id = c.id
+      WHERE p.id = current_user_id AND c.status = 'active'
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'message', 'You are already in an active couple');
+  END IF;
   
   -- Find partner ID
   SELECT id INTO partner_id FROM auth.users WHERE email = partner_email LIMIT 1;
-  IF partner_id IS NULL THEN RETURN NULL; END IF;
+  IF partner_id IS NULL THEN RETURN json_build_object('found', false); END IF;
 
   -- Check if partner is ALREADY in an active couple
   SELECT couple_id INTO partner_active_couple_id FROM public.profiles WHERE id = partner_id;
@@ -137,7 +146,7 @@ BEGIN
   ORDER BY archived_at DESC
   LIMIT 1;
 
-  IF archived_couple_id IS NULL THEN RETURN NULL; END IF;
+  IF archived_couple_id IS NULL THEN RETURN json_build_object('found', false); END IF;
 
   -- Stats
   SELECT count(*) INTO photo_count FROM public.memories WHERE couple_id = archived_couple_id AND type = 'image';
@@ -185,7 +194,7 @@ BEGIN
   current_user_id := auth.uid();
   SELECT couple_id INTO current_couple_id FROM public.profiles WHERE id = current_user_id;
 
-  IF current_couple_id IS NULL THEN RETURN NULL; END IF;
+  IF current_couple_id IS NULL THEN RETURN json_build_object('found', false); END IF;
 
   -- Get partner & created_at of current temporary couple
   SELECT 
@@ -195,11 +204,11 @@ BEGIN
   FROM public.couples
   WHERE id = current_couple_id;
 
-  IF partner_id IS NULL THEN RETURN NULL; END IF;
+  IF partner_id IS NULL THEN RETURN json_build_object('found', false); END IF;
   
   -- Expiry Check: If current couple is > 7 days old, do not offer restore
   v_expires_at := v_current_created_at + interval '7 days';
-  IF now() > v_expires_at THEN RETURN NULL; END IF;
+  IF now() > v_expires_at THEN RETURN json_build_object('found', false); END IF;
 
   -- Find archive
   SELECT * INTO archived_couple_record
@@ -209,7 +218,7 @@ BEGIN
   ORDER BY archived_at DESC
   LIMIT 1;
 
-  IF archived_couple_record IS NULL THEN RETURN NULL; END IF;
+  IF archived_couple_record IS NULL THEN RETURN json_build_object('found', false); END IF;
 
   -- Stats
   SELECT count(*) INTO photo_count FROM public.memories WHERE couple_id = archived_couple_record.id AND type = 'image';
@@ -269,7 +278,9 @@ BEGIN
 
   -- 3. Delete Temp
   IF current_couple_id IS NOT NULL AND current_couple_id <> archived_id THEN
-      DELETE FROM public.couples WHERE id = current_couple_id;
+      IF EXISTS (SELECT 1 FROM public.couples WHERE id = current_couple_id AND status = 'active') THEN
+          DELETE FROM public.couples WHERE id = current_couple_id;
+      END IF;
   END IF;
 END;
 $$;
@@ -774,7 +785,7 @@ BEGIN
     -- All existing history is preserved for stats
     UPDATE couples
     SET challenge_resets = COALESCE(challenge_resets, '{}'::jsonb) || 
-        jsonb_build_object(frequency_input, NOW()::TEXT)
+        jsonb_build_object(frequency_input, NOW())
     WHERE id = couple_id_input;
 
     RETURN jsonb_build_object('success', true, 'message', 'Challenge cycle reset for ' || frequency_input);
@@ -807,6 +818,12 @@ BEGIN
     IF v_current_points IS NULL THEN v_current_points := 0; END IF;
     IF v_tokens IS NULL THEN v_tokens := 0; END IF;
     IF v_total_lifetime_points IS NULL THEN v_total_lifetime_points := 0; END IF;
+
+    -- Normalize points in case of drift
+    IF v_current_points >= 10 THEN
+        v_tokens := v_tokens + (v_current_points / 10);
+        v_current_points := v_current_points % 10;
+    END IF;
 
     -- Calculate temporary total for token logic
     v_total_points := v_current_points + p_points;
@@ -857,6 +874,7 @@ BEGIN
 END;
 $$;
 
+-- add_competition_points (trigger-driven, not called directly by frontend)
 DROP FUNCTION IF EXISTS add_competition_points(UUID, INTEGER);
 CREATE OR REPLACE FUNCTION add_competition_points(p_user_id UUID, p_points INTEGER)
 RETURNS void
@@ -995,7 +1013,7 @@ BEGIN
 
     RETURN jsonb_build_object(
         'is_broken', v_is_broken,
-        'previous_streak', v_previous_streak
+        'previous_streak', COALESCE(v_previous_streak, 0)
     );
 END;
 $$;
@@ -1012,6 +1030,9 @@ BEGIN
     SELECT rain_check_tokens, previous_streak 
     INTO v_tokens, v_prev_streak
     FROM couples WHERE id = p_couple_id;
+
+    IF v_tokens IS NULL THEN v_tokens := 0; END IF;
+    IF v_prev_streak IS NULL THEN v_prev_streak := 0; END IF;
 
     IF v_tokens > 0 AND v_prev_streak > 0 THEN
         UPDATE couples
@@ -1049,7 +1070,7 @@ CREATE OR REPLACE FUNCTION refund_rain_check_token(p_couple_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-    UPDATE couples SET rain_check_tokens = rain_check_tokens + 1 
+    UPDATE couples SET rain_check_tokens = COALESCE(rain_check_tokens, 0) + 1 
     WHERE id = p_couple_id;
     RETURN TRUE;
 END;

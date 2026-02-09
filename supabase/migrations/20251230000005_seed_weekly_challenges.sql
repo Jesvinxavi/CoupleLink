@@ -2,10 +2,9 @@
 -- Frequency: weekly
 -- Mix: ~20% Online Game, ~33% Competitive, ~47% Normal
 
-DELETE FROM public.user_answers WHERE activity_id IN (SELECT id FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'weekly');
-DELETE FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'weekly';
-
-INSERT INTO public.activities (category, type, content) VALUES
+INSERT INTO public.activities (category, type, content)
+SELECT v.category, v.type, v.content
+FROM (VALUES
 -- ONLINE GAME (approx 10)
 ('fun', 'challenge', '{"frequency": "weekly", "title": "Online Game Night", "description": "Play a new online multiplayer game! Check the Date Night Hub for the link. Who will win?", "durationMinutes": 30, "isCompetition": true}'),
 ('fun', 'challenge', '{"frequency": "weekly", "title": "Online Game Night", "description": "Play a new online multiplayer game! Check the Date Night Hub for the link. Who will win?", "durationMinutes": 30, "isCompetition": true}'),
@@ -105,4 +104,9 @@ INSERT INTO public.activities (category, type, content) VALUES
 ('spicy', 'challenge', '{"title": "Steamy Voice Series", "description": "Exchange 3 voice notes throughout the week describing what you want to do to each other.", "frequency": "weekly", "durationMinutes": 10, "isCompetition": false, "isSpicy": true}'),
 ('spicy', 'challenge', '{"title": "Naughty Drawing", "description": "Draw something spicy (abstract or literal) and send a photo.", "frequency": "weekly", "durationMinutes": 15, "isCompetition": true, "isSpicy": true}'),
 ('spicy', 'challenge', '{"title": "Whisper Challenge", "description": "Whisper naughty phrases on video call. Partner has to guess by reading lips.", "frequency": "weekly", "durationMinutes": 15, "isCompetition": true, "isSpicy": true}'),
-('spicy', 'challenge', '{"title": "Command Week", "description": "Take turns giving one spicy command each day for the next 7 days.", "frequency": "weekly", "durationMinutes": 10, "isCompetition": false, "isSpicy": true}');
+('spicy', 'challenge', '{"title": "Command Week", "description": "Take turns giving one spicy command each day for the next 7 days.", "frequency": "weekly", "durationMinutes": 10, "isCompetition": false, "isSpicy": true}')
+) AS v(category, type, content)
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.activities a
+    WHERE a.type = v.type AND a.content = v.content
+);

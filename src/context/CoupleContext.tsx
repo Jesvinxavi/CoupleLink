@@ -1,10 +1,14 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
+import type { Database } from '@/lib/database.types';
+import { STORAGE_KEYS } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 import { useAuth } from './AuthContext';
-import type { Database } from '../lib/database.types';
-import { STORAGE_KEYS } from '../lib/constants';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
 type CoupleData = Database['public']['Tables']['couples']['Row'];
@@ -18,8 +22,61 @@ interface CoupleContextType {
     refreshCoupleData: (silent?: boolean) => Promise<void>;
 }
 
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+const PROFILE_FIELDS = [
+    'id',
+    'first_name',
+    'last_name',
+    'avatar_url',
+    'birth_date',
+    'timezone',
+    'couple_id',
+    'is_premium',
+    'onboarding_completed',
+    'notification_preferences',
+    'competition_points',
+    'unclaimed_vouchers',
+    'last_seen_daily_question_at',
+    'last_seen_rain_check_tokens',
+    'last_seen_fantasies',
+    'last_seen_fantasy_pending',
+    'last_seen_fantasy_approved',
+    'last_seen_fantasy_completed',
+    'last_seen_coupons'
+].join(', ');
+
+const COUPLE_FIELDS = [
+    'id',
+    'invite_code',
+    'user_one_id',
+    'user_two_id',
+    'status',
+    'spicy_mode',
+    'anniversary_date',
+    'archived_at',
+    'created_at',
+    'current_streak',
+    'longest_streak',
+    'previous_streak',
+    'daily_question_date',
+    'daily_question_id',
+    'last_activity_date',
+    'rain_check_tokens',
+    'total_love_points',
+    'action_points',
+    'challenge_stats'
+].join(', ');
+
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const CoupleContext = createContext<CoupleContextType | undefined>(undefined);
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export const CoupleProvider = ({ children }: { children: ReactNode }) => {
     const { user, loading: authLoading } = useAuth();
     const [couple, setCouple] = useState<CoupleData | null>(null);
@@ -57,7 +114,7 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
             // Fetch user profile
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select('*')
+                .select(PROFILE_FIELDS)
                 .eq('id', user.id)
                 .single();
 
@@ -74,18 +131,14 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
             if (profileData.couple_id) {
                 const { data: specificCouple, error: specificError } = await supabase
                     .from('couples')
-                    .select('*')
+                    .select(COUPLE_FIELDS)
                     .eq('id', profileData.couple_id)
                     .eq('status', 'active') // Only fetch if active
                     .single();
 
                 if (!specificError) {
                     coupleData = specificCouple;
-                } else {
-
                 }
-            } else {
-
             }
 
             if (!coupleData) {
@@ -101,7 +154,7 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                 if (partnerId) {
                     const { data: partnerData, error: partnerError } = await supabase
                         .from('profiles')
-                        .select('*')
+                        .select(PROFILE_FIELDS)
                         .eq('id', partnerId)
                         .single();
 
@@ -112,8 +165,8 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
         } catch (err: any) {
-            console.error('Error fetching couple data:', err);
-            setError(err.message);
+            logger.error('CoupleContext', 'Error fetching couple data', err);
+            setError(err?.message || 'Failed to fetch couple data');
         } finally {
             if (!silent) setLoading(false);
         }
@@ -132,63 +185,6 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
         // Initial fetch
         fetchCoupleData();
 
-        // Subscribe to Realtime changes for couples
-        const couplesChannel = supabase
-            .channel('couple_data_changes_global')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'couples'
-                },
-                (payload) => {
-                    const currentCouple = coupleRef.current; // Use ref
-
-
-                    const newCouple = payload.new as CoupleData;
-
-                    // Handle Soft Delete (Archived) as effectively deleted for the active dashboard
-                    if (newCouple && newCouple.status === 'archived') {
-                        if (currentCouple?.id === newCouple.id) {
-                            setCouple(null);
-                            setPartner(null);
-                            // Force local profile update to reflect single status immediately
-                            setUserProfile(prev => prev ? { ...prev, couple_id: null } : null);
-                            // Refresh logic
-                            refreshCoupleData(true); // Silent update
-                        }
-                        return; // Stop processing
-                    }
-
-                    // Update couple data if this update is for our couple
-                    // This handles real-time point updates, streak updates, etc.
-                    if (newCouple && newCouple.id === currentCouple?.id) {
-                        setCouple(newCouple);
-
-                        // Check if partner just joined (user_two_id changed from null to something)
-                        if (currentCouple?.user_two_id === null && newCouple.user_two_id !== null) {
-                            refreshCoupleData(true); // Fetch partner profile
-                        }
-                    } else if (newCouple && (newCouple.user_one_id === user.id || newCouple.user_two_id === user.id)) {
-                        setCouple(newCouple);
-                        refreshCoupleData(true); // Ensure all derived state is fresh
-                    } else if (payload.eventType === 'DELETE') {
-                        // Check if the deleted couple IS our couple
-                        if (payload.old && payload.old.id === currentCouple?.id) {
-                            setCouple(null);
-                            setPartner(null);
-                            // Do not manually nullify userProfile.couple_id, as it might have been reassigned (Restore flow)
-                            // refreshCoupleData will fetch the true state of the profile.
-                            refreshCoupleData(true); // Silent update
-                        }
-                    }
-                }
-            )
-            .subscribe(() => {
-
-            });
-
         // Subscribe to Realtime changes for MY profile
         const profileChannel = supabase
             .channel(`profile_changes:${user.id}`)
@@ -201,7 +197,6 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                     filter: `id=eq.${user.id}`
                 },
                 (payload) => {
-
                     const newProfile = payload.new as Profile;
                     // const oldProfile = payload.old as Profile;
 
@@ -215,7 +210,6 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
 
                         // Check if couple_id changed (Unpair, Join, Restore)
                         if (newProfile.couple_id !== currentRefId) {
-
                             if (newProfile.couple_id === null) {
                                 // Passive Unpair specific handling
                                 setCouple(null);
@@ -236,23 +230,81 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
             )
-            .subscribe((_status, _err) => {
+            .subscribe();
 
-            });
+        return () => {
+            supabase.removeChannel(profileChannel);
+        };
+    }, [user?.id, authLoading, fetchCoupleData, refreshCoupleData, navigate]);
+
+    // Subscribe to Realtime changes for the active couple only
+    useEffect(() => {
+        if (!couple?.id || !user) return;
+
+        const couplesChannel = supabase
+            .channel(`couple_data_changes:${couple.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'couples',
+                    filter: `id=eq.${couple.id}`
+                },
+                (payload) => {
+                    const currentCouple = coupleRef.current;
+                    const newCouple = payload.new as CoupleData;
+
+                    // Handle Soft Delete (Archived) as effectively deleted for the active dashboard
+                    if (newCouple && newCouple.status === 'archived') {
+                        if (currentCouple?.id === newCouple.id) {
+                            setCouple(null);
+                            setPartner(null);
+                            // Force local profile update to reflect single status immediately
+                            setUserProfile(prev => prev ? { ...prev, couple_id: null } : null);
+                            refreshCoupleData(true); // Silent update
+                        }
+                        return;
+                    }
+
+                    if (newCouple && newCouple.id === currentCouple?.id) {
+                        setCouple(newCouple);
+
+                        // Check if partner just joined (user_two_id changed from null to something)
+                        if (currentCouple?.user_two_id === null && newCouple.user_two_id !== null) {
+                            refreshCoupleData(true);
+                        }
+                    } else if (payload.eventType === 'DELETE') {
+                        if (payload.old && payload.old.id === currentCouple?.id) {
+                            setCouple(null);
+                            setPartner(null);
+                            refreshCoupleData(true);
+                        }
+                    }
+                }
+            )
+            .subscribe();
 
         return () => {
             supabase.removeChannel(couplesChannel);
-            supabase.removeChannel(profileChannel);
         };
-    }, [user?.id, authLoading]);
+    }, [couple?.id, user, refreshCoupleData]);
+
+    const contextValue = useMemo(
+        () => ({ couple, partner, userProfile, loading, error, refreshCoupleData }),
+        [couple, partner, userProfile, loading, error, refreshCoupleData]
+    );
 
     return (
-        <CoupleContext.Provider value={{ couple, partner, userProfile, loading, error, refreshCoupleData }}>
+        <CoupleContext.Provider value={contextValue}>
             {children}
         </CoupleContext.Provider>
     );
 };
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export const useCoupleContext = () => {
     const context = useContext(CoupleContext);
     if (context === undefined) {

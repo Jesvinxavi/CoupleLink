@@ -1,5 +1,8 @@
-import { useCouponsContext } from '../context/CouponsContext';
+import { useCouponsContext } from '@/context/CouponsContext';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 export interface CouponTemplate {
     id: string;
     title: string;
@@ -27,6 +30,10 @@ export interface Coupon {
     acknowledged_at?: string;
 }
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
+// Thin wrapper around CouponsContext to keep imports stable.
 export function useCoupons() {
     return useCouponsContext();
 }

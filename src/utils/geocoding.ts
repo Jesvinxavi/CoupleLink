@@ -1,3 +1,8 @@
+import { logger } from '@/lib/logger';
+
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 export interface GeocodingResult {
     country: string | null;
     displayName: string;
@@ -5,6 +10,9 @@ export interface GeocodingResult {
     lon: string;
 }
 
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
 const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org/search';
 
 /**
@@ -31,7 +39,7 @@ export async function resolveCountry(location: string): Promise<GeocodingResult 
         });
 
         if (!response.ok) {
-            console.warn('Geocoding failed:', response.statusText);
+            logger.warn('geocoding', 'Geocoding failed', response.statusText);
             return null;
         }
 
@@ -49,7 +57,7 @@ export async function resolveCountry(location: string): Promise<GeocodingResult 
 
         return null;
     } catch (error) {
-        console.error('Error resolving country:', error);
+        logger.error('geocoding', 'Error resolving country', error);
         return null;
     }
 }
@@ -59,6 +67,9 @@ export async function resolveCountry(location: string): Promise<GeocodingResult 
  * @param country The country name
  * @returns The continent name (e.g. "Europe", "Asia") or "Other"
  */
+// ═══════════════════════════════════════
+// FUNCTIONS
+// ═══════════════════════════════════════
 export function getContinent(country: string): string {
     if (!country) return 'Other';
     const c = country.toLowerCase().trim();

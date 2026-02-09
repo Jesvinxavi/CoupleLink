@@ -1,21 +1,39 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { supabase } from "../lib/supabase"
-import { authConfig } from "../lib/authConfig"
-import { useAuth } from "../context/AuthContext"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
-import { Alert, AlertDescription } from "../components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
+import { supabase } from "@/lib/supabase"
+import { authConfig } from "@/lib/authConfig"
+import { logger } from "@/lib/logger"
+import { useAuth } from "@/context/AuthContext"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
+type AuthMessage = {
+    type: "success" | "error" | "info"
+    text: string
+}
+
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function Login() {
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
     const [loading, setLoading] = useState(false)
-    const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null)
+    const [message, setMessage] = useState<AuthMessage | null>(null)
     const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin")
     const [showForgotPassword, setShowForgotPassword] = useState(false)
     const { user } = useAuth()
@@ -23,12 +41,18 @@ export default function Login() {
 
     const isTestingMode = authConfig.isTestingMode
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         if (user) {
             navigate("/")
         }
     }, [user, navigate])
 
+    // ═══════════════════════════════════════
+    // AUTH HANDLERS
+    // ═══════════════════════════════════════
     // Sign In with email/password
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -45,7 +69,7 @@ export default function Login() {
             })
 
             if (error) {
-                console.error('Magic link error', error)
+                logger.error('Login', 'Magic link error', error)
                 setMessage({ type: "error", text: error.message })
             } else {
                 setMessage({ type: "success", text: "Check your email for the login link!" })
@@ -67,7 +91,7 @@ export default function Login() {
         })
 
         if (error) {
-            console.error('Sign in error', error)
+            logger.error('Login', 'Sign in error', error)
             if (error.message.includes("Invalid login credentials")) {
                 setMessage({ type: "error", text: "Invalid email or password. Please try again." })
             } else if (error.message.includes("Email not confirmed")) {
@@ -99,7 +123,7 @@ export default function Login() {
             })
 
             if (error) {
-                console.error('Magic link signup error', error)
+                logger.error('Login', 'Magic link signup error', error)
                 setMessage({ type: "error", text: error.message })
             } else {
                 setMessage({ type: "success", text: "Check your email for the login link! This will create your account." })
@@ -136,7 +160,7 @@ export default function Login() {
         })
 
         if (error) {
-            console.error('Signup error', error)
+            logger.error('Login', 'Signup error', error)
             if (error.message.includes("already registered")) {
                 setMessage({ type: "error", text: "This email is already registered. Try signing in instead." })
             } else {
@@ -161,12 +185,15 @@ export default function Login() {
         })
 
         if (error) {
-            console.error('Google login error', error)
+            logger.error('Login', 'Google login error', error)
             setMessage({ type: "error", text: error.message })
             setLoading(false)
         }
     }
 
+    // ═══════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════
     const resetForm = () => {
         setPassword("")
         setConfirmPassword("")
@@ -190,7 +217,7 @@ export default function Login() {
         })
 
         if (error) {
-            console.error('Password reset error', error)
+            logger.error('Login', 'Password reset error', error)
             setMessage({ type: "error", text: error.message })
         } else {
             setMessage({
@@ -201,6 +228,9 @@ export default function Login() {
         setLoading(false)
     }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md">

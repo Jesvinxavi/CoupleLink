@@ -1,12 +1,21 @@
-import { useRef } from 'react';
-import { motion } from 'framer-motion';
-import { useFantasyBucketList } from '../../hooks/useFantasyBucketList';
-import { useSexplorationModals } from '@/context/SexplorationModalContext';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useRef, useEffect, useMemo } from "react"
+import { motion } from "framer-motion"
+import { useFantasyBucketList } from "@/hooks/useFantasyBucketList"
+import { useSexplorationModals } from "@/context/SexplorationModalContext"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface FantasyBucketListTileProps {
-    initialOpenModal?: boolean;
+    initialOpenModal?: boolean
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucketListTileProps) {
     const {
         pendingCount,
@@ -14,20 +23,33 @@ export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucke
         completedCount,
         fantasies,
         loading,
-    } = useFantasyBucketList();
-    const { openFantasies, lastSeenFantasyPending, lastSeenFantasyApproved, lastSeenFantasyCompleted } = useSexplorationModals();
+    } = useFantasyBucketList()
+    const { openFantasies, lastSeenFantasyPending, lastSeenFantasyApproved, lastSeenFantasyCompleted } = useSexplorationModals()
 
-    // Check for unseen items
-    const hasUnseenPending = fantasies.some(f => f.status === 'pending' && new Date(f.created_at || 0).getTime() > lastSeenFantasyPending);
-    const hasUnseenApproved = fantasies.some(f => f.status === 'approved' && new Date(f.responded_at || f.created_at || 0).getTime() > lastSeenFantasyApproved);
-    const hasUnseenCompleted = fantasies.some(f => f.status === 'completed' && new Date(f.completed_at || 0).getTime() > lastSeenFantasyCompleted);
+    // ═══════════════════════════════════════
+    // DERIVED DATA
+    // ═══════════════════════════════════════
+    const hasUnseenPending = useMemo(() => {
+        return fantasies.some(f => f.status === "pending" && new Date(f.created_at || 0).getTime() > lastSeenFantasyPending)
+    }, [fantasies, lastSeenFantasyPending])
+
+    const hasUnseenApproved = useMemo(() => {
+        return fantasies.some(f => f.status === "approved" && new Date(f.responded_at || f.created_at || 0).getTime() > lastSeenFantasyApproved)
+    }, [fantasies, lastSeenFantasyApproved])
+
+    const hasUnseenCompleted = useMemo(() => {
+        return fantasies.some(f => f.status === "completed" && new Date(f.completed_at || 0).getTime() > lastSeenFantasyCompleted)
+    }, [fantasies, lastSeenFantasyCompleted])
 
     // Handle initial open if needed
-    const mounted = useRef(false);
-    if (!mounted.current && initialOpenModal) {
-        openFantasies();
-        mounted.current = true;
-    }
+    const mounted = useRef(false)
+
+    useEffect(() => {
+        if (!mounted.current && initialOpenModal) {
+            openFantasies()
+            mounted.current = true
+        }
+    }, [initialOpenModal, openFantasies])
 
     return (
         <motion.div
@@ -51,7 +73,7 @@ export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucke
                 <div className="flex items-center gap-10">
                     <div className="flex items-center gap-1.5">
                         <span className="w-6 h-6 rounded-full bg-green-500 text-white text-[12px] font-bold flex items-center justify-center">
-                            {loading ? '—' : approvedCount}
+                            {loading ? "—" : approvedCount}
                         </span>
                         <div className="relative">
                             <span className="text-[11px] text-gray-400 uppercase tracking-wider">
@@ -65,7 +87,7 @@ export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucke
 
                     <div className="flex items-center gap-1.5">
                         <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-[12px] font-bold flex items-center justify-center">
-                            {loading ? '—' : pendingCount}
+                            {loading ? "—" : pendingCount}
                         </span>
                         <div className="relative">
                             <span className="text-[11px] text-gray-400 uppercase tracking-wider">
@@ -81,7 +103,7 @@ export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucke
                 {/* Bottom Row: Completed */}
                 <div className="flex items-center gap-1.5">
                     <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-[12px] font-bold flex items-center justify-center">
-                        {loading ? '—' : completedCount}
+                        {loading ? "—" : completedCount}
                     </span>
                     <div className="relative">
                         <span className="text-[11px] text-gray-400 uppercase tracking-wider">
@@ -96,6 +118,6 @@ export function FantasyBucketListTile({ initialOpenModal = false }: FantasyBucke
 
             <p className="text-xs text-gray-400 text-right">Tap to explore →</p>
         </motion.div>
-    );
+    )
 }
 

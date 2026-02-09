@@ -1,17 +1,26 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { ChallengeOverlay } from '../components/dashboard/ChallengeOverlay';
-import { useChallenges } from '../hooks/useChallenges';
-import { useChallengePoints } from '../hooks/useChallengePoints';
-import { useCoupleData } from '../hooks/useCoupleData';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { ChallengeOverlay } from '@/components/dashboard/ChallengeOverlay';
+import { useChallenges } from '@/hooks/useChallenges';
+import { useChallengePoints } from '@/hooks/useChallengePoints';
+import { useCoupleData } from '@/hooks/useCoupleData';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface ChallengeModalContextType {
     openDaily: () => void;
     openWeekly: () => void;
     openMonthly: () => void;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const ChallengeModalContext = createContext<ChallengeModalContextType | null>(null);
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useChallengeModals() {
     const context = useContext(ChallengeModalContext);
     if (!context) {
@@ -24,6 +33,9 @@ interface ChallengeModalProviderProps {
     children: ReactNode;
 }
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export function ChallengeModalProvider({ children }: ChallengeModalProviderProps) {
     const { couple } = useCoupleData();
 
@@ -35,11 +47,11 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
     const { awardChallengePoints, deductChallengePointsLegacy, checkStreakUpdate } = useChallengePoints();
 
     // Open modal directly (no navigation)
-    const openDaily = () => setSelectedChallenge({ type: 'daily' });
-    const openWeekly = () => setSelectedChallenge({ type: 'weekly' });
-    const openMonthly = () => setSelectedChallenge({ type: 'monthly' });
+    const openDaily = useCallback(() => setSelectedChallenge({ type: 'daily' }), []);
+    const openWeekly = useCallback(() => setSelectedChallenge({ type: 'weekly' }), []);
+    const openMonthly = useCallback(() => setSelectedChallenge({ type: 'monthly' }), []);
 
-    const handleClose = () => setSelectedChallenge(null);
+    const handleClose = useCallback(() => setSelectedChallenge(null), []);
 
     const handleComplete = async (file?: File | null, winnerSelection?: 'me' | 'partner' | 'tie') => {
         if (selectedChallenge) {
@@ -130,8 +142,13 @@ export function ChallengeModalProvider({ children }: ChallengeModalProviderProps
 
     const challengeData = getChallengeData();
 
+    const contextValue = useMemo(
+        () => ({ openDaily, openWeekly, openMonthly }),
+        [openDaily, openWeekly, openMonthly]
+    );
+
     return (
-        <ChallengeModalContext.Provider value={{ openDaily, openWeekly, openMonthly }}>
+        <ChallengeModalContext.Provider value={contextValue}>
             {children}
 
             {/* Global Modal - persists across page navigation */}

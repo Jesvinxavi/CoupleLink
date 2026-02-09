@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS public.sex_counter (
     couple_id UUID NOT NULL REFERENCES public.couples(id) ON DELETE CASCADE,
     count INTEGER DEFAULT 0,
-    last_updated TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     PRIMARY KEY (couple_id)
 );
 
@@ -41,11 +41,12 @@ CREATE TABLE IF NOT EXISTS public.fantasy_bucket_list (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     couple_id UUID NOT NULL REFERENCES public.couples(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
+    fantasy_text TEXT NOT NULL,
     description TEXT,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'completed')),
     requester_id UUID NOT NULL REFERENCES auth.users(id),
     approver_id UUID REFERENCES auth.users(id),
+    responded_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
     category TEXT DEFAULT 'general'
 );
@@ -69,10 +70,16 @@ CREATE TABLE IF NOT EXISTS public.coupons (
     title TEXT NOT NULL,
     description TEXT,
     category TEXT CHECK (category IN ('romantic', 'spicy', 'service', 'fun')),
-    assigned_to UUID NOT NULL REFERENCES auth.users(id),
+    assigned_to UUID REFERENCES auth.users(id),
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'redeemed')),
     is_redeemed BOOLEAN DEFAULT false,
     redeemed_at TIMESTAMP WITH TIME ZONE,
-    expiry_date TIMESTAMP WITH TIME ZONE,
+    activated_at TIMESTAMP WITH TIME ZONE,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    gifted_by UUID REFERENCES auth.users(id),
+    is_gift BOOLEAN DEFAULT false,
+    gift_message TEXT,
+    acknowledged_at TIMESTAMP WITH TIME ZONE,
     template_id UUID REFERENCES public.coupon_templates(id) ON DELETE SET NULL
 );
 

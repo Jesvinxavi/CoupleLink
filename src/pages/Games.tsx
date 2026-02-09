@@ -1,13 +1,19 @@
-import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
-import { Palette, HelpCircle, MessageCircle, Zap, Gamepad2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useGameSession } from "../hooks/useGameSession";
-import { useCoupleData } from "../hooks/useCoupleData";
-import { GameSessionOverlay, JoinSessionBanner } from "../components/games/GameSessionOverlay";
-import type { GameType } from "../data/gameQuestions";
-import { useGameProgress } from "../hooks/useGameProgress";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useCallback } from "react"
+import { Palette, HelpCircle, MessageCircle, Zap, Gamepad2 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import Sidebar from "@/components/Sidebar"
+import { GameSessionOverlay, JoinSessionBanner } from "@/components/games/GameSessionOverlay"
+import { useGameSession } from "@/hooks/useGameSession"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { useGameProgress } from "@/hooks/useGameProgress"
+import type { GameType } from "@/data/gameQuestions"
 
+// ═══════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════
 const container = {
     hidden: { opacity: 0 },
     show: {
@@ -23,6 +29,9 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function GamesPage() {
     const {
         activeSession,
@@ -32,60 +41,69 @@ export default function GamesPage() {
         isInSession,
         partnerInSession,
         getGameLabel
-    } = useGameSession();
-    const { partner, currentUser, couple } = useCoupleData();
-    const { progress } = useGameProgress(couple?.id, (couple as any)?.sexploration_opt_in ?? false);
+    } = useGameSession()
+    const { partner, currentUser, couple } = useCoupleData()
+    const { progress } = useGameProgress(couple?.id, (couple as any)?.sexploration_opt_in ?? false)
 
-    const [showGameOverlay, setShowGameOverlay] = useState(false);
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [showGameOverlay, setShowGameOverlay] = useState(false)
+    const [isOverlayFocused, setIsOverlayFocused] = useState(false)
 
-    const [isOverlayFocused, setIsOverlayFocused] = useState(false);
-
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     // Show overlay if user is in an active session
     useEffect(() => {
         if (activeSession && isInSession) {
-            setShowGameOverlay(true);
+            setShowGameOverlay(true)
         } else {
             // Close if no session OR not in session (e.g. partner created new one, we need to join)
-            setShowGameOverlay(false);
+            setShowGameOverlay(false)
         }
-    }, [activeSession, isInSession]);
-
+    }, [activeSession, isInSession])
 
     // Auto-open overlay when partner joins (for user 1)
     useEffect(() => {
         if (activeSession && isInSession && partnerInSession && !showGameOverlay) {
-            setShowGameOverlay(true);
+            setShowGameOverlay(true)
         }
-    }, [activeSession, isInSession, partnerInSession, showGameOverlay]);
+    }, [activeSession, isInSession, partnerInSession, showGameOverlay])
 
     // Check if partner started a session we can join
     const canJoinPartnerSession = activeSession &&
         !isInSession &&
-        activeSession.status === 'waiting' &&
-        activeSession.player_one_id !== currentUser?.id;
+        activeSession.status === "waiting" &&
+        activeSession.player_one_id !== currentUser?.id
 
-    const handlePlayGame = async (gameType: GameType) => {
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handlePlayGame = useCallback(async (gameType: GameType) => {
         // Show overlay immediately for instant feedback (optimistic UI)
-        setShowGameOverlay(true);
+        setShowGameOverlay(true)
         // Create session in background - overlay will show loading state until session is ready
         // The realtime subscription will update activeSession once created
-        await createSession(gameType);
-    };
+        await createSession(gameType)
+    }, [createSession])
 
-
-    const handleJoinPartner = async () => {
-        if (!activeSession) return;
-        const success = await joinSession(activeSession.id);
+    const handleJoinPartner = useCallback(async () => {
+        if (!activeSession) return
+        const success = await joinSession(activeSession.id)
         if (success) {
-            setShowGameOverlay(true);
+            setShowGameOverlay(true)
         }
-    };
+    }, [activeSession, joinSession])
 
-    const handleCloseOverlay = () => {
-        setShowGameOverlay(false);
-        setIsOverlayFocused(false);
-    };
+    const handleCloseOverlay = useCallback(() => {
+        setShowGameOverlay(false)
+        setIsOverlayFocused(false)
+    }, [])
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (isLoading) {
         return (
             <>
@@ -94,12 +112,15 @@ export default function GamesPage() {
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-500"></div>
                 </div>
             </>
-        );
+        )
     }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
-            <div style={{ display: isOverlayFocused ? 'none' : 'contents' }}>
+            <div style={{ display: isOverlayFocused ? "none" : "contents" }}>
                 <Sidebar />
                 <div className="pt-14 md:ml-[250px] md:pt-0 min-h-screen dark:bg-gray-900 pb-24 relative overflow-hidden">
                     <main className="p-4 md:p-8 pb-32">
@@ -164,7 +185,7 @@ export default function GamesPage() {
                                     <motion.div
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        onClick={() => handlePlayGame('draw_and_guess')}
+                                        onClick={() => handlePlayGame("draw_and_guess")}
                                         className="cursor-pointer"
                                     >
                                         <GameCardEnhanced
@@ -174,14 +195,14 @@ export default function GamesPage() {
                                             color="from-purple-500 to-violet-600"
                                             players="2 players"
                                             time="~10 min"
-                                            progress={progress['draw_and_guess']}
+                                            progress={progress["draw_and_guess"]}
                                         />
                                     </motion.div>
 
                                     <motion.div
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        onClick={() => handlePlayGame('would_you_rather')}
+                                        onClick={() => handlePlayGame("would_you_rather")}
                                         className="cursor-pointer"
                                     >
                                         <GameCardEnhanced
@@ -191,14 +212,14 @@ export default function GamesPage() {
                                             color="from-rose-500 to-pink-600"
                                             players="2 players"
                                             time="~15 min"
-                                            progress={progress['would_you_rather']}
+                                            progress={progress["would_you_rather"]}
                                         />
                                     </motion.div>
 
                                     <motion.div
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        onClick={() => handlePlayGame('never_have_i_ever')}
+                                        onClick={() => handlePlayGame("never_have_i_ever")}
                                         className="cursor-pointer"
                                     >
                                         <GameCardEnhanced
@@ -208,14 +229,14 @@ export default function GamesPage() {
                                             color="from-blue-500 to-cyan-600"
                                             players="2 players"
                                             time="~15 min"
-                                            progress={progress['never_have_i_ever']}
+                                            progress={progress["never_have_i_ever"]}
                                         />
                                     </motion.div>
 
                                     <motion.div
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        onClick={() => handlePlayGame('rapid_fire')}
+                                        onClick={() => handlePlayGame("rapid_fire")}
                                         className="cursor-pointer"
                                     >
                                         <GameCardEnhanced
@@ -225,7 +246,7 @@ export default function GamesPage() {
                                             color="from-amber-500 to-orange-600"
                                             players="2 players"
                                             time="~5 min"
-                                            progress={progress['rapid_fire']}
+                                            progress={progress["rapid_fire"]}
                                         />
                                     </motion.div>
                                 </div>
@@ -239,7 +260,7 @@ export default function GamesPage() {
                     {canJoinPartnerSession && (
                         <JoinSessionBanner
                             session={activeSession}
-                            partnerName={partner?.first_name || 'Partner'}
+                            partnerName={partner?.first_name || "Partner"}
                             onJoin={handleJoinPartner}
                         />
                     )}
@@ -250,7 +271,7 @@ export default function GamesPage() {
             <AnimatePresence>
                 {showGameOverlay && (
                     <GameSessionOverlay
-                        key={activeSession ? `overlay-${activeSession.id}` : 'overlay-loading'}
+                        key={activeSession ? `overlay-${activeSession.id}` : "overlay-loading"}
                         isOpen={showGameOverlay}
                         onClose={handleCloseOverlay}
                         session={activeSession}
@@ -261,26 +282,29 @@ export default function GamesPage() {
 
 
         </>
-    );
+    )
 }
 
+// ═══════════════════════════════════════
+// SUBCOMPONENTS
+// ═══════════════════════════════════════
 // Enhanced Game Card Component
 interface GameCardEnhancedProps {
-    title: string;
-    description: string;
-    icon: React.ReactNode;
-    color: string;
-    players: string;
-    time: string;
-    progress?: number;
+    title: string
+    description: string
+    icon: React.ReactNode
+    color: string
+    players: string
+    time: string
+    progress?: number
 }
 
 function GameCardEnhanced({ title, description, icon, color, players, time, progress = 0 }: GameCardEnhancedProps) {
     // Calculate circle circumference for SVG dash offset
     // Size 24x24 now (w-6 h-6), radius 10, center 12
-    const radius = 9;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (progress / 100) * circumference;
+    const radius = 9
+    const circumference = 2 * Math.PI * radius
+    const strokeDashoffset = circumference - (progress / 100) * circumference
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 relative group">
@@ -318,7 +342,7 @@ function GameCardEnhanced({ title, description, icon, color, players, time, prog
                                 fill="transparent"
                                 strokeDasharray={circumference}
                                 strokeDashoffset={strokeDashoffset}
-                                className={`${progress === 100 ? 'text-green-500' : 'text-rose-500'} transition-all duration-1000 ease-out`}
+                                className={`${progress === 100 ? "text-green-500" : "text-rose-500"} transition-all duration-1000 ease-out`}
                                 strokeLinecap="round"
                             />
                         </svg>
@@ -339,5 +363,5 @@ function GameCardEnhanced({ title, description, icon, color, players, time, prog
                 </div>
             </div>
         </div>
-    );
+    )
 }

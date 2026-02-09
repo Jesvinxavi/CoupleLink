@@ -1,7 +1,13 @@
-import Sidebar from "@/components/Sidebar";
-import { CalendarView } from "@/components/calendar/CalendarView";
-import { motion } from "framer-motion";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import Sidebar from "@/components/Sidebar"
+import { CalendarView } from "@/components/calendar/CalendarView"
+import { motion } from "framer-motion"
 
+// ═══════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════
 const container = {
     hidden: { opacity: 0 },
     show: {
@@ -17,6 +23,9 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function CalendarPage() {
     return (
         <>
@@ -48,5 +57,5 @@ export default function CalendarPage() {
                 </main>
             </div>
         </>
-    );
+    )
 }

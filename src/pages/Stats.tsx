@@ -1,3 +1,7 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Sidebar from "@/components/Sidebar"
 import { useRelationshipStats } from "@/hooks/useRelationshipStats"
 import { motion } from "framer-motion"
@@ -9,9 +13,18 @@ import {
     ResponsiveContainer,
 } from "recharts"
 import { LeaderboardTile } from "@/components/dashboard/LeaderboardTile"
+import { UserAvatar } from "@/components/ui/UserAvatar"
+import { TravelOverlay } from "@/components/stats/TravelOverlay"
+import { LovePointsOverlay } from "@/components/stats/LovePointsOverlay"
 
-const COLORS = ['#F43F5E', '#8B5CF6', '#3B82F6', '#10B981', '#F59E0B'];
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+const COLORS = ["#F43F5E", "#8B5CF6", "#3B82F6", "#10B981", "#F59E0B"]
 
+// ═══════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════
 const container = {
     hidden: { opacity: 0 },
     show: {
@@ -27,22 +40,53 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
-// import { Calendar, MapPin, Heart, Trophy, Clock, Globe } from 'lucide-react';
-import { useState, useEffect } from "react"
-import { UserAvatar } from "@/components/ui/UserAvatar"
-
-import { TravelOverlay } from "@/components/stats/TravelOverlay"
-import { LovePointsOverlay } from "@/components/stats/LovePointsOverlay"
-
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function StatsPage() {
     const { stats, loading } = useRelationshipStats()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [forceLoading, setForceLoading] = useState(true)
     const [isTravelOverlayOpen, setIsTravelOverlayOpen] = useState(false)
     const [isLovePointsOverlayOpen, setIsLovePointsOverlayOpen] = useState(false)
-    const [challengeTimeframe, setChallengeTimeframe] = useState<'all' | '90'>('90')
+    const [challengeTimeframe, setChallengeTimeframe] = useState<"all" | "90">("90")
 
-    const activeChallengeStats = challengeTimeframe === 'all' ? stats?.challengeCompletion : stats?.challengeCompletion90
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleOpenTravel = useCallback(() => {
+        setIsTravelOverlayOpen(true)
+    }, [])
 
+    const handleCloseTravel = useCallback(() => {
+        setIsTravelOverlayOpen(false)
+    }, [])
+
+    const handleOpenLovePoints = useCallback(() => {
+        setIsLovePointsOverlayOpen(true)
+    }, [])
+
+    const handleCloseLovePoints = useCallback(() => {
+        setIsLovePointsOverlayOpen(false)
+    }, [])
+
+    const handleSetChallengeTimeframe = useCallback((timeframe: "all" | "90") => {
+        setChallengeTimeframe(timeframe)
+    }, [])
+
+    // ═══════════════════════════════════════
+    // DERIVED DATA
+    // ═══════════════════════════════════════
+    const activeChallengeStats = useMemo(() => {
+        return challengeTimeframe === "all" ? stats?.challengeCompletion : stats?.challengeCompletion90
+    }, [challengeTimeframe, stats])
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         const timer = setTimeout(() => {
             setForceLoading(false)
@@ -50,6 +94,9 @@ export default function StatsPage() {
         return () => clearTimeout(timer)
     }, [])
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
             <Sidebar />
@@ -115,7 +162,7 @@ export default function StatsPage() {
 
                                 <motion.div
                                     variants={item}
-                                    onClick={() => setIsLovePointsOverlayOpen(true)}
+                                    onClick={handleOpenLovePoints}
                                     className="md:col-span-1 bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer active:scale-95"
                                 >
                                     <div>
@@ -134,7 +181,7 @@ export default function StatsPage() {
 
                                 <motion.div
                                     variants={item}
-                                    onClick={() => setIsTravelOverlayOpen(true)}
+                                    onClick={handleOpenTravel}
                                     className="md:col-span-1 bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer active:scale-95"
                                 >
                                     <div>
@@ -160,19 +207,19 @@ export default function StatsPage() {
                                         </h3>
                                         <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                                             <button
-                                                onClick={() => setChallengeTimeframe('90')}
-                                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${challengeTimeframe === '90'
-                                                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                                onClick={() => handleSetChallengeTimeframe("90")}
+                                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${challengeTimeframe === "90"
+                                                    ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
+                                                    : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                                                     }`}
                                             >
                                                 Last 90 Days
                                             </button>
                                             <button
-                                                onClick={() => setChallengeTimeframe('all')}
-                                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${challengeTimeframe === 'all'
-                                                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                                onClick={() => handleSetChallengeTimeframe("all")}
+                                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${challengeTimeframe === "all"
+                                                    ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
+                                                    : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                                                     }`}
                                             >
                                                 All Time
@@ -314,14 +361,14 @@ export default function StatsPage() {
             {/* Travel Overlay */}
             <TravelOverlay
                 isOpen={isTravelOverlayOpen}
-                onClose={() => setIsTravelOverlayOpen(false)}
+                onClose={handleCloseTravel}
                 countries={stats?.travelStats.visitedCountries || []}
             />
 
             {/* Love Points Overlay */}
             <LovePointsOverlay
                 isOpen={isLovePointsOverlayOpen}
-                onClose={() => setIsLovePointsOverlayOpen(false)}
+                onClose={handleCloseLovePoints}
                 totalPoints={stats?.totalLovePoints || 0}
                 breakdown={stats?.lovePointsBreakdown || {
                     dailyChallenges: 0,
@@ -336,7 +383,17 @@ export default function StatsPage() {
     )
 }
 
-function CircularProgress({ label, percentage, completed, total }: { label: string, percentage: number, completed: number, total: number }) {
+// ═══════════════════════════════════════
+// SUBCOMPONENTS
+// ═══════════════════════════════════════
+interface CircularProgressProps {
+    label: string
+    percentage: number
+    completed: number
+    total: number
+}
+
+function CircularProgress({ label, percentage, completed, total }: CircularProgressProps) {
     // Color logic: 0-33 Red, 34-66 Amber, 67-100 Green
     let color = "#10B981" // Green
     if (percentage <= 33) color = "#EF4444" // Red
@@ -344,7 +401,8 @@ function CircularProgress({ label, percentage, completed, total }: { label: stri
 
     const radius = 32 // Slightly smaller to fit side-by-side text
     const circumference = 2 * Math.PI * radius
-    const strokeDashoffset = circumference - (percentage / 100) * circumference
+    const safePercentage = Math.min(100, Math.max(0, percentage))
+    const strokeDashoffset = circumference - (safePercentage / 100) * circumference
 
     return (
         <div className="flex items-center gap-2">
@@ -376,7 +434,7 @@ function CircularProgress({ label, percentage, completed, total }: { label: stri
                     />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">{percentage}%</span>
+                    <span className="text-lg font-bold text-gray-900 dark:text-white">{safePercentage}%</span>
                 </div>
             </div>
             <div className="flex flex-col">

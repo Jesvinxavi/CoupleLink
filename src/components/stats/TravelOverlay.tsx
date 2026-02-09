@@ -1,53 +1,50 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Globe } from 'lucide-react';
-import { getContinent } from '../../utils/geocoding';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useMemo } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { X, Globe } from "lucide-react"
+import { getContinent } from "@/utils/geocoding"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface TravelOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    countries: string[];
+    isOpen: boolean
+    onClose: () => void
+    countries: string[]
 }
 
-export const TravelOverlay: React.FC<TravelOverlayProps> = ({ isOpen, onClose, countries }) => {
-    // Group countries by continent
-    const groupedCountries = React.useMemo(() => {
-        const groups: Record<string, string[]> = {};
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+export function TravelOverlay({ isOpen, onClose, countries }: TravelOverlayProps) {
+    useLockBodyScroll(isOpen)
+
+    // ═══════════════════════════════════════
+    // DERIVED DATA
+    // ═══════════════════════════════════════
+    const groupedCountries = useMemo(() => {
+        const groups: Record<string, string[]> = {}
 
         // Initialize standard order
-        const order = ['Europe', 'North America', 'Asia', 'South America', 'Oceania', 'Africa', 'Other'];
-        order.forEach(c => groups[c] = []);
+        const order = ["Europe", "North America", "Asia", "South America", "Oceania", "Africa", "Other"]
+        order.forEach(c => groups[c] = [])
 
         countries.forEach(country => {
-            const continent = getContinent(country);
-            if (!groups[continent]) groups[continent] = [];
-            groups[continent].push(country);
-        });
+            const continent = getContinent(country)
+            if (!groups[continent]) groups[continent] = []
+            groups[continent].push(country)
+        })
 
         // Filter out empty continents
-        return Object.entries(groups).filter(([_, list]) => list.length > 0);
-    }, [countries]);
+        return Object.entries(groups).filter(([_, list]) => list.length > 0)
+    }, [countries])
 
-    // Robust Body Lock
-    React.useEffect(() => {
-        if (!isOpen) return;
-
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
-
-        return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-        };
-    }, [isOpen]);
-
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <AnimatePresence>
             {isOpen && (
@@ -115,7 +112,7 @@ export const TravelOverlay: React.FC<TravelOverlayProps> = ({ isOpen, onClose, c
                                             </div>
                                         </div>
                                         <span className="mt-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 text-xs font-bold uppercase tracking-wider border border-blue-100 dark:border-blue-800/50">
-                                            {countries.length === 1 ? 'Country' : 'Countries'} Visited Together
+                                            {countries.length === 1 ? "Country" : "Countries"} Visited Together
                                         </span>
                                     </div>
                                 </div>
@@ -130,15 +127,15 @@ export const TravelOverlay: React.FC<TravelOverlayProps> = ({ isOpen, onClose, c
                                 {groupedCountries.length > 0 ? groupedCountries.map(([continent, list]) => {
                                     // Continent Colors
                                     const colors: Record<string, string> = {
-                                        'Europe': 'text-blue-500',
-                                        'North America': 'text-rose-500',
-                                        'Asia': 'text-amber-500',
-                                        'South America': 'text-emerald-500',
-                                        'Africa': 'text-purple-500',
-                                        'Oceania': 'text-cyan-500',
-                                        'Other': 'text-gray-500'
-                                    };
-                                    const colorClass = colors[continent] || 'text-gray-500';
+                                        "Europe": "text-blue-500",
+                                        "North America": "text-rose-500",
+                                        "Asia": "text-amber-500",
+                                        "South America": "text-emerald-500",
+                                        "Africa": "text-purple-500",
+                                        "Oceania": "text-cyan-500",
+                                        "Other": "text-gray-500"
+                                    }
+                                    const colorClass = colors[continent] || "text-gray-500"
 
                                     return (
                                         <div key={continent} className="space-y-2">
@@ -156,7 +153,7 @@ export const TravelOverlay: React.FC<TravelOverlayProps> = ({ isOpen, onClose, c
                                                 ))}
                                             </div>
                                         </div>
-                                    );
+                                    )
                                 }) : (
                                     <div className="flex flex-col items-center justify-center py-16 text-center">
                                         <div className="relative mb-6">
@@ -178,5 +175,5 @@ export const TravelOverlay: React.FC<TravelOverlayProps> = ({ isOpen, onClose, c
                 </>
             )}
         </AnimatePresence>
-    );
-};
+    )
+}

@@ -1,32 +1,39 @@
-import Sidebar from "../components/Sidebar"
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import Sidebar from "@/components/Sidebar"
 import { useNavigate } from "react-router-dom"
-import { SpaceActionTile } from "../components/ui/SpaceActionTile"
-import { useCoupleData } from "../hooks/useCoupleData"
+import { SpaceActionTile } from "@/components/ui/SpaceActionTile"
+import { useCoupleData } from "@/hooks/useCoupleData"
 
-import { useStreak } from "../hooks/useStreak"
-import { PartnerTile } from "../components/dashboard/PartnerTile"
-import { PartnerNoteTile } from "../components/dashboard/PartnerNoteTile"
-import { ChallengeSummaryTile } from "../components/dashboard/ChallengeSummaryTile"
-import { QuickActionsTile } from "../components/dashboard/QuickActionsTile"
-import { StreakBrokenModal } from "../components/dashboard/StreakBrokenModal"
+import { useStreak } from "@/hooks/useStreak"
+import { PartnerTile } from "@/components/dashboard/PartnerTile"
+import { PartnerNoteTile } from "@/components/dashboard/PartnerNoteTile"
+import { ChallengeSummaryTile } from "@/components/dashboard/ChallengeSummaryTile"
+import { QuickActionsTile } from "@/components/dashboard/QuickActionsTile"
+import { StreakBrokenModal } from "@/components/dashboard/StreakBrokenModal"
 
-import { StatOfTheDayTile } from "../components/dashboard/StatOfTheDayTile"
-import { useRelationshipStats } from "../hooks/useRelationshipStats"
+import { StatOfTheDayTile } from "@/components/dashboard/StatOfTheDayTile"
+import { useRelationshipStats } from "@/hooks/useRelationshipStats"
 
-import { ThrowbackTile } from "../components/dashboard/ThrowbackTile"
-import { StreakStatsTile } from "../components/dashboard/StreakStatsTile"
-import { MilestoneTrackerTile } from "../components/dashboard/MilestoneTrackerTile"
-import { SexplorationSummaryTile } from "../components/dashboard/SexplorationSummaryTile"
+import { ThrowbackTile } from "@/components/dashboard/ThrowbackTile"
+import { StreakStatsTile } from "@/components/dashboard/StreakStatsTile"
+import { MilestoneTrackerTile } from "@/components/dashboard/MilestoneTrackerTile"
+import { SexplorationSummaryTile } from "@/components/dashboard/SexplorationSummaryTile"
 
 
 import { motion } from "framer-motion"
-import { useState, useEffect } from "react"
-import { supabase } from "../lib/supabase"
-import { FoundArchivedSpaceModal } from "../components/ui/FoundArchivedSpaceModal"
-import { PaywallModal } from "../components/ui/PaywallModal"
-import { STORAGE_KEYS } from "../lib/constants"
-import type { CheckExistingArchiveResult } from "../types/rpc"
+import { useEffect, useRef, useState } from "react"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { FoundArchivedSpaceModal } from "@/components/ui/FoundArchivedSpaceModal"
+import { PaywallModal } from "@/components/ui/PaywallModal"
+import { ROUTES, STORAGE_KEYS } from "@/lib/constants"
+import type { CheckExistingArchiveResult } from "@/types/rpc"
 
+// ═══════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════
 const container = {
     hidden: { opacity: 0 },
     show: {
@@ -42,11 +49,13 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function Dashboard() {
     const navigate = useNavigate()
     const { couple, partner, userProfile, loading } = useCoupleData()
     const { stats: relationshipStats, loading: statsLoading } = useRelationshipStats()
-
 
     const {
         streakBroken,
@@ -55,119 +64,172 @@ export default function Dashboard() {
         restoreStreak,
     } = useStreak()
 
-    // Archive Restore State
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [foundArchiveStats, setFoundArchiveStats] = useState<any>(null)
     const [foundArchiveId, setFoundArchiveId] = useState<string | null>(null)
     const [showArchiveModal, setShowArchiveModal] = useState(false)
     const [showPaywall, setShowPaywall] = useState(false)
     const [restoreLoading, setRestoreLoading] = useState(false)
+    const [restoreError, setRestoreError] = useState<string | null>(null)
     const [isOverlayFocused, setIsOverlayFocused] = useState(false)
+    const renderPerfStopRef = useRef<null | (() => number)>(null)
+    const renderPerfLoggedRef = useRef(false)
     // const location = useLocation(); // Unused
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const checkArchivedSpace = async () => {
         // Only check if we are in a couple
-        if (!couple || !userProfile?.couple_id) return;
+        if (!couple || !userProfile?.couple_id) return
 
         try {
-            const { data, error } = await supabase.rpc('check_existing_archive_for_pair');
-            if (error) throw error;
+            const { data, error } = await supabase.rpc("check_existing_archive_for_pair")
+            if (error) throw error
 
             if (data) {
-                const result = data as unknown as CheckExistingArchiveResult;
+                const result = data as unknown as CheckExistingArchiveResult
                 if (result?.found) {
-                    setFoundArchiveStats(result.stats);
-                    setFoundArchiveId(result.archived_couple_id ?? null);
-                    // Also store expires_at properly
-                    setFoundArchiveStats(() => ({ ...result.stats, expires_at: result.expires_at }));
+                    const statsWithExpiry = {
+                        ...result.stats,
+                        expires_at: result.expires_at
+                    }
+                    setFoundArchiveStats(statsWithExpiry)
+                    setFoundArchiveId(result.archived_couple_id ?? null)
 
-                    // Check if user has already dismissed it? 
+                    // Check if user has already dismissed it?
                     // For now, always show on load if found, as per requirement "pops up for both users when they first load"
-                    const dismissedId = sessionStorage.getItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL);
+                    const dismissedId = sessionStorage.getItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL)
 
                     if (dismissedId !== result.archived_couple_id) {
-                        setShowArchiveModal(true);
+                        setShowArchiveModal(true)
                     }
                 } else {
                     // Not found (maybe already restored or expired). Clear the dismissed flag so it doesn't persist inappropriately.
                     // Useful if we just restored: Found becomes false.
-                    sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL);
+                    sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL)
                     // Dispatch event explicitly so Sidebar knows to check again and hide the pill
-                    window.dispatchEvent(new Event('restore_modal_dismissed'));
+                    window.dispatchEvent(new Event("restore_modal_dismissed"))
 
-                    setShowArchiveModal(false);
+                    setFoundArchiveStats(null)
+                    setFoundArchiveId(null)
+                    setShowArchiveModal(false)
                 }
             }
         } catch (err) {
-            console.error('Error checking archive:', err);
+            logger.error("Dashboard", "Error checking archive", err)
         }
-    };
+    }
 
     // Effect to close modal if we detect we are joined to the very archive we found
     useEffect(() => {
         if (couple?.id && foundArchiveId && couple.id === foundArchiveId) {
-            setShowArchiveModal(false);
-            sessionStorage.removeItem('dismissed_restore_modal');
+            setShowArchiveModal(false)
+            sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL)
         }
     }, [couple?.id, foundArchiveId]);
 
+    // Baseline render timing: mount -> data ready
+    useEffect(() => {
+        renderPerfStopRef.current = logger.perf("Dashboard", "initial_render")
+        if (typeof performance !== "undefined" && performance.mark) {
+            performance.mark("dashboard_mount")
+        }
+
+        return () => {
+            renderPerfStopRef.current = null
+        }
+    }, [])
+
+    useEffect(() => {
+        if (renderPerfLoggedRef.current) return
+
+        if (!loading && !statsLoading && relationshipStats) {
+            renderPerfLoggedRef.current = true
+            renderPerfStopRef.current?.()
+            renderPerfStopRef.current = null
+
+            if (typeof performance !== "undefined" && performance.mark && performance.measure) {
+                performance.mark("dashboard_ready")
+                performance.measure("dashboard_ready", "dashboard_mount", "dashboard_ready")
+                const measure = performance.getEntriesByName("dashboard_ready")[0]
+                if (measure) {
+                    logger.debug("Dashboard", "initial_render_measure", { durationMs: measure.duration })
+                }
+                performance.clearMarks("dashboard_mount")
+                performance.clearMarks("dashboard_ready")
+                performance.clearMeasures("dashboard_ready")
+            }
+        }
+    }, [loading, statsLoading, relationshipStats])
+
     const handleRestoreArchive = async () => {
-        if (!foundArchiveId) return;
+        if (!foundArchiveId) return
 
         // Premium Check
         if (!userProfile?.is_premium) {
-            setShowPaywall(true);
-            return;
+            setShowPaywall(true)
+            return
         }
 
-        setRestoreLoading(true);
+        setRestoreError(null)
+        setRestoreLoading(true)
         try {
             // Arguments must match the SQL function signature exactly
-            const { error } = await supabase.rpc('restore_archived_and_delete_current', {
+            const { error } = await supabase.rpc("restore_archived_and_delete_current", {
                 archived_id: foundArchiveId
-            });
+            })
 
             if (error) {
-                throw error;
+                throw error
             }
 
             // Clear any dismissal flags
-            sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL);
+            sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL)
 
-            window.location.reload(); // Hard reload is safest to reset all state for the new couple ID
-
+            window.location.reload() // Hard reload is safest to reset all state for the new couple ID
         } catch (err: any) {
-            alert("Failed to restore: " + err.message);
+            const message = err?.message ? `Failed to restore: ${err.message}` : "Failed to restore. Please try again."
+            setRestoreError(message)
+            logger.error("Dashboard", "Failed to restore archived space", err)
         } finally {
-            setRestoreLoading(false);
+            setRestoreLoading(false)
         }
-    };
-
+    }
 
     const handleDismissRestore = () => {
-        setShowArchiveModal(false);
+        setShowArchiveModal(false)
+        setRestoreError(null)
         if (foundArchiveId) {
-            sessionStorage.setItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL, foundArchiveId);
+            sessionStorage.setItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL, foundArchiveId)
         }
         // Trigger sidebar update? Sidebar needs to know.
-        // We can use a custom event or context. simpler: sessionStorage is checked by Sidebar? 
+        // We can use a custom event or context. simpler: sessionStorage is checked by Sidebar?
         // Or we pass a signal. For now, just close. Sidebar "pill" logic is next task.
-        window.dispatchEvent(new Event('restore_modal_dismissed'));
-    };
+        window.dispatchEvent(new Event("restore_modal_dismissed"))
+    }
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
-        const handleOpenRequest = () => setShowArchiveModal(true);
-        window.addEventListener('request_open_restore_modal', handleOpenRequest);
-        return () => window.removeEventListener('request_open_restore_modal', handleOpenRequest);
+        const handleOpenRequest = () => setShowArchiveModal(true)
+        window.addEventListener("request_open_restore_modal", handleOpenRequest)
+        return () => window.removeEventListener("request_open_restore_modal", handleOpenRequest)
     }, []);
 
     useEffect(() => {
         // Only run check if we have a couple ID and stats aren't loading
-        if (couple?.id && !statsLoading) {
-            checkArchivedSpace();
+        if (couple?.id && !statsLoading && userProfile?.couple_id) {
+            checkArchivedSpace()
         }
-    }, [couple?.id, statsLoading]); // Run when couple or stats loading changes
+    }, [couple?.id, statsLoading, userProfile?.couple_id]) // Run when couple or stats loading changes
 
-
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     if (!loading && (!couple || !userProfile?.couple_id)) {
         return (
             <>
@@ -194,7 +256,7 @@ export default function Dashboard() {
                                         description="Ready to start your journey? Create a space now"
                                         icon="add_circle"
                                         buttonText="Create Space"
-                                        onClick={() => navigate("/create-space", { state: { from: 'dashboard' } })}
+                                        onClick={() => navigate(ROUTES.CREATE_SPACE, { state: { from: "dashboard" } })}
                                         variant="primary"
                                         className="bg-[#FFF5F5]"
                                     />
@@ -205,7 +267,7 @@ export default function Dashboard() {
                                         iconColor="text-blue-500"
                                         iconBgColor="bg-blue-50"
                                         buttonText="Join Partner"
-                                        onClick={() => navigate("/join-partner", { state: { from: 'dashboard' } })}
+                                        onClick={() => navigate(ROUTES.JOIN_PARTNER, { state: { from: "dashboard" } })}
                                         variant="primary"
                                         buttonClassName="bg-[#3B82F6] hover:bg-[#2563EB]"
                                         className="bg-blue-50/50"
@@ -217,7 +279,7 @@ export default function Dashboard() {
                                         iconColor="text-purple-500"
                                         iconBgColor="bg-purple-50"
                                         buttonText="Restore Space"
-                                        onClick={() => navigate("/restore-space", { state: { from: 'dashboard' } })}
+                                        onClick={() => navigate(ROUTES.RESTORE_SPACE, { state: { from: "dashboard" } })}
                                         variant="primary"
                                         buttonClassName="bg-purple-600 hover:bg-purple-700"
                                         className="bg-purple-50/50"
@@ -318,6 +380,7 @@ export default function Dashboard() {
                 onRestore={handleRestoreArchive}
                 onDismiss={handleDismissRestore}
                 loading={restoreLoading}
+                error={restoreError}
             />
 
             <PaywallModal

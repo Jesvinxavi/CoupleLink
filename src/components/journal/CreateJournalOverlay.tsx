@@ -1,25 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Calendar, MapPin, Image as ImageIcon, X, Loader2, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal"
+import type { JournalEntry } from "@/context/JournalContext"
+import { logger } from "@/lib/logger"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
-import { ConfirmationModal } from '../ui/ConfirmationModal';
-import { Calendar, MapPin, Image as ImageIcon, X, Loader2, Trash2 } from 'lucide-react';
-import type { JournalEntry } from '../../context/JournalContext';
-
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface CreateJournalOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSubmit: (data: { title: string; location: string; country?: string; date: string; text: string; selectedFiles: File[]; existingMediaUrls: string[] }) => Promise<void>;
-    onDelete: () => Promise<void>;
-    initialEntry?: JournalEntry | null;
-    isSubmitting: boolean;
-    isDeleting: boolean;
-    onFocusChange?: (isFocused: boolean) => void;
+    isOpen: boolean
+    onClose: () => void
+    onSubmit: (data: { title: string; location: string; country?: string; date: string; text: string; selectedFiles: File[]; existingMediaUrls: string[] }) => Promise<void>
+    onDelete: () => Promise<void>
+    initialEntry?: JournalEntry | null
+    isSubmitting: boolean
+    isDeleting: boolean
+    onFocusChange?: (isFocused: boolean) => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function CreateJournalOverlay({
     isOpen,
     onClose,
@@ -30,211 +40,191 @@ export function CreateJournalOverlay({
     isDeleting,
     onFocusChange
 }: CreateJournalOverlayProps) {
-    // Form State
-    const [title, setTitle] = useState('');
-    const [location, setLocation] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [text, setText] = useState('');
-    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-    const [existingMediaUrls, setExistingMediaUrls] = useState<string[]>([]);
+    useLockBodyScroll(isOpen)
 
-    const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    // Form State
+    const [title, setTitle] = useState("")
+    const [location, setLocation] = useState("")
+    const [date, setDate] = useState(new Date().toISOString().split("T")[0])
+    const [text, setText] = useState("")
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+    const [previewUrls, setPreviewUrls] = useState<string[]>([])
+    const [existingMediaUrls, setExistingMediaUrls] = useState<string[]>([])
+
+    const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
 
     // Mobile Viewport Logic
-    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
-    const overlayRef = useRef<HTMLDivElement>(null);
-    const [isFocused, setIsFocused] = useState(false);
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined)
+    const overlayRef = useRef<HTMLDivElement>(null)
+    const [isFocused, setIsFocused] = useState(false)
 
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     // Generic Focus Handler (Measure-Lock-Animate)
     const handleOverlayFocus = (e: React.FocusEvent) => {
-        const target = e.target as HTMLInputElement;
-        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+        const target = e.target as HTMLInputElement
+        const isTextInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
 
         // Exclude input types that don't trigger keyboard (date, time, etc.)
-        const nonKeyboardInputTypes = ['date', 'time', 'datetime-local', 'month', 'week', 'color'];
-        const isNonKeyboardInput = target.tagName === 'INPUT' && nonKeyboardInputTypes.includes(target.type);
-
-
+        const nonKeyboardInputTypes = ["date", "time", "datetime-local", "month", "week", "color"]
+        const isNonKeyboardInput = target.tagName === "INPUT" && nonKeyboardInputTypes.includes(target.type)
 
         // Skip if not a text input or if it's a non-keyboard input type
         if (!isTextInput || isNonKeyboardInput) {
-
-            return;
+            return
         }
 
         if (overlayRef.current && window.visualViewport) {
             // 1. Measure current 'unfocused' position
-            const rect = overlayRef.current.getBoundingClientRect();
-
+            const rect = overlayRef.current.getBoundingClientRect()
 
             // 2. Lock it immediately to this position (prevent jump)
             setViewportStyle({
                 height: rect.height,
                 top: rect.top
-            });
-
+            })
 
             // 3. Set focused state
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
-
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
 
             // 4. Animate to target visual viewport in next frame
             requestAnimationFrame(() => {
-                const vvHeight = window.visualViewport!.height;
-                const vvTop = window.visualViewport!.offsetTop;
+                const vvHeight = window.visualViewport!.height
+                const vvTop = window.visualViewport!.offsetTop
 
                 setViewportStyle({
                     height: vvHeight,
                     top: vvTop
-                });
-            });
+                })
+            })
         } else {
-
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
         }
-    };
+    }
 
     const handleOverlayBlur = (e: React.FocusEvent) => {
-        const relatedTarget = e.relatedTarget as Node | null;
-        const isStillInOverlay = overlayRef.current?.contains(relatedTarget);
-
-
+        const relatedTarget = e.relatedTarget as Node | null
+        const isStillInOverlay = overlayRef.current?.contains(relatedTarget)
 
         // Check if the new focus is still within the overlay
         if (isStillInOverlay) {
-
-            return;
+            return
         }
 
+        setIsFocused(false)
+        if (onFocusChange) onFocusChange(false)
+        setViewportStyle(undefined) // Clear viewport style on blur to reset
+    }
 
-        setIsFocused(false);
-        if (onFocusChange) onFocusChange(false);
-        setViewportStyle(undefined); // Clear viewport style on blur to reset
-
-    };
-
-    // Combined body lock + viewport resize handler (matches FantasyBucketListOverlay)
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    // Viewport resize handler (matches FantasyBucketListOverlay)
     useEffect(() => {
         if (isOpen) {
-
-
-            // Robust Body Lock (save scroll position)
-            const scrollY = window.scrollY;
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${scrollY}px`;
-            document.body.style.width = '100%';
-            document.body.style.overflow = 'hidden';
-
-
             // Handle Visual Viewport for mobile keyboard
             const handleResize = () => {
                 // Only update if focus is within this overlay
-                const activeEl = document.activeElement;
-                const isActiveInOverlay = overlayRef.current?.contains(activeEl);
-                const isTextInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
-
-
+                const activeEl = document.activeElement
+                const isActiveInOverlay = overlayRef.current?.contains(activeEl)
+                const isTextInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA"
 
                 // Only update if a text input in our overlay is focused
                 if (!isActiveInOverlay || !isTextInput) {
-
-                    return;
+                    return
                 }
 
                 if (window.visualViewport) {
-
                     setViewportStyle({
                         height: window.visualViewport.height,
                         top: window.visualViewport.offsetTop
-                    });
+                    })
                 }
-            };
+            }
 
-            window.visualViewport?.addEventListener('resize', handleResize);
-            window.visualViewport?.addEventListener('scroll', handleResize);
-            handleResize(); // Initial check
+            window.visualViewport?.addEventListener("resize", handleResize)
+            window.visualViewport?.addEventListener("scroll", handleResize)
+            handleResize() // Initial check
 
             return () => {
-
-                const topStyle = document.body.style.top;
-                document.body.style.overflow = '';
-                document.body.style.position = '';
-                document.body.style.top = '';
-                document.body.style.width = '';
-
-                // Restore scroll position
-                window.scrollTo(0, parseInt(topStyle || '0') * -1);
-
-
-                window.visualViewport?.removeEventListener('resize', handleResize);
-                window.visualViewport?.removeEventListener('scroll', handleResize);
-            };
+                window.visualViewport?.removeEventListener("resize", handleResize)
+                window.visualViewport?.removeEventListener("scroll", handleResize)
+            }
         }
-    }, [isOpen]); // Only depends on isOpen, like Fantasy
+    }, [isOpen]) // Only depends on isOpen, like Fantasy
 
     // Initialize from initialEntry
     useEffect(() => {
         if (isOpen) {
             if (initialEntry) {
-                setTitle(initialEntry.title || '');
-                setLocation(initialEntry.location || '');
-                setDate(new Date(initialEntry.created_at).toISOString().split('T')[0]);
-                setText(initialEntry.caption || '');
-                setExistingMediaUrls(initialEntry.media_urls || []);
+                setTitle(initialEntry.title || "")
+                setLocation(initialEntry.location || "")
+                setDate(new Date(initialEntry.created_at).toISOString().split("T")[0])
+                setText(initialEntry.caption || "")
+                setExistingMediaUrls(initialEntry.media_urls || [])
             } else {
                 // Reset defaults for new entry
-                setTitle('');
-                setLocation('');
-                setDate(new Date().toISOString().split('T')[0]);
-                setText('');
-                setExistingMediaUrls([]);
+                setTitle("")
+                setLocation("")
+                setDate(new Date().toISOString().split("T")[0])
+                setText("")
+                setExistingMediaUrls([])
             }
-            setSelectedFiles([]);
-            setPreviewUrls([]);
+            setSelectedFiles([])
+            setPreviewUrls([])
         }
-    }, [isOpen, initialEntry]);
+    }, [isOpen, initialEntry])
+
+    useEffect(() => {
+        return () => {
+            previewUrls.forEach((url) => URL.revokeObjectURL(url))
+        }
+    }, [previewUrls])
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const files = Array.from(e.target.files);
-            setSelectedFiles(prev => [...prev, ...files]);
+            const files = Array.from(e.target.files)
+            setSelectedFiles(prev => [...prev, ...files])
 
             // Create previews
-            const newPreviews = files.map(file => URL.createObjectURL(file));
-            setPreviewUrls(prev => [...prev, ...newPreviews]);
+            const newPreviews = files.map(file => URL.createObjectURL(file))
+            setPreviewUrls(prev => [...prev, ...newPreviews])
         }
-    };
+    }
 
     const removeFile = (index: number) => {
-        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index))
         setPreviewUrls(prev => {
-            URL.revokeObjectURL(prev[index]);
-            return prev.filter((_, i) => i !== index);
-        });
-    };
+            URL.revokeObjectURL(prev[index])
+            return prev.filter((_, i) => i !== index)
+        })
+    }
 
     const removeExistingFile = (index: number) => {
-        setExistingMediaUrls(prev => prev.filter((_, i) => i !== index));
-    };
+        setExistingMediaUrls(prev => prev.filter((_, i) => i !== index))
+    }
 
     const handleSubmit = async () => {
         // Resolve country if location is provided
-        let country = null;
+        let country = null
         if (location.trim()) {
             try {
-                const { resolveCountry } = await import('../../utils/geocoding');
-                const result = await resolveCountry(location);
-                if (result) country = result.country;
+                const { resolveCountry } = await import("@/utils/geocoding")
+                const result = await resolveCountry(location)
+                if (result) country = result.country
             } catch (e) {
-                console.error("Failed to resolve country", e);
+                logger.error("CreateJournalOverlay", "Failed to resolve country", e, { location })
             }
         }
 
-        onSubmit({
+        await onSubmit({
             title,
             location,
             country: country || undefined, // Add country to the data
@@ -242,46 +232,52 @@ export function CreateJournalOverlay({
             text,
             selectedFiles,
             existingMediaUrls
-        });
-    };
+        })
+    }
 
     const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const target = e.target;
+        const target = e.target
 
         // Wait for keyboard animation to complete, then check if scroll is needed
         const scrollToInputIfNeeded = () => {
             // Get the scrollable container
-            const scrollContainer = overlayRef.current?.querySelector('.flex-1.overflow-y-auto');
+            const scrollContainer = overlayRef.current?.querySelector(".flex-1.overflow-y-auto")
             if (scrollContainer && target) {
                 // Calculate the target's position relative to the scroll container
-                const targetRect = target.getBoundingClientRect();
-                const containerRect = scrollContainer.getBoundingClientRect();
+                const targetRect = target.getBoundingClientRect()
+                const containerRect = scrollContainer.getBoundingClientRect()
 
                 // Check if the input is already fully visible
                 const isFullyVisible =
                     targetRect.top >= containerRect.top &&
-                    targetRect.bottom <= containerRect.bottom;
+                    targetRect.bottom <= containerRect.bottom
 
                 // Only scroll if input is not fully visible
                 if (!isFullyVisible) {
                     // Scroll the input to a consistent position (near top of visible area with padding)
-                    const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
-                    const scrollTarget = targetTop - 20; // 20px padding from top
+                    const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop
+                    const scrollTarget = targetTop - 20 // 20px padding from top
 
                     scrollContainer.scrollTo({
                         top: Math.max(0, scrollTarget),
-                        behavior: 'smooth'
-                    });
+                        behavior: "smooth"
+                    })
                 }
             }
-        };
+        }
 
         // Wait for keyboard to fully appear
-        setTimeout(scrollToInputIfNeeded, 350);
-    };
+        setTimeout(scrollToInputIfNeeded, 350)
+    }
 
-    if (!isOpen) return null;
+    // ═══════════════════════════════════════
+    // EARLY RETURN
+    // ═══════════════════════════════════════
+    if (!isOpen) return null
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <AnimatePresence>
             {isOpen && (
@@ -422,7 +418,13 @@ export function CreateJournalOverlay({
                                         {/* Existing Images */}
                                         {existingMediaUrls.map((url, idx) => (
                                             <div key={`existing-${idx}`} className="relative w-20 h-20 rounded-xl overflow-hidden group shadow-sm">
-                                                <img src={url} alt="Existing" className="w-full h-full object-cover" />
+                                                <img
+                                                    src={url}
+                                                    alt="Existing"
+                                                    className="w-full h-full object-cover"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                />
                                                 <button
                                                     onClick={() => removeExistingFile(idx)}
                                                     className="absolute top-1 right-1 bg-black/50 rounded-full p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -435,7 +437,13 @@ export function CreateJournalOverlay({
                                         {/* New Previews */}
                                         {previewUrls.map((url, idx) => (
                                             <div key={`new-${idx}`} className="relative w-20 h-20 rounded-xl overflow-hidden group shadow-sm">
-                                                <img src={url} alt="Preview" className="w-full h-full object-cover" />
+                                                <img
+                                                    src={url}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-cover"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                />
                                                 <button
                                                     onClick={() => removeFile(idx)}
                                                     className="absolute top-1 right-1 bg-black/50 rounded-full p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity"

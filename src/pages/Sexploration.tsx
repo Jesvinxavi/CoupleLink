@@ -1,15 +1,22 @@
-import Sidebar from '../components/Sidebar';
-import { motion } from 'framer-motion';
-import { SexCounterTile } from '../components/sexploration/SexCounterTile';
-import { PositionTrackerTile } from '../components/sexploration/PositionTrackerTile';
-import { PleasureCouponsTile } from '../components/sexploration/PleasureCouponsTile';
-import { useSexplorationModals } from '@/context/SexplorationModalContext';
-import { FantasyBucketListTile } from '../components/sexploration/FantasyBucketListTile';
-import { SpicyDiceTile } from '../components/sexploration/SpicyDiceTile';
-import { useCoupleData } from '@/hooks/useCoupleData';
-import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { motion } from "framer-motion"
+import Sidebar from "@/components/Sidebar"
+import { SexCounterTile } from "@/components/sexploration/SexCounterTile"
+import { PositionTrackerTile } from "@/components/sexploration/PositionTrackerTile"
+import { PleasureCouponsTile } from "@/components/sexploration/PleasureCouponsTile"
+import { FantasyBucketListTile } from "@/components/sexploration/FantasyBucketListTile"
+import { SpicyDiceTile } from "@/components/sexploration/SpicyDiceTile"
+import { useSexplorationModals } from "@/context/SexplorationModalContext"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { ROUTES } from "@/lib/constants"
 
+// ═══════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════
 const container = {
     hidden: { opacity: 0 },
     show: {
@@ -18,33 +25,45 @@ const container = {
             staggerChildren: 0.1
         }
     }
-};
+}
 
 const item = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
-};
+}
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function Sexploration() {
-    const { couple, loading } = useCoupleData();
-    const navigate = useNavigate();
-    const { isFantasyFocused } = useSexplorationModals();
+    const { couple, loading } = useCoupleData()
+    const navigate = useNavigate()
+    const { isFantasyFocused } = useSexplorationModals()
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         if (!loading && couple && !couple.spicy_mode) {
-            navigate('/dashboard');
+            navigate(ROUTES.DASHBOARD)
         }
-    }, [couple, loading, navigate]);
+    }, [couple, loading, navigate])
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (loading) {
-        return <div className="flex h-screen items-center justify-center">Loading...</div>;
+        return <div className="flex h-screen items-center justify-center">Loading...</div>
     }
 
-    if (!couple?.spicy_mode) return null;
+    if (!couple?.spicy_mode) return null
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
-            <div style={{ display: isFantasyFocused ? 'none' : 'contents' }}>
+            <div style={{ display: isFantasyFocused ? "none" : "contents" }}>
                 <Sidebar />
                 <div className="pt-14 md:ml-[250px] md:pt-0">
                     <main className="p-4 md:p-8">
@@ -105,5 +124,5 @@ export default function Sexploration() {
                 </div>
             </div>
         </>
-    );
+    )
 }

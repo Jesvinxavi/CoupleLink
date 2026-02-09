@@ -1,177 +1,192 @@
-import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from "../ui/button";
-import { Loader2, Plus, X, UploadCloud } from "lucide-react";
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { supabase } from '../../lib/supabase';
-import { Label } from '../ui/label';
-import { Input } from '../ui/input';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
+import { motion, AnimatePresence } from "framer-motion"
+import { Loader2, Plus, X, UploadCloud } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface AddMomentsOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    currentFolderId: string | null;
-    onSuccess: () => void;
-    onFocusChange?: (isFocused: boolean) => void;
+    isOpen: boolean
+    onClose: () => void
+    currentFolderId: string | null
+    onSuccess: () => void
+    onFocusChange?: (isFocused: boolean) => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess, onFocusChange }: AddMomentsOverlayProps) {
-    const { couple } = useCoupleData();
-    const [caption, setCaption] = useState('');
-    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-    const [uploading, setUploading] = useState(false);
+    useLockBodyScroll(isOpen)
+
+    const { couple } = useCoupleData()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [caption, setCaption] = useState("")
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+    const [previewUrls, setPreviewUrls] = useState<string[]>([])
+    const [uploading, setUploading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     // Mobile Viewport Logic
-    const overlayRef = useRef<HTMLDivElement>(null);
-    const [isFocused, setIsFocused] = useState(false);
-    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
+    const overlayRef = useRef<HTMLDivElement>(null)
+    const [isFocused, setIsFocused] = useState(false)
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined)
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     // Standard Body Lock + Viewport
     useEffect(() => {
         if (!isOpen) {
             // Clean up previews when closed
-            previewUrls.forEach(url => URL.revokeObjectURL(url));
-            setPreviewUrls([]);
-            setSelectedFiles([]);
-            setCaption('');
-            return;
+            previewUrls.forEach((url) => URL.revokeObjectURL(url))
+            setPreviewUrls([])
+            setSelectedFiles([])
+            setCaption("")
+            setError(null)
+            return
         }
-
-        // Robust Body Lock
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
 
         // Handle Visual Viewport for mobile keyboard
         const handleVisualResize = () => {
-            const activeEl = document.activeElement;
-            const isActiveInOverlay = overlayRef.current?.contains(activeEl);
-            const isTextInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
+            const activeEl = document.activeElement
+            const isActiveInOverlay = overlayRef.current?.contains(activeEl)
+            const isTextInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA"
 
-            if (!isActiveInOverlay || !isTextInput) return;
+            if (!isActiveInOverlay || !isTextInput) return
 
             if (window.visualViewport) {
                 setViewportStyle({
                     height: window.visualViewport.height,
                     top: window.visualViewport.offsetTop
-                });
+                })
             }
-        };
+        }
 
-        window.visualViewport?.addEventListener('resize', handleVisualResize);
-        window.visualViewport?.addEventListener('scroll', handleVisualResize);
-        handleVisualResize();
+        window.visualViewport?.addEventListener("resize", handleVisualResize)
+        window.visualViewport?.addEventListener("scroll", handleVisualResize)
+        handleVisualResize()
 
         return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
+            window.visualViewport?.removeEventListener("resize", handleVisualResize)
+            window.visualViewport?.removeEventListener("scroll", handleVisualResize)
+        }
+    }, [isOpen, previewUrls])
 
-            window.visualViewport?.removeEventListener('resize', handleVisualResize);
-            window.visualViewport?.removeEventListener('scroll', handleVisualResize);
-        };
-    }, [isOpen]);
-
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const handleOverlayFocus = (e: React.FocusEvent) => {
-        const target = e.target as HTMLElement;
-        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-        if (!isTextInput) return;
+        const target = e.target as HTMLElement
+        const isTextInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
+        if (!isTextInput) return
 
         if (overlayRef.current && window.visualViewport) {
-            const rect = overlayRef.current.getBoundingClientRect();
-            setViewportStyle({ height: rect.height, top: rect.top });
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            const rect = overlayRef.current.getBoundingClientRect()
+            setViewportStyle({ height: rect.height, top: rect.top })
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
 
             requestAnimationFrame(() => {
                 setViewportStyle({
                     height: window.visualViewport!.height,
                     top: window.visualViewport!.offsetTop
-                });
-            });
+                })
+            })
         } else {
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
         }
-    };
+    }
 
     const handleOverlayBlur = (e: React.FocusEvent) => {
-        if (overlayRef.current?.contains(e.relatedTarget as Node)) return;
-        setIsFocused(false);
-        if (onFocusChange) onFocusChange(false);
-        setViewportStyle(undefined);
-    };
+        if (overlayRef.current?.contains(e.relatedTarget as Node)) return
+        setIsFocused(false)
+        if (onFocusChange) onFocusChange(false)
+        setViewportStyle(undefined)
+    }
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const files = Array.from(e.target.files);
-            setSelectedFiles(prev => [...prev, ...files]);
-            const newPreviews = files.map(file => URL.createObjectURL(file));
-            setPreviewUrls(prev => [...prev, ...newPreviews]);
+            const files = Array.from(e.target.files)
+            setSelectedFiles((prev) => [...prev, ...files])
+            const newPreviews = files.map((file) => URL.createObjectURL(file))
+            setPreviewUrls((prev) => [...prev, ...newPreviews])
         }
-    };
+    }
 
     const removeFile = (index: number) => {
-        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+        setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
         setPreviewUrls(prev => {
-            URL.revokeObjectURL(prev[index]);
-            return prev.filter((_, i) => i !== index);
-        });
-    };
+            URL.revokeObjectURL(prev[index])
+            return prev.filter((_, i) => i !== index)
+        })
+    }
 
     const handleUpload = async () => {
-        if (!couple || selectedFiles.length === 0) return;
+        if (!couple || selectedFiles.length === 0) return
 
-        setUploading(true);
+        setError(null)
+        setUploading(true)
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No user');
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error("No user")
 
             for (const file of selectedFiles) {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${Math.random()}.${fileExt}`;
-                const filePath = `${couple.id}/${fileName}`;
+                const fileExt = file.name.split(".").pop()
+                const fileName = `${Math.random()}.${fileExt}`
+                const filePath = `${couple.id}/${fileName}`
 
                 const { error: uploadError } = await supabase.storage
-                    .from('memories')
-                    .upload(filePath, file);
+                    .from("memories")
+                    .upload(filePath, file)
 
-                if (uploadError) throw uploadError;
+                if (uploadError) throw uploadError
 
                 const { data: { publicUrl } } = supabase.storage
-                    .from('memories')
-                    .getPublicUrl(filePath);
+                    .from("memories")
+                    .getPublicUrl(filePath)
 
                 await supabase
-                    .from('memories')
+                    .from("memories")
                     .insert({
                         couple_id: couple.id,
                         uploader_id: user.id,
-                        type: 'photo',
+                        type: "photo",
                         media_url: publicUrl,
                         caption: caption,
                         folder_id: currentFolderId
-                    });
+                    })
             }
 
-            onSuccess();
-            onClose();
+            onSuccess()
+            onClose()
 
         } catch (err) {
-            console.error('Error uploading:', err);
-            alert('Failed to upload. Please try again.');
+            logger.error("AddMomentsOverlay", "Error uploading moments", err)
+            setError("Failed to upload. Please try again.")
         } finally {
-            setUploading(false);
+            setUploading(false)
         }
-    };
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return createPortal(
         <AnimatePresence>
             {isOpen && (
@@ -258,7 +273,13 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
                                         {/* Existing Previews */}
                                         {previewUrls.map((url, idx) => (
                                             <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden group shadow-sm bg-white border border-gray-100 dark:border-gray-800">
-                                                <img src={url} alt="Preview" className="w-full h-full object-cover" />
+                                                <img
+                                                    src={url}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-cover"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                />
                                                 <button
                                                     onClick={() => removeFile(idx)}
                                                     className="absolute top-1 right-1 bg-black/50 rounded-full p-1 text-white opacity-100 transition-opacity"
@@ -305,7 +326,7 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
 
                                 {/* Caption Input */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="caption text-gray-700 dark:text-gray-300">Caption (Optional)</Label>
+                                    <Label htmlFor="caption" className="text-gray-700 dark:text-gray-300">Caption (Optional)</Label>
                                     <Input
                                         id="caption"
                                         value={caption}
@@ -314,6 +335,12 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
                                         className="bg-white dark:bg-gray-800"
                                     />
                                 </div>
+
+                                {error && (
+                                    <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+                                        {error}
+                                    </div>
+                                )}
 
                                 <div className="h-8"></div> {/* Spacer for keyboard */}
                             </div>
@@ -341,5 +368,5 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
             )}
         </AnimatePresence>,
         document.body
-    );
+    )
 }

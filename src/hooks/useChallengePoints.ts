@@ -1,7 +1,10 @@
-import { useCallback } from 'react';
-import { useStreak } from './useStreak';
-import type { Challenge } from '../types/challenge';
+import { useCallback, useMemo } from 'react';
+import { useStreak } from '@/hooks/useStreak';
+import type { Challenge } from '@/types/challenge';
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 /**
  * Shared hook for challenge point awarding logic.
  * Consolidates duplicate code from ChallengesTile and ChallengeModalContext.
@@ -83,10 +86,10 @@ export function useChallengePoints() {
         }
     }, [addPoints]);
 
-    return {
+    return useMemo(() => ({
         awardChallengePoints,
         deductChallengePoints,
         deductChallengePointsLegacy,
         checkStreakUpdate
-    };
+    }), [awardChallengePoints, deductChallengePoints, deductChallengePointsLegacy, checkStreakUpdate]);
 }

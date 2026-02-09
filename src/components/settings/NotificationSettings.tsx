@@ -1,13 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { Json } from '@/lib/database.types';
-import { useAuth } from '@/context/AuthContext';
-import { usePushSubscription } from '@/hooks/usePushSubscription';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useCallback } from "react"
+import { supabase } from "@/lib/supabase"
+import type { Json } from "@/lib/database.types"
+import { useAuth } from "@/context/AuthContext"
+import { usePushSubscription } from "@/hooks/usePushSubscription"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { logger } from "@/lib/logger"
 
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
 // Default notification preferences structure
 const DEFAULT_PREFERENCES = {
     master_toggle: true,
@@ -33,182 +40,208 @@ const DEFAULT_PREFERENCES = {
         anniversary: true,
         coupon_activation: true
     }
-};
+}
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface NotificationPreferences {
-    master_toggle: boolean;
+    master_toggle: boolean
     sections: {
-        challenges_streak: boolean;
-        sexploration_fun: boolean;
-        dates_reminders: boolean;
-    };
+        challenges_streak: boolean
+        sexploration_fun: boolean
+        dates_reminders: boolean
+    }
     types: {
-        daily_question: boolean;
-        challenge_completion: boolean;
-        streak_expiry: boolean;
-        daily_expiry: boolean;
-        weekly_expiry: boolean;
-        monthly_expiry: boolean;
-        new_sticky_note: boolean;
-        new_journal_post: boolean;
-        fantasies: boolean;
-        coupons: boolean;
-        calendar_events: boolean;
-        partner_birthday: boolean;
-        my_birthday: boolean;
-        anniversary: boolean;
-        coupon_activation: boolean;
-    };
+        daily_question: boolean
+        challenge_completion: boolean
+        streak_expiry: boolean
+        daily_expiry: boolean
+        weekly_expiry: boolean
+        monthly_expiry: boolean
+        new_sticky_note: boolean
+        new_journal_post: boolean
+        fantasies: boolean
+        coupons: boolean
+        calendar_events: boolean
+        partner_birthday: boolean
+        my_birthday: boolean
+        anniversary: boolean
+        coupon_activation: boolean
+    }
 }
 
 // Section configuration
 const SECTIONS = [
     {
-        key: 'challenges_streak',
-        title: 'Challenges & Streak',
-        icon: 'emoji_events',
+        key: "challenges_streak",
+        title: "Challenges & Streak",
+        icon: "emoji_events",
         types: [
-            { key: 'daily_question', label: 'Daily Questions', description: 'When partner answers daily question' },
-            { key: 'challenge_completion', label: 'Partner Challenge Completion', description: 'When partner completes challenges' },
-            { key: 'streak_expiry', label: 'Streak At Risk Warnings', description: 'Before your streak expires' },
-            { key: 'daily_expiry', label: 'Daily Challenge Expiry', description: 'Daily challenge ending reminders' },
-            { key: 'weekly_expiry', label: 'Weekly Challenge Expiry', description: 'Weekly challenge ending reminders' },
-            { key: 'monthly_expiry', label: 'Monthly Challenge Expiry', description: 'Monthly challenge ending reminders' }
+            { key: "daily_question", label: "Daily Questions", description: "When partner answers daily question" },
+            { key: "challenge_completion", label: "Partner Challenge Completion", description: "When partner completes challenges" },
+            { key: "streak_expiry", label: "Streak At Risk Warnings", description: "Before your streak expires" },
+            { key: "daily_expiry", label: "Daily Challenge Expiry", description: "Daily challenge ending reminders" },
+            { key: "weekly_expiry", label: "Weekly Challenge Expiry", description: "Weekly challenge ending reminders" },
+            { key: "monthly_expiry", label: "Monthly Challenge Expiry", description: "Monthly challenge ending reminders" }
         ]
     },
     {
-        key: 'sexploration_fun',
-        title: 'Sexploration & Fun',
-        icon: 'local_fire_department',
+        key: "sexploration_fun",
+        title: "Sexploration & Fun",
+        icon: "local_fire_department",
         types: [
-            { key: 'fantasies', label: 'Fantasy Notifications', description: 'New fantasies and approvals' },
-            { key: 'coupons', label: 'Coupon Received', description: 'When partner sends a coupon' },
-            { key: 'coupon_activation', label: 'Coupon Activated', description: 'When partner activates a coupon' }
+            { key: "fantasies", label: "Fantasy Notifications", description: "New fantasies and approvals" },
+            { key: "coupons", label: "Coupon Received", description: "When partner sends a coupon" },
+            { key: "coupon_activation", label: "Coupon Activated", description: "When partner activates a coupon" }
         ]
     },
     {
-        key: 'dates_reminders',
-        title: 'Dates & Reminders',
-        icon: 'event',
+        key: "dates_reminders",
+        title: "Dates & Reminders",
+        icon: "event",
         types: [
-            { key: 'calendar_events', label: 'Calendar Events', description: 'New events from partner' },
-            { key: 'partner_birthday', label: 'Partner Birthday', description: '1 week before and on the day' },
-            { key: 'my_birthday', label: 'My Birthday', description: 'Birthday wishes on your day' },
-            { key: 'anniversary', label: 'Anniversary', description: '1 week before and on the day' },
-            { key: 'new_journal_post', label: 'Journal Posts', description: 'New journal entries from partner' },
-            { key: 'new_sticky_note', label: 'Sticky Notes', description: 'Love notes from partner' }
+            { key: "calendar_events", label: "Calendar Events", description: "New events from partner" },
+            { key: "partner_birthday", label: "Partner Birthday", description: "1 week before and on the day" },
+            { key: "my_birthday", label: "My Birthday", description: "Birthday wishes on your day" },
+            { key: "anniversary", label: "Anniversary", description: "1 week before and on the day" },
+            { key: "new_journal_post", label: "Journal Posts", description: "New journal entries from partner" },
+            { key: "new_sticky_note", label: "Sticky Notes", description: "Love notes from partner" }
         ]
     }
-];
+]
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function NotificationSettings() {
-    const { user } = useAuth();
-    const { isSubscribed, isSupported, permission, subscribe, unsubscribe, isLoading } = usePushSubscription();
-    const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
-    const [expandedSections, setExpandedSections] = useState<string[]>([]);
-    const [isSaving, setIsSaving] = useState(false);
-    const [isProcessingToggle, setIsProcessingToggle] = useState(false);
+    const { user } = useAuth()
+    const { isSubscribed, isSupported, permission, subscribe, unsubscribe, isLoading } = usePushSubscription()
 
-    // Fetch preferences on mount
-    useEffect(() => {
-        if (user) {
-            fetchPreferences();
-        }
-    }, [user]);
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES)
+    const [expandedSections, setExpandedSections] = useState<string[]>([])
+    const [isSaving, setIsSaving] = useState(false)
+    const [isProcessingToggle, setIsProcessingToggle] = useState(false)
 
-    const fetchPreferences = async () => {
+    // ═══════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════
+    const fetchPreferences = useCallback(async () => {
+        if (!user) return
+
         try {
             const { data, error } = await supabase
-                .from('profiles')
-                .select('notification_preferences')
-                .eq('id', user!.id)
-                .single();
+                .from("profiles")
+                .select("notification_preferences")
+                .eq("id", user.id)
+                .single()
 
-            if (error) throw error;
+            if (error) throw error
+
             if (data?.notification_preferences) {
-                setPreferences({ ...DEFAULT_PREFERENCES, ...(data.notification_preferences as unknown as NotificationPreferences) });
+                setPreferences({
+                    ...DEFAULT_PREFERENCES,
+                    ...(data.notification_preferences as unknown as NotificationPreferences)
+                })
             }
         } catch (error) {
-            console.error('Error fetching notification preferences:', error);
+            logger.error("NotificationSettings", "Error fetching notification preferences", error)
         }
-    };
+    }, [user])
 
     const savePreferences = useCallback(async (newPrefs: NotificationPreferences) => {
-        if (!user) return;
-        setIsSaving(true);
+        if (!user) return
+        setIsSaving(true)
         try {
             const { error } = await supabase
-                .from('profiles')
+                .from("profiles")
                 .update({ notification_preferences: newPrefs as unknown as Json })
-                .eq('id', user.id);
+                .eq("id", user.id)
 
-            if (error) throw error;
+            if (error) throw error
         } catch (error) {
-            console.error('Error saving notification preferences:', error);
-            // Rollback on error
-            fetchPreferences();
+            logger.error("NotificationSettings", "Error saving notification preferences", error)
+            await fetchPreferences()
         } finally {
-            setIsSaving(false);
+            setIsSaving(false)
         }
-    }, [user]);
+    }, [user, fetchPreferences])
 
-    const handleMasterToggle = async (checked: boolean) => {
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    useEffect(() => {
+        if (user) {
+            fetchPreferences()
+        }
+    }, [user, fetchPreferences])
+
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleMasterToggle = useCallback(async (checked: boolean) => {
         // Prevent flash by setting processing state if we might need to subscribe
         if (checked && !isSubscribed) {
-            setIsProcessingToggle(true);
+            setIsProcessingToggle(true)
         }
 
-        const newPrefs = { ...preferences, master_toggle: checked };
-        setPreferences(newPrefs);
-        await savePreferences(newPrefs);
+        const newPrefs = { ...preferences, master_toggle: checked }
+        setPreferences(newPrefs)
+        await savePreferences(newPrefs)
 
         // Also manage push subscription based on master toggle
         if (checked && !isSubscribed) {
             try {
-                await subscribe();
+                await subscribe()
             } finally {
-                setIsProcessingToggle(false);
+                setIsProcessingToggle(false)
             }
         } else if (!checked && isSubscribed) {
-            await unsubscribe();
+            await unsubscribe()
         }
-    };
+    }, [isSubscribed, preferences, savePreferences, subscribe, unsubscribe])
 
-    const handleSectionToggle = async (sectionKey: string, checked: boolean) => {
+    const handleSectionToggle = useCallback(async (sectionKey: string, checked: boolean) => {
         const newPrefs = {
             ...preferences,
             sections: { ...preferences.sections, [sectionKey]: checked }
-        };
-        setPreferences(newPrefs);
-        await savePreferences(newPrefs);
-    };
+        }
+        setPreferences(newPrefs)
+        await savePreferences(newPrefs)
+    }, [preferences, savePreferences])
 
-    const handleTypeToggle = async (typeKey: string, checked: boolean) => {
+    const handleTypeToggle = useCallback(async (typeKey: string, checked: boolean) => {
         const newPrefs = {
             ...preferences,
             types: { ...preferences.types, [typeKey]: checked }
-        };
-        setPreferences(newPrefs);
-        await savePreferences(newPrefs);
-    };
-
-    const toggleSection = (sectionKey: string) => {
-        setExpandedSections(prev =>
-            prev.includes(sectionKey)
-                ? prev.filter(k => k !== sectionKey)
-                : [...prev, sectionKey]
-        );
-    };
-
-    const handleEnableNotifications = async () => {
-        const success = await subscribe();
-        if (success) {
-            const newPrefs = { ...preferences, master_toggle: true };
-            setPreferences(newPrefs);
-            await savePreferences(newPrefs);
         }
-    };
+        setPreferences(newPrefs)
+        await savePreferences(newPrefs)
+    }, [preferences, savePreferences])
 
+    const toggleSection = useCallback((sectionKey: string) => {
+        setExpandedSections((prev) =>
+            prev.includes(sectionKey)
+                ? prev.filter((k) => k !== sectionKey)
+                : [...prev, sectionKey]
+        )
+    }, [])
+
+    const handleEnableNotifications = useCallback(async () => {
+        const success = await subscribe()
+        if (success) {
+            const newPrefs = { ...preferences, master_toggle: true }
+            setPreferences(newPrefs)
+            await savePreferences(newPrefs)
+        }
+    }, [preferences, savePreferences, subscribe])
+
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (!isSupported) {
         return (
             <Card>
@@ -220,10 +253,10 @@ export function NotificationSettings() {
                     <CardDescription>Push notifications are not supported in this browser.</CardDescription>
                 </CardHeader>
             </Card>
-        );
+        )
     }
 
-    if (permission === 'denied') {
+    if (permission === "denied") {
         return (
             <Card>
                 <CardHeader>
@@ -232,11 +265,11 @@ export function NotificationSettings() {
                         Notifications Blocked
                     </CardTitle>
                     <CardDescription>
-                        You've blocked notifications for this site. To enable them, please update your browser settings.
+                        {"You've blocked notifications for this site. To enable them, please update your browser settings."}
                     </CardDescription>
                 </CardHeader>
             </Card>
-        );
+        )
     }
 
     if (!isSubscribed && preferences.master_toggle && !isLoading && !isProcessingToggle) {
@@ -251,13 +284,16 @@ export function NotificationSettings() {
                 </CardHeader>
                 <CardContent>
                     <Button onClick={handleEnableNotifications} disabled={isLoading}>
-                        {isLoading ? 'Enabling...' : 'Enable Notifications'}
+                        {isLoading ? "Enabling..." : "Enable Notifications"}
                     </Button>
                 </CardContent>
             </Card>
-        );
+        )
     }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <Card>
             <CardHeader>
@@ -288,8 +324,8 @@ export function NotificationSettings() {
                 {preferences.master_toggle && (
                     <div className="space-y-1">
                         {SECTIONS.map((section) => {
-                            const isExpanded = expandedSections.includes(section.key);
-                            const sectionEnabled = preferences.sections[section.key as keyof typeof preferences.sections];
+                            const isExpanded = expandedSections.includes(section.key)
+                            const sectionEnabled = preferences.sections[section.key as keyof typeof preferences.sections]
 
                             return (
                                 <div key={section.key} className="overflow-hidden">
@@ -303,49 +339,49 @@ export function NotificationSettings() {
                                                 {section.icon}
                                             </span>
                                             <span className="font-medium text-sm">{section.title}</span>
-                                            <span className={`material-symbols-outlined text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                                            <span
+                                                className={`material-symbols-outlined text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                            >
                                                 expand_more
                                             </span>
                                         </div>
                                         <Switch
                                             checked={sectionEnabled}
                                             onCheckedChange={(checked) => {
-                                                handleSectionToggle(section.key, checked);
+                                                handleSectionToggle(section.key, checked)
                                             }}
-                                            onClick={(e) => e.stopPropagation()}
+                                            onClick={(event) => event.stopPropagation()}
                                             disabled={isSaving || !preferences.master_toggle}
                                         />
                                     </div>
 
                                     {/* Section Types */}
-                                    {
-                                        isExpanded && (
-                                            <div className={`divide-y divide-gray-100 dark:divide-gray-800 ${!sectionEnabled ? 'opacity-50' : ''}`}>
-                                                {section.types.map((type) => (
-                                                    <div
-                                                        key={type.key}
-                                                        className="flex items-center justify-between px-4 py-3 pl-14"
-                                                    >
-                                                        <div>
-                                                            <Label className="text-sm">{type.label}</Label>
-                                                            <p className="text-xs text-muted-foreground">{type.description}</p>
-                                                        </div>
-                                                        <Switch
-                                                            checked={preferences.types[type.key as keyof typeof preferences.types]}
-                                                            onCheckedChange={(checked) => handleTypeToggle(type.key, checked)}
-                                                            disabled={isSaving || !preferences.master_toggle || !sectionEnabled}
-                                                        />
+                                    {isExpanded && (
+                                        <div className={`divide-y divide-gray-100 dark:divide-gray-800 ${!sectionEnabled ? "opacity-50" : ""}`}>
+                                            {section.types.map((type) => (
+                                                <div
+                                                    key={type.key}
+                                                    className="flex items-center justify-between px-4 py-3 pl-14"
+                                                >
+                                                    <div>
+                                                        <Label className="text-sm">{type.label}</Label>
+                                                        <p className="text-xs text-muted-foreground">{type.description}</p>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )
-                                    }
+                                                    <Switch
+                                                        checked={preferences.types[type.key as keyof typeof preferences.types]}
+                                                        onCheckedChange={(checked) => handleTypeToggle(type.key, checked)}
+                                                        disabled={isSaving || !preferences.master_toggle || !sectionEnabled}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                            );
+                            )
                         })}
                     </div>
                 )}
             </CardContent>
-        </Card >
-    );
+        </Card>
+    )
 }

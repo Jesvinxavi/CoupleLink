@@ -1,21 +1,25 @@
 
-import { useState, useEffect, useRef } from 'react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useRef, type FocusEvent, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
+import { Calendar as CalendarIcon, MapPin, Plus, Loader2, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon, MapPin, Plus, Loader2, Trash2, X } from 'lucide-react';
-
-
-
+import { logger } from '@/lib/logger';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import type { CalendarEvent } from '@/types/calendar';
 
 export type { CalendarEvent };
 
-
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface AddEventOverlayProps {
     isOpen: boolean;
     onClose: () => void;
@@ -33,6 +37,9 @@ interface Category {
     color: string;
 }
 
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
 const DEFAULT_CATEGORIES: Category[] = [
     { id: '1', name: 'Date Night', color: '#e11d48' },
     { id: '2', name: 'Trip', color: '#3b82f6' },
@@ -58,7 +65,15 @@ const COLOR_PRESETS = [
     '#ec4899', // Pink
 ];
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, initialValues, onSave, onDelete, onFocusChange }: AddEventOverlayProps) {
+    useLockBodyScroll(isOpen);
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [title, setTitle] = useState('');
     const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
     const [selectedCategoryId, setSelectedCategoryId] = useState(DEFAULT_CATEGORIES[0].id);
@@ -72,6 +87,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
     const [description, setDescription] = useState('');
     const [recurrence, setRecurrence] = useState<'none' | 'monthly' | 'six_months' | 'yearly'>('none');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // Color change confirmation
     const [pendingColor, setPendingColor] = useState<string | null>(null);
@@ -85,7 +101,9 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
         anchorRect: DOMRect | null;
     }>({ isOpen: false, type: 'main', anchorRect: null });
 
-    // Refs for anchoring
+    // ═══════════════════════════════════════
+    // REFS
+    // ═══════════════════════════════════════
     const mainColorBtnRef = useRef<HTMLButtonElement>(null);
     const newCategoryColorBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -105,16 +123,19 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
     const [isFocused, setIsFocused] = useState(false);
     const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
 
-    // Combined body lock + viewport resize handler (matches FantasyBucketListOverlay)
+    const toDateInputValue = (value?: string | Date | null) => {
+        if (!value) return null;
+        const parsed = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return format(parsed, 'yyyy-MM-dd');
+    };
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    // Viewport resize handler (matches FantasyBucketListOverlay)
     useEffect(() => {
         if (!isOpen) return;
-
-        // Robust Body Lock (save scroll position)
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
 
         // Handle Visual Viewport for mobile keyboard
         const handleVisualResize = () => {
@@ -146,21 +167,79 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
         handleVisualResize();
 
         return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-
-            // Restore scroll position
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-
             window.visualViewport?.removeEventListener('resize', handleVisualResize);
             window.visualViewport?.removeEventListener('scroll', handleVisualResize);
         };
     }, [isOpen]); // Only depends on isOpen
 
-    const handleOverlayFocus = (e: React.FocusEvent) => {
+    useEffect(() => {
+        if (isOpen) {
+            setErrorMessage(null);
+            if (eventToEdit) {
+                setTitle(eventToEdit.title);
+                const normalizedStart = toDateInputValue(eventToEdit.event_date) || format(selectedDate, 'yyyy-MM-dd');
+                setStartDate(normalizedStart);
+                if (eventToEdit.end_date) {
+                    setIsMultiDay(true);
+                    setEndDate(toDateInputValue(eventToEdit.end_date) || normalizedStart);
+                } else {
+                    setIsMultiDay(false);
+                    setEndDate(normalizedStart);
+                }
+                setLocation(eventToEdit.location || '');
+                setDescription(eventToEdit.description || '');
+                setRecurrence((eventToEdit.recurrence as any) || 'none');
+
+                // Find or create category
+                const existingCategory = categories.find(c => c.name === eventToEdit.category);
+                if (existingCategory) {
+                    setSelectedCategoryId(existingCategory.id);
+                    setSelectedColor(eventToEdit.color);
+                } else {
+                    setSelectedColor(eventToEdit.color);
+                }
+            } else {
+                // Reset form for new event
+                setTitle(initialValues?.title || '');
+                const initialStart = toDateInputValue(initialValues?.event_date) || format(selectedDate, 'yyyy-MM-dd');
+                const initialEnd = toDateInputValue(initialValues?.end_date) || initialStart;
+                setStartDate(initialStart);
+                setEndDate(initialEnd);
+                setIsMultiDay(!!initialValues?.end_date);
+                setLocation(initialValues?.location || '');
+                setDescription(initialValues?.description || '');
+                setRecurrence((initialValues?.recurrence as any) || 'none');
+
+                if (initialValues?.category) {
+                    const category = categories.find(c => c.name === initialValues.category);
+                    if (category) {
+                        setSelectedCategoryId(category.id);
+                        setSelectedColor(initialValues.color || category.color);
+                    } else {
+                        setSelectedCategoryId(DEFAULT_CATEGORIES[0].id);
+                        setSelectedColor(initialValues.color || DEFAULT_CATEGORIES[0].color);
+                    }
+                } else {
+                    setSelectedCategoryId(DEFAULT_CATEGORIES[0].id);
+                    setSelectedColor(DEFAULT_CATEGORIES[0].color);
+                }
+            }
+        }
+    }, [isOpen, eventToEdit, selectedDate, initialValues, categories]);
+
+    useEffect(() => {
+        if (!eventToEdit) {
+            const category = categories.find(c => c.id === selectedCategoryId);
+            if (category) {
+                setSelectedColor(category.color);
+            }
+        }
+    }, [selectedCategoryId, categories, eventToEdit]);
+
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleOverlayFocus = (e: FocusEvent) => {
         const target = e.target as HTMLInputElement;
         const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
@@ -218,7 +297,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
         }, 350);
     };
 
-    const handleOverlayBlur = (e: React.FocusEvent) => {
+    const handleOverlayBlur = (e: FocusEvent) => {
         const relatedTarget = e.relatedTarget as Node | null;
         const isStillInOverlay = overlayRef.current?.contains(relatedTarget);
 
@@ -228,66 +307,6 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
         if (onFocusChange) onFocusChange(false);
         setViewportStyle(undefined);
     };
-
-    useEffect(() => {
-        if (isOpen) {
-            if (eventToEdit) {
-                setTitle(eventToEdit.title);
-                setStartDate(eventToEdit.event_date);
-                if (eventToEdit.end_date) {
-                    setIsMultiDay(true);
-                    setEndDate(eventToEdit.end_date);
-                } else {
-                    setIsMultiDay(false);
-                    setEndDate(eventToEdit.event_date);
-                }
-                setLocation(eventToEdit.location || '');
-                setDescription(eventToEdit.description || '');
-                setRecurrence((eventToEdit.recurrence as any) || 'none');
-
-                // Find or create category
-                const existingCategory = categories.find(c => c.name === eventToEdit.category);
-                if (existingCategory) {
-                    setSelectedCategoryId(existingCategory.id);
-                    setSelectedColor(eventToEdit.color);
-                } else {
-                    setSelectedColor(eventToEdit.color);
-                }
-            } else {
-                // Reset form for new event
-                setTitle(initialValues?.title || '');
-                setStartDate(initialValues?.event_date || format(selectedDate, 'yyyy-MM-dd'));
-                setEndDate(initialValues?.end_date || format(selectedDate, 'yyyy-MM-dd'));
-                setIsMultiDay(!!initialValues?.end_date);
-                setLocation(initialValues?.location || '');
-                setDescription(initialValues?.description || '');
-                setRecurrence((initialValues?.recurrence as any) || 'none');
-
-                if (initialValues?.category) {
-                    const category = categories.find(c => c.name === initialValues.category);
-                    if (category) {
-                        setSelectedCategoryId(category.id);
-                        setSelectedColor(initialValues.color || category.color);
-                    } else {
-                        setSelectedCategoryId(DEFAULT_CATEGORIES[0].id);
-                        setSelectedColor(initialValues.color || DEFAULT_CATEGORIES[0].color);
-                    }
-                } else {
-                    setSelectedCategoryId(DEFAULT_CATEGORIES[0].id);
-                    setSelectedColor(DEFAULT_CATEGORIES[0].color);
-                }
-            }
-        }
-    }, [isOpen, eventToEdit, selectedDate, initialValues, categories]);
-
-    useEffect(() => {
-        if (!eventToEdit) {
-            const category = categories.find(c => c.id === selectedCategoryId);
-            if (category) {
-                setSelectedColor(category.color);
-            }
-        }
-    }, [selectedCategoryId, categories, eventToEdit]);
 
     const handleColorSelect = (color: string) => {
         if (pickerState.type === 'main') {
@@ -299,7 +318,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
         setPickerState(prev => ({ ...prev, isOpen: false }));
     };
 
-    const openColorPicker = (type: 'main' | 'new', ref: React.RefObject<HTMLButtonElement | null>) => {
+    const openColorPicker = (type: 'main' | 'new', ref: RefObject<HTMLButtonElement | null>) => {
         if (ref.current) {
             const rect = ref.current.getBoundingClientRect();
             setPickerState({
@@ -337,6 +356,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
         if (!title.trim() || !startDate) return;
 
         setIsSubmitting(true);
+        setErrorMessage(null);
         try {
             const categoryName = categories.find(c => c.id === selectedCategoryId)?.name || 'Event';
 
@@ -344,10 +364,12 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
             let country = null;
             if (location?.trim()) {
                 try {
-                    const { resolveCountry } = await import('../../utils/geocoding');
+                    const { resolveCountry } = await import('@/utils/geocoding');
                     const result = await resolveCountry(location);
                     if (result) country = result.country;
-                } catch (e) { console.error("Geocoding failed", e); }
+                } catch (e) {
+                    logger.warn('AddEventOverlay', 'Failed to resolve country', e, { location });
+                }
             }
 
             await onSave({
@@ -364,7 +386,8 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
             });
             onClose();
         } catch (error) {
-            console.error('Error saving event:', error);
+            logger.error('AddEventOverlay', 'Error saving event', error);
+            setErrorMessage('Failed to save event. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -375,8 +398,10 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
         setIsDeleting(true);
         try {
             await onDelete(eventToEdit.id);
+            setErrorMessage(null);
         } catch (error) {
-            console.error('Error deleting event:', error);
+            logger.error('AddEventOverlay', 'Error deleting event', error);
+            setErrorMessage('Failed to delete event. Please try again.');
         } finally {
             setIsDeleting(false);
             setShowDeleteConfirm(false);
@@ -387,8 +412,14 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
 
 
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (!isOpen) return null;
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
             <AnimatePresence>
@@ -675,6 +706,12 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                                             placeholder="Notes (Optional)"
                                         />
                                     </div>
+
+                                    {errorMessage && (
+                                        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+                                            {errorMessage}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Sticky Footer */}

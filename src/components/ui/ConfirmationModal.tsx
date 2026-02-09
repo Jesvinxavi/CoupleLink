@@ -1,3 +1,6 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import {
     Dialog,
     DialogContent,
@@ -8,6 +11,9 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface ConfirmationModalProps {
     isOpen: boolean
     onClose: () => void
@@ -20,6 +26,9 @@ interface ConfirmationModalProps {
     loading?: boolean
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function ConfirmationModal({
     isOpen,
     onClose,

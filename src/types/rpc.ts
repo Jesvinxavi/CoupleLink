@@ -1,7 +1,11 @@
 /**
- * Type definitions for Supabase RPC function return values
- * These are used to properly type the JSON responses from RPC calls
+ * Type definitions for Supabase RPC function return values.
+ * These are used to properly type the JSON responses from RPC calls.
  */
+
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 
 /** Result from check_archived_couple RPC */
 export interface CheckArchivedCoupleResult {
@@ -35,4 +39,12 @@ export interface JoinCoupleResult {
     couple_id?: string;
     archived_couple_id?: string;
     host_email?: string;
+}
+
+/** Result from create_couple_with_invite RPC */
+export interface CreateCoupleResult {
+    success: boolean;
+    message?: string;
+    couple_id?: string;
+    invite_code?: string;
 }

@@ -1,21 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { Gift, Clock, CheckCircle } from 'lucide-react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { memo, useEffect, useState } from "react"
+import { Gift, Clock, CheckCircle } from "lucide-react"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface CouponProps {
-    title: string;
-    description: string | null;
-    isRedeemed?: boolean;
-    activatedAt?: string;
-    expiresAt?: string;
-    isGift?: boolean;
-    onActivate?: () => void;
-    onRedeem?: () => void;
-    onViewGift?: () => void;
-    onConvert?: () => void;
-    isPreview?: boolean; // New prop for preview mode
+    title: string
+    description: string | null
+    isRedeemed?: boolean
+    activatedAt?: string
+    expiresAt?: string
+    isGift?: boolean
+    onActivate?: () => void
+    onRedeem?: () => void
+    onViewGift?: () => void
+    onConvert?: () => void
+    isPreview?: boolean // New prop for preview mode
 }
 
-export const Coupon: React.FC<CouponProps> = ({
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+const Coupon = memo(function Coupon({
     title,
     description,
     isRedeemed,
@@ -26,47 +35,54 @@ export const Coupon: React.FC<CouponProps> = ({
     onViewGift: _onViewGift,
     onConvert,
     isPreview = false
-}) => {
+}: CouponProps) {
     // Note: _onViewGift is received but not currently used in this design
-    const [timeLeft, setTimeLeft] = useState<string | null>(null);
+    const [timeLeft, setTimeLeft] = useState<string | null>(null)
 
     useEffect(() => {
-        if (!expiresAt || isRedeemed || isPreview) return;
+        if (!expiresAt || isRedeemed || isPreview) return
 
         const calculateTimeLeft = () => {
-            const now = new Date().getTime();
-            const expiration = new Date(expiresAt).getTime();
-            const difference = expiration - now;
+            const now = new Date().getTime()
+            const expiration = new Date(expiresAt).getTime()
+            const difference = expiration - now
 
             if (difference <= 0) {
-                return "Expired";
+                return "Expired"
             } else {
-                const hours = Math.floor(difference / (1000 * 60 * 60));
-                const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-                return `${hours}h ${minutes}m`;
+                const hours = Math.floor(difference / (1000 * 60 * 60))
+                const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
+                return `${hours}h ${minutes}m`
             }
-        };
+        }
 
-        // Initial set
-        setTimeLeft(calculateTimeLeft());
+        let timeoutId: ReturnType<typeof setTimeout> | undefined
 
-        const interval = setInterval(() => {
-            const result = calculateTimeLeft();
-            setTimeLeft(result);
-            if (result === "Expired") {
-                clearInterval(interval);
+        const tick = () => {
+            const result = calculateTimeLeft()
+            setTimeLeft(result)
+            if (result === "Expired") return
+            timeoutId = setTimeout(tick, 60000) // Update every minute
+        }
+
+        tick()
+
+        return () => {
+            if (timeoutId) {
+                clearTimeout(timeoutId)
             }
-        }, 60000); // Update every minute
-
-        return () => clearInterval(interval);
-    }, [expiresAt, isRedeemed, isPreview]);
+        }
+    }, [expiresAt, isRedeemed, isPreview])
 
     // Ticket Style - Straight top/bottom, serrated sides with large center notch + smaller scallops
     // Square corners as per reference image
 
-    const isActivated = !!activatedAt && !isRedeemed;
-    const isExpired = timeLeft === "Expired";
+    const isActivated = !!activatedAt && !isRedeemed
+    const isExpired = timeLeft === "Expired"
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className={`relative transition-all duration-200 group
             ${isRedeemed ? 'opacity-60 grayscale' : 'hover:scale-[1.02]'}
@@ -213,5 +229,7 @@ export const Coupon: React.FC<CouponProps> = ({
                 )}
             </div>
         </div>
-    );
-};
+    )
+})
+
+export { Coupon }

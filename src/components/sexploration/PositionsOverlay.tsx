@@ -1,40 +1,55 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X } from 'lucide-react';
-import { Input } from '../ui/input';
-import { Button } from '../ui/button';
-import { positions, POSITION_CATEGORIES } from '../../data/positionsData';
-import type { Position } from '../../data/positionsData';
-import { PositionSVG } from './PositionSVG';
-import { PositionDetailModal } from './PositionDetailModal';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useRef, useMemo, type FocusEvent } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Search, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { positions, POSITION_CATEGORIES } from "@/data/positionsData"
+import type { Position } from "@/data/positionsData"
+import { PositionSVG } from "@/components/sexploration/PositionSVG"
+import { PositionDetailModal } from "@/components/sexploration/PositionDetailModal"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface PositionsOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    isPositionCompleted: (id: string) => boolean;
-    togglePositionComplete: (id: string) => Promise<void>;
-    onFocusChange?: (isFocused: boolean) => void;
+    isOpen: boolean
+    onClose: () => void
+    isPositionCompleted: (id: string) => boolean
+    togglePositionComplete: (id: string) => Promise<void>
+    onFocusChange?: (isFocused: boolean) => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, togglePositionComplete, onFocusChange }: PositionsOverlayProps) {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isSearchFocused, setIsSearchFocused] = useState(false);
-    const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
-    const overlayRef = useRef<HTMLDivElement>(null);
+    useLockBodyScroll(isOpen)
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [searchQuery, setSearchQuery] = useState("")
+    const [isSearchFocused, setIsSearchFocused] = useState(false)
+    const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
+
+    // ═══════════════════════════════════════
+    // REFS
+    // ═══════════════════════════════════════
+    const overlayRef = useRef<HTMLDivElement>(null)
 
     // Mobile Viewport Logic
-    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined)
 
-    // Combined body lock + viewport resize handler (matches FantasyBucketListOverlay)
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    // Viewport resize handler (matches FantasyBucketListOverlay)
     useEffect(() => {
         if (!isOpen) return;
-
-        // Robust Body Lock (save scroll position)
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
 
         // Handle Visual Viewport for mobile keyboard
         const handleVisualResize = () => {
@@ -66,32 +81,26 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
         handleVisualResize();
 
         return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-
-            // Restore scroll position
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-
             window.visualViewport?.removeEventListener('resize', handleVisualResize);
             window.visualViewport?.removeEventListener('scroll', handleVisualResize);
         };
     }, [isOpen]); // Only depends on isOpen
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const handleClose = () => {
-        setSearchQuery(''); // Reset search
-        onClose();
-    };
+        setSearchQuery("") // Reset search
+        onClose()
+    }
 
-    const handleOverlayFocus = (e: React.FocusEvent) => {
-        const target = e.target as HTMLInputElement;
-        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+    const handleOverlayFocus = (e: FocusEvent) => {
+        const target = e.target as HTMLInputElement
+        const isTextInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
 
         // Exclude input types that don't trigger keyboard
-        const nonKeyboardInputTypes = ['date', 'time', 'datetime-local', 'month', 'week', 'color', 'file'];
-        const isNonKeyboardInput = target.tagName === 'INPUT' && nonKeyboardInputTypes.includes(target.type);
+        const nonKeyboardInputTypes = ["date", "time", "datetime-local", "month", "week", "color", "file"]
+        const isNonKeyboardInput = target.tagName === "INPUT" && nonKeyboardInputTypes.includes(target.type)
 
         // Skip if not a text input or if it's a non-keyboard input type
         if (!isTextInput || isNonKeyboardInput) {
@@ -100,67 +109,79 @@ export function PositionsOverlay({ isOpen, onClose, isPositionCompleted, toggleP
 
         if (overlayRef.current && window.visualViewport) {
             // Measure-Lock-Animate pattern
-            const rect = overlayRef.current.getBoundingClientRect();
-            setViewportStyle({ height: rect.height, top: rect.top });
-            setIsSearchFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            const rect = overlayRef.current.getBoundingClientRect()
+            setViewportStyle({ height: rect.height, top: rect.top })
+            setIsSearchFocused(true)
+            if (onFocusChange) onFocusChange(true)
 
             // Animate to target visual viewport in next frame
             requestAnimationFrame(() => {
                 setViewportStyle({
                     height: window.visualViewport!.height,
                     top: window.visualViewport!.offsetTop
-                });
+                })
             });
         } else {
-            setIsSearchFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            setIsSearchFocused(true)
+            if (onFocusChange) onFocusChange(true)
         }
 
         // Smart scroll - only if not fully visible
         setTimeout(() => {
-            const scrollContainer = overlayRef.current?.querySelector('.flex-1.overflow-y-auto');
+            const scrollContainer = overlayRef.current?.querySelector(".flex-1.overflow-y-auto")
             if (scrollContainer && target) {
-                const targetRect = target.getBoundingClientRect();
-                const containerRect = scrollContainer.getBoundingClientRect();
+                const targetRect = target.getBoundingClientRect()
+                const containerRect = scrollContainer.getBoundingClientRect()
 
                 const isFullyVisible =
                     targetRect.top >= containerRect.top &&
                     targetRect.bottom <= containerRect.bottom;
 
                 if (!isFullyVisible) {
-                    const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+                    const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop
                     scrollContainer.scrollTo({
                         top: Math.max(0, targetTop - 20), // 20px padding from top
-                        behavior: 'smooth'
-                    });
+                        behavior: "smooth"
+                    })
                 }
             }
-        }, 350);
-    };
+        }, 350)
+    }
 
-    const handleOverlayBlur = (e: React.FocusEvent) => {
-        const relatedTarget = e.relatedTarget as Node | null;
-        const isStillInOverlay = overlayRef.current?.contains(relatedTarget);
+    const handleOverlayBlur = (e: FocusEvent) => {
+        const relatedTarget = e.relatedTarget as Node | null
+        const isStillInOverlay = overlayRef.current?.contains(relatedTarget)
 
         if (isStillInOverlay) return;
 
-        setIsSearchFocused(false);
-        if (onFocusChange) onFocusChange(false);
-        setViewportStyle(undefined);
-    };
+        setIsSearchFocused(false)
+        if (onFocusChange) onFocusChange(false)
+        setViewportStyle(undefined)
+    }
 
-    const filteredPositions = positions.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // ═══════════════════════════════════════
+    // DERIVED DATA
+    // ═══════════════════════════════════════
+    const filteredPositions = useMemo(() => {
+        const normalizedQuery = searchQuery.trim().toLowerCase()
+        if (!normalizedQuery) return positions
+        return positions.filter(p =>
+            p.name.toLowerCase().includes(normalizedQuery) ||
+            p.category.toLowerCase().includes(normalizedQuery)
+        )
+    }, [searchQuery])
 
-    const groupedPositions = Object.entries(POSITION_CATEGORIES).map(([key, category]) => ({
-        key,
-        ...category,
-        positions: filteredPositions.filter(p => p.category === key),
-    })).filter(group => group.positions.length > 0);
+    const groupedPositions = useMemo(() => {
+        return Object.entries(POSITION_CATEGORIES).map(([key, category]) => ({
+            key,
+            ...category,
+            positions: filteredPositions.filter(p => p.category === key),
+        })).filter(group => group.positions.length > 0)
+    }, [filteredPositions])
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
             <AnimatePresence>

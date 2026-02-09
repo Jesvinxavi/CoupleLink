@@ -1,7 +1,11 @@
-import { createContext, useContext, useState, useEffect, type ReactNode, useCallback, useRef } from 'react';
-import { supabase } from '../lib/supabase';
-import { useCoupleData } from '../hooks/useCoupleData';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { useCoupleData } from '@/hooks/useCoupleData';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 export interface Fantasy {
     id: string;
     couple_id: string;
@@ -29,11 +33,17 @@ interface FantasyBucketListContextType {
     isRequester: (fantasy: Fantasy) => boolean;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const FantasyBucketListContext = createContext<FantasyBucketListContextType | undefined>(undefined);
 
 // Type assertion for tables that don't exist in generated types yet
 const db = supabase as any;
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export function FantasyBucketListProvider({ children }: { children: ReactNode }) {
     const { couple, userProfile } = useCoupleData();
     const [fantasies, setFantasies] = useState<Fantasy[]>([]);
@@ -58,7 +68,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                 .order('created_at', { ascending: false });
 
             if (error) {
-                console.error('Error fetching fantasies:', error);
+                logger.error('FantasyBucketListContext', 'Error fetching fantasies', error);
                 return;
             }
 
@@ -70,7 +80,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
 
             setFantasies(fantasiesWithNames);
         } catch (error) {
-            console.error('Error fetching fantasies:', error);
+            logger.error('FantasyBucketListContext', 'Error fetching fantasies', error);
         } finally {
             setLoading(false);
         }
@@ -130,7 +140,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
         };
     }, [couple?.id, fetchFantasies, checkUpdates]);
 
-    const addFantasy = async (text: string) => {
+    const addFantasy = useCallback(async (text: string) => {
         if (!couple?.id || !userProfile?.id) return;
 
         const newFantasy = {
@@ -173,7 +183,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
             }
 
             if (error) {
-                console.error('Insert error:', error);
+                logger.error('FantasyBucketListContext', 'Insert error', error);
                 throw error;
             }
 
@@ -190,13 +200,13 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
             ignoredFantasyIds.current.add(data.id);
             setTimeout(() => ignoredFantasyIds.current.delete(data.id), 2000);
         } catch (error) {
-            console.error('Error adding fantasy:', error);
+            logger.error('FantasyBucketListContext', 'Error adding fantasy', error);
             // Revert optimistic update
             setFantasies((prev) => prev.filter((f) => f.id !== tempId));
         }
-    };
+    }, [couple?.id, userProfile]);
 
-    const approveFantasy = async (id: string) => {
+    const approveFantasy = useCallback(async (id: string) => {
 
         // Optimistic update
         setFantasies((prev) =>
@@ -222,17 +232,17 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
             }
 
             if (error) {
-                console.error('Error approving fantasy (DB):', error);
+                logger.error('FantasyBucketListContext', 'Error approving fantasy (DB)', error);
                 throw error;
             }
 
         } catch (error) {
-            console.error('Error approving fantasy:', error);
+            logger.error('FantasyBucketListContext', 'Error approving fantasy', error);
             await fetchFantasies(); // Revert on error
         }
-    };
+    }, [fetchFantasies]);
 
-    const vetoFantasy = async (id: string) => {
+    const vetoFantasy = useCallback(async (id: string) => {
 
         // Optimistic update - remove from list
         const previousFantasies = fantasies;
@@ -245,7 +255,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
             const { error } = await db.from('fantasy_bucket_list').delete().eq('id', id);
 
             if (error) {
-                console.error('Error vetoing fantasy (DB):', error);
+                logger.error('FantasyBucketListContext', 'Error vetoing fantasy (DB)', error);
                 throw error;
             }
 
@@ -258,12 +268,12 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                 });
             }
         } catch (error) {
-            console.error('Error vetoing fantasy:', error);
+            logger.error('FantasyBucketListContext', 'Error vetoing fantasy', error);
             setFantasies(previousFantasies); // Revert on error
         }
-    };
+    }, [fantasies]);
 
-    const deleteFantasy = async (id: string) => {
+    const deleteFantasy = useCallback(async (id: string) => {
 
         // Same as veto - removes the fantasy
         const previousFantasies = fantasies;
@@ -276,7 +286,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
             const { error } = await db.from('fantasy_bucket_list').delete().eq('id', id);
 
             if (error) {
-                console.error('Error deleting fantasy (DB):', error);
+                logger.error('FantasyBucketListContext', 'Error deleting fantasy (DB)', error);
                 throw error;
             }
 
@@ -289,12 +299,12 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                 });
             }
         } catch (error) {
-            console.error('Error deleting fantasy:', error);
+            logger.error('FantasyBucketListContext', 'Error deleting fantasy', error);
             setFantasies(previousFantasies); // Revert on error
         }
-    };
+    }, [fantasies]);
 
-    const completeFantasy = async (id: string) => {
+    const completeFantasy = useCallback(async (id: string) => {
 
         // Optimistic update
         setFantasies((prev) =>
@@ -312,7 +322,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                 .eq('id', id);
 
             if (error) {
-                console.error('Error completing fantasy (DB):', error);
+                logger.error('FantasyBucketListContext', 'Error completing fantasy (DB)', error);
                 throw error;
             }
 
@@ -335,20 +345,20 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                 });
             }
         } catch (error) {
-            console.error('Error completing fantasy:', error);
+            logger.error('FantasyBucketListContext', 'Error completing fantasy', error);
             await fetchFantasies(); // Revert on error
         }
-    };
+    }, [couple?.id, fetchFantasies]);
 
-    const isRequester = (fantasy: Fantasy) => {
+    const isRequester = useCallback((fantasy: Fantasy) => {
         return fantasy.requester_id === userProfile?.id;
-    };
+    }, [userProfile?.id]);
 
     const pendingCount = fantasies.filter((f) => f.status === 'pending').length;
     const approvedCount = fantasies.filter((f) => f.status === 'approved').length;
     const completedCount = fantasies.filter((f) => f.status === 'completed').length;
 
-    const value = {
+    const value = useMemo(() => ({
         fantasies,
         pendingCount,
         approvedCount,
@@ -360,7 +370,19 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
         deleteFantasy,
         completeFantasy,
         isRequester,
-    };
+    }), [
+        fantasies,
+        pendingCount,
+        approvedCount,
+        completedCount,
+        loading,
+        addFantasy,
+        approveFantasy,
+        vetoFantasy,
+        deleteFantasy,
+        completeFantasy,
+        isRequester,
+    ]);
 
     return (
         <FantasyBucketListContext.Provider value={value}>
@@ -369,6 +391,9 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
     );
 }
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useFantasyBucketListContext() {
     const context = useContext(FantasyBucketListContext);
     if (context === undefined) {

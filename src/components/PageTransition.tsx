@@ -1,16 +1,31 @@
-import { motion } from 'framer-motion';
-import { type ReactNode, useEffect } from 'react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { motion } from "framer-motion"
+import { type ReactNode, useEffect } from "react"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface PageTransitionProps {
-    children: ReactNode;
-    className?: string;
+    children: ReactNode
+    className?: string
 }
 
-export const PageTransition = ({ children, className = "" }: PageTransitionProps) => {
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+export function PageTransition({ children, className = "" }: PageTransitionProps) {
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
+        window.scrollTo(0, 0)
+    }, [])
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -21,5 +36,5 @@ export const PageTransition = ({ children, className = "" }: PageTransitionProps
         >
             {children}
         </motion.div>
-    );
-};
+    )
+}

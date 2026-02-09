@@ -1,54 +1,85 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Calendar, ChevronLeft, ChevronRight, Ticket, Sparkles, Heart, Flame } from 'lucide-react';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { positions } from '../../data/positionsData';
-import { PositionSVG } from '../sexploration/PositionSVG';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect, useMemo, useState } from "react"
+import { Calendar, ChevronLeft, ChevronRight, Ticket, Sparkles, Heart, Flame } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { positions } from "@/data/positionsData"
+import { PositionSVG } from "@/components/sexploration/PositionSVG"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface SexplorationHistoryItem {
-    id: string;
-    title: string;
-    description?: string;
-    date: string;
-    type: 'voucher' | 'fantasy' | 'position';
-    category?: string;
+    id: string
+    title: string
+    description?: string
+    date: string
+    type: "voucher" | "fantasy" | "position"
+    category?: string
 }
 
 interface GroupedSexplorationHistory {
     [monthYear: string]: {
-        vouchers: SexplorationHistoryItem[];
-        fantasies: SexplorationHistoryItem[];
-        positions: SexplorationHistoryItem[];
-    };
+        vouchers: SexplorationHistoryItem[]
+        fantasies: SexplorationHistoryItem[]
+        positions: SexplorationHistoryItem[]
+    }
 }
 
+const SEXPLORATION_PAGE_SIZE = 8
+
+// ═══════════════════════════════════════
+// SUBCOMPONENTS
+// ═══════════════════════════════════════
 const SexplorationCarousel = ({
     items,
     onOpenDetails,
     type
 }: {
-    items: SexplorationHistoryItem[],
-    onOpenDetails: (item: SexplorationHistoryItem) => void,
-    type: 'voucher' | 'fantasy' | 'position'
+    items: SexplorationHistoryItem[]
+    onOpenDetails: (item: SexplorationHistoryItem) => void
+    type: "voucher" | "fantasy" | "position"
 }) => {
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentIndex, setCurrentIndex] = useState(0)
+    const [visibleCount, setVisibleCount] = useState(SEXPLORATION_PAGE_SIZE)
 
-    if (items.length === 0) return null;
+    if (items.length === 0) return null
+
+    useEffect(() => {
+        setVisibleCount(SEXPLORATION_PAGE_SIZE)
+        setCurrentIndex(0)
+    }, [items])
+
+    const visibleItems = useMemo(() => {
+        return items.slice(0, visibleCount)
+    }, [items, visibleCount])
+
+    const canLoadMore = items.length > visibleCount
+
+    useEffect(() => {
+        if (currentIndex >= visibleItems.length) {
+            setCurrentIndex(0)
+        }
+    }, [currentIndex, visibleItems.length])
 
     const next = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setCurrentIndex((prev) => (prev + 1) % items.length);
-    };
+        e.stopPropagation()
+        setCurrentIndex((prev) => (prev + 1) % visibleItems.length)
+    }
 
     const prev = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-    };
+        e.stopPropagation()
+        setCurrentIndex((prev) => (prev - 1 + visibleItems.length) % visibleItems.length)
+    }
 
-    const currentItem = items[currentIndex];
+    const currentItem = visibleItems[currentIndex]
 
     return (
         <div className="relative group w-full">
@@ -63,7 +94,7 @@ const SexplorationCarousel = ({
             </div>
 
             {/* Navigation & Dots */}
-            {items.length > 1 && (
+            {visibleItems.length > 1 && (
                 <div className="flex items-center justify-center gap-3 mt-2">
                     <button
                         onClick={prev}
@@ -73,7 +104,7 @@ const SexplorationCarousel = ({
                     </button>
 
                     <div className="flex justify-center gap-1.5">
-                        {items.map((_, idx) => (
+                        {visibleItems.map((_, idx) => (
                             <div
                                 key={idx}
                                 className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentIndex
@@ -94,43 +125,58 @@ const SexplorationCarousel = ({
             )}
 
             {/* Counter */}
-            {items.length > 1 && (
+            {visibleItems.length > 1 && (
                 <div className="text-center text-xs text-gray-400 mt-1">
-                    {currentIndex + 1} / {items.length}
+                    {currentIndex + 1} / {visibleItems.length}
+                </div>
+            )}
+
+            {canLoadMore && (
+                <div className="mt-3 flex justify-center">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setVisibleCount((prev) => Math.min(prev + SEXPLORATION_PAGE_SIZE, items.length))
+                        }}
+                    >
+                        Load more ({visibleItems.length} of {items.length})
+                    </Button>
                 </div>
             )}
         </div>
-    );
-};
+    )
+}
 
 const SexplorationCard = ({
     item,
     onClick,
     type
 }: {
-    item: SexplorationHistoryItem;
-    onClick?: () => void;
-    type: 'voucher' | 'fantasy' | 'position';
+    item: SexplorationHistoryItem
+    onClick?: () => void
+    type: "voucher" | "fantasy" | "position"
 }) => {
     const getIcon = () => {
         switch (type) {
-            case 'voucher': return <Ticket className="w-4 h-4 text-pink-500" />;
-            case 'fantasy': return <Sparkles className="w-4 h-4 text-amber-500" />;
-            case 'position':
-                if (position) return <PositionSVG position={position} size="xs" className="!bg-transparent" />; // Use xs size and transparent bg for icon usage
-                return <Heart className="w-4 h-4 text-rose-500" />;
+            case "voucher": return <Ticket className="w-4 h-4 text-pink-500" />
+            case "fantasy": return <Sparkles className="w-4 h-4 text-amber-500" />
+            case "position":
+                if (position) return <PositionSVG position={position} size="xs" className="!bg-transparent" /> // Use xs size and transparent bg for icon usage
+                return <Heart className="w-4 h-4 text-rose-500" />
         }
-    };
+    }
 
     const getBgColor = () => {
         switch (type) {
-            case 'voucher': return 'bg-pink-100 text-pink-600';
-            case 'fantasy': return 'bg-amber-100 text-amber-600';
-            case 'position': return 'bg-rose-100 text-rose-600';
+            case "voucher": return "bg-pink-100 text-pink-600"
+            case "fantasy": return "bg-amber-100 text-amber-600"
+            case "position": return "bg-rose-100 text-rose-600"
         }
-    };
+    }
 
-    const position = type === 'position' ? positions.find(p => p.id === item.id) : null;
+    const position = type === "position" ? positions.find((p) => p.id === item.id) : null
 
     return (
         <Card
@@ -171,105 +217,114 @@ const SexplorationCard = ({
                 </CardContent>
             )}
         </Card>
-    );
-};
-
-interface SexplorationHistoryProps {
-    monthYear: string;
+    )
 }
 
-export function SexplorationHistorySection({ monthYear }: SexplorationHistoryProps) {
-    const { couple } = useCoupleData();
-    const [history, setHistory] = useState<GroupedSexplorationHistory[string] | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [selectedItem, setSelectedItem] = useState<SexplorationHistoryItem | null>(null);
+interface SexplorationHistoryProps {
+    monthYear: string
+}
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+export function SexplorationHistorySection({ monthYear }: SexplorationHistoryProps) {
+    const { couple } = useCoupleData()
+    const [history, setHistory] = useState<GroupedSexplorationHistory[string] | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [selectedItem, setSelectedItem] = useState<SexplorationHistoryItem | null>(null)
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         const fetchHistory = async () => {
-            if (!couple?.id) return;
+            if (!couple?.id) return
 
             try {
-                setLoading(true);
+                setLoading(true)
 
                 // Parse the month/year to filter data
-                const [monthName, year] = monthYear.split(' ');
-                const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
-                const startDate = new Date(parseInt(year), monthIndex, 1);
-                const endDate = new Date(parseInt(year), monthIndex + 1, 0, 23, 59, 59);
+                const [monthName, year] = monthYear.split(" ")
+                const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth()
+                const startDate = new Date(parseInt(year), monthIndex, 1)
+                const endDate = new Date(parseInt(year), monthIndex + 1, 0, 23, 59, 59)
 
                 // 1. Fetch redeemed vouchers/coupons
                 const { data: couponsData } = await supabase
-                    .from('coupons')
-                    .select('*')
-                    .eq('couple_id', couple.id)
-                    .not('redeemed_at', 'is', null)
-                    .gte('redeemed_at', startDate.toISOString())
-                    .lte('redeemed_at', endDate.toISOString())
-                    .order('redeemed_at', { ascending: false });
+                    .from("coupons")
+                    .select("id, title, description, redeemed_at")
+                    .eq("couple_id", couple.id)
+                    .not("redeemed_at", "is", null)
+                    .gte("redeemed_at", startDate.toISOString())
+                    .lte("redeemed_at", endDate.toISOString())
+                    .order("redeemed_at", { ascending: false })
 
                 const vouchers: SexplorationHistoryItem[] = (couponsData || []).map((c: any) => ({
                     id: c.id,
                     title: c.title,
                     description: c.description,
                     date: c.redeemed_at,
-                    type: 'voucher' as const
-                }));
+                    type: "voucher" as const
+                }))
 
                 // 2. Fetch completed fantasies
                 const { data: fantasiesData } = await (supabase as any)
-                    .from('fantasy_bucket_list')
-                    .select('*')
-                    .eq('couple_id', couple.id)
-                    .eq('status', 'completed')
-                    .not('completed_at', 'is', null)
-                    .gte('completed_at', startDate.toISOString())
-                    .lte('completed_at', endDate.toISOString())
-                    .order('completed_at', { ascending: false });
+                    .from("fantasy_bucket_list")
+                    .select("id, fantasy_text, completed_at")
+                    .eq("couple_id", couple.id)
+                    .eq("status", "completed")
+                    .not("completed_at", "is", null)
+                    .gte("completed_at", startDate.toISOString())
+                    .lte("completed_at", endDate.toISOString())
+                    .order("completed_at", { ascending: false })
 
                 const fantasies: SexplorationHistoryItem[] = (fantasiesData || []).map((f: any) => ({
                     id: f.id,
                     title: f.fantasy_text,
                     date: f.completed_at,
-                    type: 'fantasy' as const
-                }));
+                    type: "fantasy" as const
+                }))
 
                 // 3. Fetch completed positions
                 const { data: positionsData } = await (supabase as any)
-                    .from('completed_positions')
-                    .select('*')
-                    .eq('couple_id', couple.id)
-                    .gte('completed_at', startDate.toISOString())
-                    .lte('completed_at', endDate.toISOString())
-                    .order('completed_at', { ascending: false });
+                    .from("completed_positions")
+                    .select("position_id, completed_at")
+                    .eq("couple_id", couple.id)
+                    .gte("completed_at", startDate.toISOString())
+                    .lte("completed_at", endDate.toISOString())
+                    .order("completed_at", { ascending: false })
 
                 const positionItems: SexplorationHistoryItem[] = (positionsData || []).map((p: any) => {
-                    const positionInfo = positions.find(pos => pos.id === p.position_id);
+                    const positionInfo = positions.find((pos) => pos.id === p.position_id)
                     return {
                         id: p.position_id,
                         title: positionInfo?.name || p.position_id,
                         description: positionInfo?.description,
                         date: p.completed_at,
-                        type: 'position' as const,
+                        type: "position" as const,
                         category: positionInfo?.category
-                    };
-                });
+                    }
+                })
 
                 setHistory({
                     vouchers,
                     fantasies,
                     positions: positionItems
-                });
+                })
 
             } catch (err) {
-                console.error('Error fetching sexploration history:', err);
+                logger.error("SexplorationHistory", "Error fetching sexploration history", err)
             } finally {
-                setLoading(false);
+                setLoading(false)
             }
-        };
+        }
 
-        fetchHistory();
-    }, [couple?.id, monthYear]);
+        fetchHistory()
+    }, [couple?.id, monthYear])
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center py-12 animate-in fade-in duration-500">
@@ -280,11 +335,14 @@ export function SexplorationHistorySection({ monthYear }: SexplorationHistoryPro
     }
 
     if (!history || (history.vouchers.length === 0 && history.fantasies.length === 0 && history.positions.length === 0)) {
-        return null; // Don't show section if no sexploration history
+        return null // Don't show section if no sexploration history
     }
 
-    const position = selectedItem?.type === 'position' ? positions.find(p => p.id === selectedItem.id) : null;
+    const position = selectedItem?.type === "position" ? positions.find((p) => p.id === selectedItem.id) : null;
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
             <div className="mt-0 pt-4 border-t border-gray-200 dark:border-gray-700 lg:mt-0 lg:pt-0 lg:border-t-0">

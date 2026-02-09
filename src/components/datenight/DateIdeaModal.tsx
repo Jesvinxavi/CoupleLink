@@ -1,30 +1,25 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, ExternalLink, Clock, ChevronRight, ChevronLeft, CheckSquare, Check } from "lucide-react";
-import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../ui/dialog";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { X, ExternalLink, Clock, ChevronRight, ChevronLeft, CheckSquare, Check } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import type { DateIdeaItem } from "@/types/datenight"
 
-export interface DateIdeaItem {
-    id?: string;
-    title: string;
-    description: string;
-    imageUrl: string;
-    duration: string;
-    cost?: string;
-    link?: string;
-    buttonText?: string;
-    checklist?: string[];
-}
-
+// ═══════════════════════════════════════
+// SUBCOMPONENTS
+// ═══════════════════════════════════════
 function InteractiveChecklist({ items }: { items: string[] }) {
-    const [checkedState, setCheckedState] = useState<{ [key: number]: boolean }>({});
+    const [checkedState, setCheckedState] = useState<{ [key: number]: boolean }>({})
 
     const toggleItem = (index: number) => {
         setCheckedState(prev => ({
             ...prev,
             [index]: !prev[index]
-        }));
-    };
+        }))
+    }
 
     return (
         <ul className="space-y-2">
@@ -34,36 +29,39 @@ function InteractiveChecklist({ items }: { items: string[] }) {
                     className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
                     onClick={() => toggleItem(idx)}
                 >
-                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${checkedState[idx] ? 'bg-rose-500 border-rose-500' : 'border-gray-400 bg-white dark:bg-gray-700'}`}>
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${checkedState[idx] ? "bg-rose-500 border-rose-500" : "border-gray-400 bg-white dark:bg-gray-700"}`}>
                         {checkedState[idx] && <Check className="w-3 h-3 text-white" />}
                     </div>
-                    <span className={checkedState[idx] ? 'line-through text-gray-400' : ''}>{checkItem}</span>
+                    <span className={checkedState[idx] ? "line-through text-gray-400" : ""}>{checkItem}</span>
                 </li>
             ))}
         </ul>
-    );
+    )
 }
 
 interface DateIdeaModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    title: string;
-    description?: string;
-    items: DateIdeaItem[];
-    onEdit?: (item: DateIdeaItem) => void;
-    showNavigation?: boolean;
+    isOpen: boolean
+    onClose: () => void
+    title: string
+    description?: string
+    items: DateIdeaItem[]
+    onEdit?: (item: DateIdeaItem) => void
+    showNavigation?: boolean
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function DateIdeaModal({ isOpen, onClose, title, description, items, onEdit, showNavigation = true }: DateIdeaModalProps) {
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentIndex, setCurrentIndex] = useState(0)
 
     const nextCard = () => {
-        setCurrentIndex((prev) => (prev + 1) % items.length);
-    };
+        setCurrentIndex((prev) => (prev + 1) % items.length)
+    }
 
     const prevCard = () => {
-        setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-    };
+        setCurrentIndex((prev) => (prev - 1 + items.length) % items.length)
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -108,21 +106,21 @@ export function DateIdeaModal({ isOpen, onClose, title, description, items, onEd
                                 let rotate = 0;
 
                                 if (isCurrent) {
-                                    zIndex = 10;
-                                    scale = 1;
-                                    opacity = 1;
+                                    zIndex = 10
+                                    scale = 1
+                                    opacity = 1
                                 } else if (isNext) {
-                                    zIndex = 5;
-                                    scale = 0.95;
-                                    x = 20;
-                                    rotate = 5;
-                                    opacity = 0.5;
+                                    zIndex = 5
+                                    scale = 0.95
+                                    x = 20
+                                    rotate = 5
+                                    opacity = 0.5
                                 } else if (isPrev) {
-                                    zIndex = 5;
-                                    scale = 0.95;
-                                    x = -20;
-                                    rotate = -5;
-                                    opacity = 0.5;
+                                    zIndex = 5
+                                    scale = 0.95
+                                    x = -20
+                                    rotate = -5
+                                    opacity = 0.5
                                 }
 
                                 return (
@@ -145,9 +143,9 @@ export function DateIdeaModal({ isOpen, onClose, title, description, items, onEd
                                             const swipe = offset.x;
 
                                             if (swipe < -100) {
-                                                nextCard();
+                                                nextCard()
                                             } else if (swipe > 100) {
-                                                prevCard();
+                                                prevCard()
                                             }
                                         }}
                                     >
@@ -156,6 +154,8 @@ export function DateIdeaModal({ isOpen, onClose, title, description, items, onEd
                                                 src={item.imageUrl}
                                                 alt={item.title}
                                                 className="w-full h-full object-cover"
+                                                loading="lazy"
+                                                decoding="async"
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                                             <div className="absolute bottom-4 left-4 right-4 text-white">
@@ -183,8 +183,8 @@ export function DateIdeaModal({ isOpen, onClose, title, description, items, onEd
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => {
-                                                            onClose();
-                                                            onEdit(item);
+                                                            onClose()
+                                                            onEdit(item)
                                                         }}
                                                         className="h-8 w-8 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 shrink-0"
                                                     >
@@ -212,7 +212,7 @@ export function DateIdeaModal({ isOpen, onClose, title, description, items, onEd
                                             {item.link && (
                                                 <Button
                                                     className="w-full bg-rose-500 hover:bg-rose-600 text-white gap-2 mt-6 h-10 text-sm shrink-0"
-                                                    onClick={() => window.open(item.link, '_blank')}
+                                                    onClick={() => window.open(item.link, "_blank")}
                                                 >
                                                     {item.buttonText || "Explore Inside"}
                                                     <ExternalLink className="w-4 h-4" />
@@ -220,7 +220,7 @@ export function DateIdeaModal({ isOpen, onClose, title, description, items, onEd
                                             )}
                                         </div>
                                     </motion.div>
-                                );
+                                )
                             })}
                         </AnimatePresence>
 
@@ -246,5 +246,5 @@ export function DateIdeaModal({ isOpen, onClose, title, description, items, onEd
                 </div>
             </DialogContent>
         </Dialog>
-    );
+    )
 }

@@ -1,3 +1,6 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { HashRouter as Router } from "react-router-dom"
 import { AuthProvider } from "@/context/AuthContext"
 import { CoupleProvider } from "@/context/CoupleContext"
@@ -20,8 +23,18 @@ import { DebugConsole } from "@/components/debug/DebugConsole"
 
 import { DeveloperProvider } from "@/context/DeveloperContext"
 
-
-// Main App component
+// ═══════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════
+// Provider order notes:
+// - AuthProvider must wrap everything to provide user state.
+// - DeveloperProvider depends on auth state for debug flags.
+// - CoupleProvider depends on auth state and provides couple context.
+// - PartnerNotes/Journal/Calendar/Fantasy/Coupons/Game contexts depend on couple data.
+// - GlobalModalQueue must wrap modal providers to coordinate overlays.
+// - Modal providers depend on their respective data contexts above.
+// - Global listeners (notifications/coupons) must be inside providers.
+// - AnimatedRoutes must be last to render with all providers available.
 function App() {
   return (
     <Router>

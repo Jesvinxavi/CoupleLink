@@ -2,10 +2,9 @@
 -- Frequency: daily
 -- Mix: ~20% Competitive
 
-DELETE FROM public.user_answers WHERE activity_id IN (SELECT id FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'daily');
-DELETE FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'daily';
-
-INSERT INTO public.activities (category, type, content) VALUES
+INSERT INTO public.activities (category, type, content)
+SELECT v.category, v.type, v.content
+FROM (VALUES
 -- COMPETITIVE (approx 60)
 ('active', 'challenge', '{"frequency": "daily", "title": "Steps Battle", "description": "Who walked more today? Share your step count.", "durationMinutes": 5, "isCompetition": true}'),
 ('creative', 'challenge', '{"frequency": "daily", "title": "Best Photo", "description": "Take a photo of something that makes you happy. Best photo wins!", "durationMinutes": 5, "isCompetition": true}'),
@@ -323,5 +322,10 @@ INSERT INTO public.activities (category, type, content) VALUES
 ('spicy', 'challenge', '{"title": "Shower Thoughts", "description": "Tell them if they crossed your mind in the shower today.", "frequency": "daily", "durationMinutes": 1, "isCompetition": false, "isSpicy": true}'),
 ('spicy', 'challenge', '{"title": "Gif War: Spicy Edition", "description": "Send a GIF that represents your current mood. Winner is the one who blushes first.", "frequency": "daily", "durationMinutes": 3, "isCompetition": true, "isSpicy": true}'),
 ('spicy', 'challenge', '{"title": "Blindfold Guess", "description": "Describe an object you are holding sensually. They have to guess what it is.", "frequency": "daily", "durationMinutes": 5, "isCompetition": true, "isSpicy": true}'),
-('spicy', 'challenge', '{"title": "Compliment Attack", "description": "List 3 physical features you can''t wait to touch.", "frequency": "daily", "durationMinutes": 3, "isCompetition": false, "isSpicy": true}');
+('spicy', 'challenge', '{"title": "Compliment Attack", "description": "List 3 physical features you can''t wait to touch.", "frequency": "daily", "durationMinutes": 3, "isCompetition": false, "isSpicy": true}')
+) AS v(category, type, content)
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.activities a
+    WHERE a.type = v.type AND a.content = v.content
+);
 

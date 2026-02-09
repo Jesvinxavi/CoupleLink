@@ -1,9 +1,14 @@
-import { useState, useEffect, memo } from 'react';
-import { useJournalModals } from '../../context/JournalModalContext';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, memo } from "react"
+import { PenLine, StickyNote } from "lucide-react"
+import { useJournalModals } from "@/context/JournalModalContext"
+import { PostNoteOverlay } from "@/components/dashboard/PostNoteOverlay"
 
-import { PenLine, StickyNote } from "lucide-react";
-import { PostNoteOverlay } from './PostNoteOverlay';
-
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
 const JOURNAL_PROMPTS = [
     "how you're feeling",
     "a happy memory",
@@ -11,27 +16,33 @@ const JOURNAL_PROMPTS = [
     "your dreams",
     "what you love about them",
     "your day today"
-];
+]
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface QuickActionsTileProps {
-    onFocusChange?: (isFocused: boolean) => void;
+    onFocusChange?: (isFocused: boolean) => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export const QuickActionsTile = memo(function QuickActionsTile({ onFocusChange }: QuickActionsTileProps) {
     // const navigate = useNavigate(); // Removed unused
-    const { openNewPost } = useJournalModals();
-    const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
-    const [prompt, setPrompt] = useState(JOURNAL_PROMPTS[0]);
+    const { openNewPost } = useJournalModals()
+    const [isNoteModalOpen, setIsNoteModalOpen] = useState(false)
+    const [prompt, setPrompt] = useState(JOURNAL_PROMPTS[0])
 
     useEffect(() => {
         // Rotate prompt every time component mounts or randomly
-        const randomPrompt = JOURNAL_PROMPTS[Math.floor(Math.random() * JOURNAL_PROMPTS.length)];
-        setPrompt(randomPrompt);
-    }, []);
+        const randomPrompt = JOURNAL_PROMPTS[Math.floor(Math.random() * JOURNAL_PROMPTS.length)]
+        setPrompt(randomPrompt)
+    }, [])
 
     const handleJournalClick = () => {
-        openNewPost();
-    };
+        openNewPost()
+    }
 
     return (
         <>
@@ -85,5 +96,5 @@ export const QuickActionsTile = memo(function QuickActionsTile({ onFocusChange }
                 onFocusChange={onFocusChange}
             />
         </>
-    );
+    )
 })

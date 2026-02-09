@@ -1,37 +1,41 @@
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { Label } from "../ui/label";
-import { Loader2, Plus, Upload, CheckSquare, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, X } from "lucide-react";
-import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../context/AuthContext";
-
-export interface DateIdeaItem {
-    id?: string;
-    title: string;
-    description: string;
-    imageUrl: string;
-    duration: string;
-    cost?: string;
-    link?: string;
-    buttonText?: string;
-    checklist?: string[];
-}
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useRef, useEffect, type FocusEvent, type ChangeEvent, type FormEvent } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Loader2, Plus, Upload, CheckSquare, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { useAuth } from "@/context/AuthContext"
+import type { DateIdeaItem } from "@/types/datenight"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
 interface AddDateIdeaOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSuccess: () => void;
-    coupleId: string;
-    initialData?: DateIdeaItem | null;
-    onFocusChange?: (isFocused: boolean) => void;
+    isOpen: boolean
+    onClose: () => void
+    onSuccess: () => void
+    coupleId: string
+    initialData?: DateIdeaItem | null
+    onFocusChange?: (isFocused: boolean) => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initialData, onFocusChange }: AddDateIdeaOverlayProps) {
-    const { user } = useAuth();
-    const [loading, setLoading] = useState(false);
+    useLockBodyScroll(isOpen)
+
+    const { user } = useAuth()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [loading, setLoading] = useState(false)
+    const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
     // Initialize state with initialData if present
     const [title, setTitle] = useState(initialData?.title || "");
@@ -58,25 +62,22 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
     const [newItem, setNewItem] = useState("");
     const [isChecklistExpanded, setIsChecklistExpanded] = useState(!!initialData?.checklist?.length);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-
+    // ═══════════════════════════════════════
+    // REFS
+    // ═══════════════════════════════════════
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const overlayRef = useRef<HTMLDivElement>(null)
 
     // Mobile Viewport Logic
-    const overlayRef = useRef<HTMLDivElement>(null);
     const [isFocused, setIsFocused] = useState(false);
     const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
 
-    // Combined body lock + viewport resize handler (matches FantasyBucketListOverlay)
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    // Viewport resize handler (matches FantasyBucketListOverlay)
     useEffect(() => {
         if (!isOpen) return;
-
-        // Robust Body Lock (save scroll position)
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
 
         // Handle Visual Viewport for mobile keyboard
         const handleVisualResize = () => {
@@ -108,21 +109,23 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
         handleVisualResize();
 
         return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-
-            // Restore scroll position
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-
             window.visualViewport?.removeEventListener('resize', handleVisualResize);
             window.visualViewport?.removeEventListener('scroll', handleVisualResize);
         };
     }, [isOpen]); // Only depends on isOpen
 
-    const handleOverlayFocus = (e: React.FocusEvent) => {
+    useEffect(() => {
+        return () => {
+            if (file && previewUrl) {
+                URL.revokeObjectURL(previewUrl)
+            }
+        }
+    }, [file, previewUrl])
+
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleOverlayFocus = (e: FocusEvent) => {
         const target = e.target as HTMLInputElement;
         const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
@@ -176,7 +179,7 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
         }, 350);
     };
 
-    const handleOverlayBlur = (e: React.FocusEvent) => {
+    const handleOverlayBlur = (e: FocusEvent) => {
         const relatedTarget = e.relatedTarget as Node | null;
         const isStillInOverlay = overlayRef.current?.contains(relatedTarget);
 
@@ -196,17 +199,23 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
             setDurationUnit(dur.unit);
             setCost(initialData.cost || "");
             setPreviewUrl(initialData.imageUrl);
+            setFile(null);
             setChecklistItems(initialData.checklist || []);
             setIsChecklistExpanded(!!initialData.checklist?.length);
+            setNewItem("");
+            setErrorMessage(null);
         } else if (isOpen && !initialData) {
             resetForm();
         }
     }, [isOpen, initialData]);
 
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
+            if (file && previewUrl) {
+                URL.revokeObjectURL(previewUrl)
+            }
             setFile(selectedFile);
             setPreviewUrl(URL.createObjectURL(selectedFile));
         }
@@ -233,6 +242,7 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
         setPreviewUrl(null);
         setChecklistItems([]);
         setNewItem("");
+        setErrorMessage(null);
     };
 
     const handleClose = () => {
@@ -240,12 +250,13 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
         onClose();
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!user || !coupleId) return;
 
         try {
             setLoading(true);
+            setErrorMessage(null);
             let imageUrl = previewUrl; // Default to existing URL
 
             // Upload new image if selected
@@ -279,7 +290,7 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
                                 .remove([path]);
 
                             if (deleteError) {
-                                console.error('Error deleting old date image:', deleteError);
+                                logger.warn("AddDateIdeaOverlay", "Error deleting old date image", deleteError);
                                 // Non-blocking
                             }
                         }
@@ -319,16 +330,21 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
             onSuccess();
             handleClose();
         } catch (error) {
-            console.error('Error saving date:', error);
+            logger.error("AddDateIdeaOverlay", "Error saving date", error);
+            setErrorMessage("Failed to save date. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
-
-
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (!isOpen) return null;
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <AnimatePresence>
             {isOpen && (
@@ -488,6 +504,8 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
                                                         src={previewUrl}
                                                         alt="Preview"
                                                         className="w-full h-full object-cover rounded-lg"
+                                                        loading="lazy"
+                                                        decoding="async"
                                                     />
                                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <p className="text-white font-medium flex items-center gap-2">
@@ -575,6 +593,12 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
                                             </div>
                                         )}
                                     </div>
+
+                                    {errorMessage && (
+                                        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+                                            {errorMessage}
+                                        </div>
+                                    )}
                                 </form>
                             </div>
 

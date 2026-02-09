@@ -1,16 +1,24 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Check, X, Clock, Timer, Trophy } from 'lucide-react';
-import type { GameSession } from '../../hooks/useGameSession';
-import { useGameSession } from '../../hooks/useGameSession';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { supabase } from '../../lib/supabase';
-import { rapidFireQuestions } from '../../data/gameQuestions';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Zap, Check, X, Clock, Timer, Trophy } from "lucide-react"
+import { useGameSession, type GameSession } from "@/hooks/useGameSession"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { supabase } from "@/lib/supabase"
+import { rapidFireQuestions } from "@/data/gameQuestions"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface RapidFireGameProps {
-    session: GameSession;
+    session: GameSession
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function RapidFireGame({ session }: RapidFireGameProps) {
     const { updateGameState, nextRound, isPlayerOne } = useGameSession();
     const { partner, currentUser } = useCoupleData();

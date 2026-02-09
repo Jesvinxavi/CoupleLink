@@ -1,3 +1,6 @@
+/**
+ * Calendar event shape used throughout the app.
+ */
 export interface CalendarEvent {
     id?: string;
     title: string;
@@ -8,5 +11,9 @@ export interface CalendarEvent {
     location?: string | null;
     description?: string | null;
     country?: string | null;
-    recurrence?: string; // 'none', 'daily', 'weekly', 'monthly', etc.
+    /**
+     * Recurrence interval label.
+     * Examples: 'none', 'daily', 'weekly', 'monthly', 'six_months', 'yearly'.
+     */
+    recurrence?: string;
 }

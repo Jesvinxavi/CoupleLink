@@ -1,9 +1,17 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Button } from "../ui/button"
-import type { Challenge } from "../../types/challenge"
 import { X, Trophy, AlertTriangle, Clock, Timer, CheckCircle, Upload, AlertOctagon, RotateCcw, RefreshCw, Sparkles, PartyPopper } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import type { Challenge } from "@/types/challenge"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface ChallengeModalProps {
     isOpen: boolean
     onClose: () => void
@@ -26,6 +34,9 @@ interface ChallengeModalProps {
     onUpgrade?: () => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function ChallengeOverlay({
     isOpen,
     onClose,
@@ -46,10 +57,25 @@ export function ChallengeOverlay({
     onReset,
     onUpgrade
 }: ChallengeModalProps) {
+    useLockBodyScroll(isOpen)
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [evidence, setEvidence] = useState<File | null>(null)
     const [winnerSelection, setWinnerSelection] = useState<'me' | 'partner' | 'tie' | null>(initialSelection || null)
 
-    const isEvidenceMandatory = type === 'weekly' || type === 'monthly';
+    const isEvidenceMandatory = type === "weekly" || type === "monthly"
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    useEffect(() => {
+        if (isOpen) {
+            setWinnerSelection(initialSelection ?? null)
+            setEvidence(null)
+        }
+    }, [isOpen, initialSelection])
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -57,27 +83,10 @@ export function ChallengeOverlay({
         }
     }
 
-    // Robust Body Lock
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
-
-        return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-        };
-    }, [isOpen]);
-
-    return (
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
+    const overlay = (
         <AnimatePresence>
             {isOpen && (
                 <>
@@ -363,4 +372,6 @@ export function ChallengeOverlay({
             )}
         </AnimatePresence>
     )
+
+    return createPortal(overlay, document.body)
 }

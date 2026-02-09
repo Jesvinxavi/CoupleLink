@@ -1,25 +1,40 @@
-
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useEffect, useState, memo } from "react"
-import { useAuth } from "@/context/AuthContext"
-import { useCoupleData } from "@/hooks/useCoupleData"
-import { supabase } from "@/lib/supabase"
-import type { Database } from "@/lib/database.types"
-import { AddEventOverlay, type CalendarEvent } from "../calendar/AddEventOverlay"
-import { UserAvatar } from '../ui/UserAvatar'
-import { differenceInDays, parseISO, setYear, isBefore, addYears, startOfDay, addHours } from "date-fns"
-import { usePartnerNotes } from "@/hooks/usePartnerNotes"
+import { differenceInDays, parseISO, setYear, isBefore, addYears, startOfDay, addMilliseconds } from "date-fns"
 import { Plus } from "lucide-react"
 import { motion } from "framer-motion"
+import { useAuth } from "@/context/AuthContext"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { usePartnerNotes } from "@/hooks/usePartnerNotes"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { INTERVALS, URGENCY_THRESHOLDS } from "@/lib/constants"
+import type { Database } from "@/lib/database.types"
+import { AddEventOverlay, type CalendarEvent } from "@/components/calendar/AddEventOverlay"
+import { UserAvatar } from "@/components/ui/UserAvatar"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 
 interface PartnerTileProps {
     partner: Profile | null
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTileProps) {
     const { onlineUsers } = useAuth()
     const { couple } = useCoupleData()
+    const { myLastNote } = usePartnerNotes()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [partnerTime, setPartnerTime] = useState<string>("")
     const [timeIcon, setTimeIcon] = useState("schedule")
     const [showExpandedAvatar, setShowExpandedAvatar] = useState(false)
@@ -30,6 +45,9 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
 
     const isOnline = partner ? onlineUsers.includes(partner.id) : false
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         if (!partner?.timezone) return
 
@@ -57,27 +75,34 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
                     setTimeIcon("bedtime") // Night
                 }
             } catch (e) {
-                console.error("Invalid timezone", e)
+                logger.error("PartnerTile", "Invalid timezone for partner", e)
                 setPartnerTime("")
             }
         }
 
         updateTime()
-        const interval = setInterval(updateTime, 60000) // Update every minute
+        const interval = setInterval(updateTime, INTERVALS.ONE_MINUTE) // Update every minute
 
         return () => clearInterval(interval)
     }, [partner?.timezone])
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const fetchAnniversary = async () => {
         if (!couple) return
 
         // Check calendar events first
-        const { data: events } = await supabase
+        const { data: events, error } = await supabase
             .from('calendar_events')
-            .select('*')
+            .select('event_date')
             .eq('couple_id', couple.id)
             .eq('category', 'Anniversary')
             .limit(1)
+
+        if (error) {
+            logger.error("PartnerTile", "Error fetching anniversary events", error)
+        }
 
         let anniversaryDateStr = events?.[0]?.event_date || couple.anniversary_date
 
@@ -131,12 +156,15 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
 
             await fetchAnniversary()
         } catch (error) {
-            console.error('Error saving anniversary:', error)
+            logger.error("PartnerTile", "Error saving anniversary", error)
         }
     }
 
 
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     if (!partner) {
         if (couple && !couple.user_two_id) {
             return (
@@ -202,16 +230,15 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
 
                                 {/* Note Status */}
                                 {(() => {
-                                    const { myLastNote } = usePartnerNotes();
-                                    if (!myLastNote) return null;
+                                    if (!myLastNote) return null
 
-                                    const seenAt = myLastNote.metadata?.seen_at ? new Date(myLastNote.metadata.seen_at) : null;
-                                    const isSeen = !!seenAt;
+                                    const seenAt = myLastNote.metadata?.seen_at ? new Date(myLastNote.metadata.seen_at) : null
+                                    const isSeen = !!seenAt
 
                                     // Check expiration if seen
                                     if (isSeen && seenAt) {
-                                        const expiresAt = addHours(seenAt, 24);
-                                        if (new Date() > expiresAt) return null;
+                                        const expiresAt = addMilliseconds(seenAt, URGENCY_THRESHOLDS.ONE_DAY)
+                                        if (new Date() > expiresAt) return null
                                     }
 
                                     return (
@@ -228,7 +255,7 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
                                                 </>
                                             )}
                                         </div>
-                                    );
+                                    )
                                 })()}
                             </div>
 

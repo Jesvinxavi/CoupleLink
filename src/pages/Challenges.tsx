@@ -1,13 +1,20 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { motion } from "framer-motion"
-import { useEffect, useMemo, useState } from "react"
-import Sidebar from "../components/Sidebar"
-import { useCoupleData } from "../hooks/useCoupleData"
-import { useDailyChallenge } from "../hooks/useDailyChallenge"
-import { useChallenges } from "../hooks/useChallenges"
-import { useStreak } from "../hooks/useStreak"
-import { ChallengeCard } from "../components/dashboard/ChallengeCard"
-import { ChallengesTile } from "../components/dashboard/ChallengesTile"
+import { useEffect, useMemo, useState, useCallback } from "react"
+import Sidebar from "@/components/Sidebar"
+import { ChallengeCard } from "@/components/dashboard/ChallengeCard"
+import { ChallengesTile } from "@/components/dashboard/ChallengesTile"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { useDailyChallenge } from "@/hooks/useDailyChallenge"
+import { useChallenges } from "@/hooks/useChallenges"
+import { useStreak } from "@/hooks/useStreak"
+import { INTERVALS } from "@/lib/constants"
 
+// ═══════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════
 const container = {
     hidden: { opacity: 0 },
     show: {
@@ -23,6 +30,9 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function Challenges() {
     const { couple, partner, userProfile, loading } = useCoupleData()
     const {
@@ -35,7 +45,7 @@ export default function Challenges() {
     } = useDailyChallenge(couple?.id ?? null)
 
     const challengesData = useChallenges()
-    const { loadingChallenges } = challengesData
+    const { loadingChallenges, refreshCoupleData } = challengesData
 
     const {
         checkStreakUpdate,
@@ -50,7 +60,10 @@ export default function Challenges() {
             new Date(partnerAnswer.created_at!) > new Date(userProfile.last_seen_daily_question_at))
     );
 
-    const handleSubmitAnswer = async (answer: string) => {
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleSubmitAnswer = useCallback(async (answer: string) => {
         await submitAnswer(answer)
 
         // If partner has already answered, this completes the daily question requirement
@@ -61,14 +74,21 @@ export default function Challenges() {
 
         // Check if this completes the streak for the day
         await checkStreakUpdate()
-    }
+        await refreshCoupleData()
+    }, [submitAnswer, partnerAnswer, addPoints, checkStreakUpdate, refreshCoupleData])
 
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [forceLoading, setForceLoading] = useState(true)
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         const timer = setTimeout(() => {
             setForceLoading(false)
-        }, 250)
+        }, INTERVALS.SPINNER_DELAY)
         return () => clearTimeout(timer)
     }, [])
 
@@ -76,6 +96,9 @@ export default function Challenges() {
         return Boolean(loading || forceLoading || loadingChallenges || challengeLoading)
     }, [loading, forceLoading, loadingChallenges, challengeLoading])
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
             <Sidebar />
@@ -120,7 +143,7 @@ export default function Challenges() {
                                         onMarkSeen={markAnswerSeen}
                                         isNewAnswer={isNewPartnerAnswer}
                                         loading={challengeLoading}
-                                        partnerName={partner?.first_name || 'Partner'}
+                                        partnerName={partner?.first_name || "Partner"}
                                     />
                                 </motion.div>
 

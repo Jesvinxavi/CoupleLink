@@ -1,32 +1,45 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { Component, type ErrorInfo, type ReactNode } from "react"
+import { logger } from "@/lib/logger"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface Props {
-    children: ReactNode;
+    children: ReactNode
 }
 
 interface State {
-    hasError: boolean;
-    error: Error | null;
-    errorInfo: ErrorInfo | null;
+    hasError: boolean
+    error: Error | null
+    errorInfo: ErrorInfo | null
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export class GlobalErrorBoundary extends Component<Props, State> {
     public state: State = {
         hasError: false,
         error: null,
         errorInfo: null,
-    };
+    }
 
     public static getDerivedStateFromError(error: Error): State {
-        return { hasError: true, error, errorInfo: null };
+        return { hasError: true, error, errorInfo: null }
     }
 
     public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error("Uncaught error:", error, errorInfo);
-        this.setState({ error, errorInfo });
+        logger.error("GlobalErrorBoundary", "Uncaught error", error, { errorInfo })
+        this.setState({ error, errorInfo })
     }
 
     public render() {
+        // ═══════════════════════════════════════
+        // RENDER
+        // ═══════════════════════════════════════
         if (this.state.hasError) {
             return (
                 <div className="min-h-screen bg-red-900 text-white p-4 font-mono text-xs overflow-auto z-[10000] relative">
@@ -45,9 +58,9 @@ export class GlobalErrorBoundary extends Component<Props, State> {
                         Reload App
                     </button>
                 </div>
-            );
+            )
         }
 
-        return this.props.children;
+        return this.props.children
     }
 }

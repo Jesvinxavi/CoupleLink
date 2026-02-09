@@ -1,3 +1,6 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useState } from 'react';
 import {
     Dialog,
@@ -10,13 +13,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Check, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface PaywallModalProps {
     isOpen: boolean;
     onClose: () => void;
     onUpgradeSuccess: () => void;
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function PaywallModal({ isOpen, onClose, onUpgradeSuccess }: PaywallModalProps) {
     const [loading, setLoading] = useState(false);
 
@@ -32,7 +42,7 @@ export function PaywallModal({ isOpen, onClose, onUpgradeSuccess }: PaywallModal
             // Logic: Upgrade success, close paywall, parent might auto-trigger restore or user clicks restore again.
             onClose();
         } catch (err) {
-            console.error('Upgrade failed', err);
+            logger.error('PaywallModal', 'Upgrade failed', err);
         } finally {
             setLoading(false);
         }

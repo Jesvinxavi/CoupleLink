@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useCoupleData } from './useCoupleData'
+import { logger } from '@/lib/logger'
+import { useCoupleData } from '@/hooks/useCoupleData'
+
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 
 export interface RelationshipStats {
     daysTogether: number
@@ -50,35 +55,108 @@ export interface RelationshipStats {
     loading: boolean
 }
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useRelationshipStats() {
     const { couple, userProfile, partner } = useCoupleData()
     const [stats, setStats] = useState<RelationshipStats | null>(null)
     const [loading, setLoading] = useState(true)
+    const hasLoadedRef = useRef(false)
 
-    useEffect(() => {
-        if (couple && userProfile) {
-            fetchStats()
-        }
-    }, [couple, userProfile, partner])
+    const fetchStats = useCallback(async () => {
+        if (!couple || !userProfile) return
+        const stopPerf = logger.perf('useRelationshipStats', 'fetchStats')
 
-    const fetchStats = async () => {
         try {
-            if (!stats) setLoading(true)
-            if (!couple || !userProfile) return
+            if (!hasLoadedRef.current) setLoading(true)
 
             // 1. Basic Stats
             const daysTogether = couple.anniversary_date
                 ? Math.floor((new Date().getTime() - new Date(couple.anniversary_date).getTime()) / (1000 * 60 * 60 * 24))
                 : 0
 
-            // 2. Journal Stats (Per User)
-            const { data: journalEntries, error: journalError } = await supabase
-                .from('memories')
-                .select('uploader_id, created_at')
-                .eq('couple_id', couple.id)
-                .eq('type', 'journal')
+            // 2. Parallel queries (reduce total latency)
+            const [
+                journalRes,
+                answersRes,
+                challengeRes,
+                positionsRes,
+                fantasiesRes,
+                historyRes,
+                memoriesRes,
+                eventsRes,
+                stickyNotesRes,
+                totalMemoriesRes,
+            ] = await Promise.all([
+                supabase
+                    .from('memories')
+                    .select('uploader_id, created_at')
+                    .eq('couple_id', couple.id)
+                    .eq('type', 'journal'),
+                supabase
+                    .from('user_answers')
+                    .select('activity_id, created_at, user_id')
+                    .eq('couple_id', couple.id),
+                supabase
+                    .from('memories')
+                    .select('metadata, created_at, uploader_id, title')
+                    .eq('couple_id', couple.id)
+                    .eq('type', 'challenge'),
+                supabase
+                    .from('completed_positions')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('couple_id', couple.id),
+                supabase
+                    .from('fantasy_bucket_list')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('couple_id', couple.id)
+                    .eq('status', 'completed'),
+                supabase
+                    .from('challenge_history')
+                    .select('challenge_type, status, shown_at')
+                    .eq('couple_id', couple.id),
+                supabase
+                    .from('memories')
+                    .select('id, location, country')
+                    .eq('couple_id', couple.id) as any,
+                supabase
+                    .from('calendar_events')
+                    .select('id, location, country, event_date')
+                    .eq('couple_id', couple.id) as any,
+                supabase
+                    .from('memories')
+                    .select('id')
+                    .eq('couple_id', couple.id)
+                    .eq('type', 'sticky_note'),
+                supabase
+                    .from('memories')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('couple_id', couple.id)
+                    .neq('type', 'journal'),
+            ])
 
-            if (journalError) throw journalError
+            if (journalRes.error) throw journalRes.error
+            if (answersRes.error) throw answersRes.error
+            if (challengeRes.error) throw challengeRes.error
+            if (positionsRes.error) throw positionsRes.error
+            if (fantasiesRes.error) throw fantasiesRes.error
+            if (historyRes.error) throw historyRes.error
+            if (memoriesRes.error) throw memoriesRes.error
+            if (eventsRes.error) throw eventsRes.error
+            if (stickyNotesRes.error) throw stickyNotesRes.error
+            if (totalMemoriesRes.error) throw totalMemoriesRes.error
+
+            const journalEntries = journalRes.data
+            const userAnswers = answersRes.data
+            const challengeMemories = challengeRes.data
+            const positionsCompletedCount = positionsRes.count || 0
+            const fantasiesCompletedCount = fantasiesRes.count || 0
+            const challengeHistory = historyRes.data
+            const memories = memoriesRes.data
+            const events = eventsRes.data
+            const stickyNotes = stickyNotesRes.data
+            const totalMemories = totalMemoriesRes.count || 0
 
             const myJournalCount = journalEntries?.filter((e: any) => e.uploader_id === userProfile.id).length || 0
             const partnerJournalCount = journalEntries?.filter((e: any) => e.uploader_id !== userProfile.id).length || 0
@@ -87,38 +165,6 @@ export function useRelationshipStats() {
                 { name: 'You', value: myJournalCount, avatar_url: userProfile.avatar_url },
                 { name: partner?.first_name || 'Partner', value: partnerJournalCount, avatar_url: partner?.avatar_url || null }
             ]
-
-            // 3. Challenge & Questions Completion
-
-            // Questions (User Answers)
-            const { data: userAnswers, error: answersError } = await supabase
-                .from('user_answers')
-                .select('activity_id, created_at, user_id')
-                .eq('couple_id', couple.id)
-
-            if (answersError) throw answersError
-
-            // Challenges (Memories)
-            const { data: challengeMemories, error: challengeError } = await supabase
-                .from('memories')
-                .select('metadata, created_at, uploader_id, title')
-                .eq('couple_id', couple.id)
-                .eq('type', 'challenge')
-
-            if (challengeError) throw challengeError
-
-            // Positions Completed (for love points breakdown)
-            const { count: positionsCompletedCount } = await supabase
-                .from('completed_positions')
-                .select('*', { count: 'exact', head: true })
-                .eq('couple_id', couple.id)
-
-            // Fantasies Completed (for love points breakdown)
-            const { count: fantasiesCompletedCount } = await supabase
-                .from('fantasy_bucket_list')
-                .select('*', { count: 'exact', head: true })
-                .eq('couple_id', couple.id)
-                .eq('status', 'completed')
 
             // Calculate Active Days (days with any answer or challenge memory)
             const activeDates = new Set<string>()
@@ -227,12 +273,6 @@ export function useRelationshipStats() {
                 }
             });
 
-            // Fetch challenge_history data for accurate "possible" counts
-            const { data: challengeHistory } = await supabase
-                .from('challenge_history')
-                .select('challenge_type, status, shown_at')
-                .eq('couple_id', couple.id);
-
             // Calculate All-Time stats from challenge_history
             const historyByType = {
                 daily: { possible: 0, completed: 0 },
@@ -319,18 +359,6 @@ export function useRelationshipStats() {
             }
 
             // 4. Travel Stats (Enhanced)
-            const { data: memories, error: memoriesError } = await supabase
-                .from('memories')
-                .select('id, location, country')
-                .eq('couple_id', couple.id) as any; // Cast to any because definitions might be outdated regarding country column
-            if (memoriesError) throw memoriesError;
-
-            const { data: events, error: eventsError } = await supabase
-                .from('calendar_events')
-                .select('id, location, country, event_date')
-                .eq('couple_id', couple.id) as any; // Cast to any
-            if (eventsError) throw eventsError;
-
             const memoryLocations = memories
                 .filter((m: any) => m.location?.trim())
                 .map((m: any) => ({ location: m.location!.trim(), country: m.country, id: m.id, type: 'memory' }));
@@ -390,7 +418,7 @@ export function useRelationshipStats() {
                     const batch = itemsToBackfill.slice(0, 3);
                     if (batch.length > 0) {
                         try {
-                            const { resolveCountry } = await import('../utils/geocoding');
+                            const { resolveCountry } = await import('@/utils/geocoding');
 
                             for (const item of batch) {
                                 const result = await resolveCountry(item.location);
@@ -407,7 +435,7 @@ export function useRelationshipStats() {
                                 }
                             }
                         } catch (err) {
-                            console.error("[Travel Stats] Backfill error:", err);
+                            logger.error('useRelationshipStats', 'Travel stats backfill error', err);
                         }
                     }
                 })();
@@ -450,13 +478,6 @@ export function useRelationshipStats() {
             const totalJournal = journalEntries?.length || 0;
 
             // Count sticky notes (Notes)
-            const { data: stickyNotes, error: notesError } = await supabase
-                .from('memories')
-                .select('id')
-                .eq('couple_id', couple.id)
-                .eq('type', 'sticky_note')
-
-            if (notesError) console.error('Error fetching sticky notes:', notesError);
             const totalNotes = stickyNotes?.length || 0;
 
             const rawActivityBreakdown = [
@@ -469,12 +490,6 @@ export function useRelationshipStats() {
 
             // Filter out categories with 0 value
             const activityBreakdown = rawActivityBreakdown.filter(item => item.value > 0)
-
-            const { count: totalMemories } = await supabase
-                .from('memories')
-                .select('*', { count: 'exact', head: true })
-                .eq('couple_id', couple.id)
-                .neq('type', 'journal')
 
             // Calculate completed questions (where both partners answered)
             const answersByActivity = new Map<string, Set<string>>();
@@ -513,11 +528,19 @@ export function useRelationshipStats() {
             })
 
         } catch (error) {
-            console.error('Error fetching stats:', error)
+            logger.error('useRelationshipStats', 'Error fetching stats', error)
         } finally {
             setLoading(false)
+            hasLoadedRef.current = true
+            stopPerf()
         }
-    }
+    }, [couple, userProfile, partner])
+
+    useEffect(() => {
+        if (couple && userProfile) {
+            fetchStats()
+        }
+    }, [couple, userProfile, fetchStats])
 
     return { stats, loading, refreshStats: fetchStats }
 }

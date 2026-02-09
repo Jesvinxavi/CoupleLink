@@ -1,14 +1,20 @@
-import { motion } from 'framer-motion';
-import { useSexploration } from '../../hooks/useSexploration';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { motion } from "framer-motion"
+import { useSexploration } from "@/hooks/useSexploration"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function SexCounterTile() {
-    const { sexCount, incrementSexCount, decrementSexCount, loading } = useSexploration();
+    const { sexCount, incrementSexCount, decrementSexCount, loading } = useSexploration()
 
     return (
         <motion.div
             className="relative bg-gradient-to-br from-rose-600 to-pink-500 rounded-3xl p-6 shadow-lg shadow-rose-500/20 overflow-hidden"
             whileHover={{ scale: 1.02 }}
-            transition={{ type: 'spring', stiffness: 300 }}
+            transition={{ type: "spring", stiffness: 300 }}
         >
             {/* Background decoration */}
             <span className="material-symbols-outlined absolute -right-6 -bottom-6 text-9xl text-white/10 rotate-12">
@@ -44,7 +50,7 @@ export function SexCounterTile() {
                         className="flex flex-col items-center"
                     >
                         <span className="text-6xl font-bold text-white tabular-nums">
-                            {loading ? '—' : sexCount}
+                            {loading ? "—" : sexCount}
                         </span>
                         <span className="text-rose-100 text-sm mt-1">times together</span>
                     </motion.div>
@@ -61,5 +67,5 @@ export function SexCounterTile() {
                 </div>
             </div>
         </motion.div>
-    );
+    )
 }

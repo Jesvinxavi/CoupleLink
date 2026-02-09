@@ -1,9 +1,8 @@
 -- 20251230_08_seed_coupon_templates.sql
 -- Seed Templates (25 coupons)
-DELETE FROM public.coupons;
-DELETE FROM public.coupon_templates;
-
-INSERT INTO public.coupon_templates (title, description, category, intensity, icon) VALUES
+INSERT INTO public.coupon_templates (title, description, category, intensity, icon)
+SELECT v.title, v.description, v.category, v.intensity, v.icon
+FROM (VALUES
 ('Massage Night', 'Good for one 30-minute massage of your choice.', 'service', 2, 'spa'),
 ('Breakfast in Bed', 'Complete with coffee, juice, and your favorites.', 'service', 2, 'bakery_dining'),
 ('Movie Choice', 'You get 100% control over the movie selection tonight.', 'fun', 1, 'movie'),
@@ -28,4 +27,9 @@ INSERT INTO public.coupon_templates (title, description, category, intensity, ic
 ('Foot Rub', '20 minute foot massage.', 'service', 2, 'foot_bones'),
 ('Sleep In', 'I manage the morning routine, you sleep in.', 'service', 3, 'bed'),
 ('Naughty Pic', 'I send you a risky photo on demand.', 'spicy', 2, 'camera_alt'),
-('Unknown Adventure', 'We get in the car/walk and go somewhere random.', 'fun', 2, 'explore');
+('Unknown Adventure', 'We get in the car/walk and go somewhere random.', 'fun', 2, 'explore')
+) AS v(title, description, category, intensity, icon)
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.coupon_templates t
+    WHERE t.title = v.title
+);

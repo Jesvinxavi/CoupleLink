@@ -1,7 +1,11 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { useCoupleData } from './useCoupleData';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { useCoupleData } from '@/hooks/useCoupleData';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface SexplorationData {
     sexCount: number;
     completedPositions: string[];
@@ -16,19 +20,16 @@ interface SexplorationData {
 // Once the migration runs and types are regenerated, this can be removed
 const db = supabase as any;
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useSexploration(): SexplorationData {
     const { couple } = useCoupleData();
     const [sexCount, setSexCount] = useState(0);
     const [completedPositions, setCompletedPositions] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (couple?.id) {
-            fetchData();
-        }
-    }, [couple?.id]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         if (!couple?.id) return;
 
         try {
@@ -43,7 +44,7 @@ export function useSexploration(): SexplorationData {
                 .maybeSingle();
 
             if (counterError) {
-                console.error('Error fetching sex counter:', counterError);
+                logger.error('useSexploration', 'Error fetching sex counter', counterError);
             }
 
             if (counterData) {
@@ -57,20 +58,24 @@ export function useSexploration(): SexplorationData {
                 .eq('couple_id', couple.id);
 
             if (positionsError) {
-                console.error('Error fetching completed positions:', positionsError);
+                logger.error('useSexploration', 'Error fetching completed positions', positionsError);
             }
 
             if (positionsData) {
                 setCompletedPositions(positionsData.map((p: any) => p.position_id));
             }
         } catch (error) {
-            console.error('Error fetching sexploration data:', error);
+            logger.error('useSexploration', 'Error fetching sexploration data', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [couple?.id]);
 
-    const incrementSexCount = async () => {
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const incrementSexCount = useCallback(async () => {
         if (!couple?.id) return;
 
         const newCount = sexCount + 1;
@@ -85,12 +90,12 @@ export function useSexploration(): SexplorationData {
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'couple_id' });
         } catch (error) {
-            console.error('Error updating sex count:', error);
+            logger.error('useSexploration', 'Error updating sex count', error);
             setSexCount(sexCount); // Revert on error
         }
-    };
+    }, [couple?.id, sexCount]);
 
-    const decrementSexCount = async () => {
+    const decrementSexCount = useCallback(async () => {
         if (!couple?.id || sexCount <= 0) return;
 
         const newCount = sexCount - 1;
@@ -105,12 +110,12 @@ export function useSexploration(): SexplorationData {
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'couple_id' });
         } catch (error) {
-            console.error('Error updating sex count:', error);
+            logger.error('useSexploration', 'Error updating sex count', error);
             setSexCount(sexCount); // Revert on error
         }
-    };
+    }, [couple?.id, sexCount]);
 
-    const togglePositionComplete = async (positionId: string) => {
+    const togglePositionComplete = useCallback(async (positionId: string) => {
         if (!couple?.id) return;
 
         const isCompleted = completedPositions.includes(positionId);
@@ -132,7 +137,7 @@ export function useSexploration(): SexplorationData {
                     p_points: -5
                 });
             } catch (error) {
-                console.error('Error removing completed position:', error);
+                logger.error('useSexploration', 'Error removing completed position', error);
                 setCompletedPositions(prev => [...prev, positionId]); // Revert
             }
         } else {
@@ -154,18 +159,17 @@ export function useSexploration(): SexplorationData {
                     p_points: 5
                 });
             } catch (error) {
-
-                console.error('Error adding completed position:', error);
+                logger.error('useSexploration', 'Error adding completed position', error);
                 setCompletedPositions(prev => prev.filter(id => id !== positionId)); // Revert
             }
         }
-    };
+    }, [couple?.id, completedPositions]);
 
-    const isPositionCompleted = (positionId: string) => {
+    const isPositionCompleted = useCallback((positionId: string) => {
         return completedPositions.includes(positionId);
-    };
+    }, [completedPositions]);
 
-    return {
+    return useMemo(() => ({
         sexCount,
         completedPositions,
         loading,
@@ -173,5 +177,13 @@ export function useSexploration(): SexplorationData {
         decrementSexCount,
         togglePositionComplete,
         isPositionCompleted,
-    };
+    }), [
+        sexCount,
+        completedPositions,
+        loading,
+        incrementSexCount,
+        decrementSexCount,
+        togglePositionComplete,
+        isPositionCompleted,
+    ]);
 }

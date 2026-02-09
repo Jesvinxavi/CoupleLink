@@ -1,4 +1,7 @@
-import { useState, useEffect, useRef } from "react"
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useRef, useCallback, type FormEvent, type ChangeEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
@@ -11,48 +14,48 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal"
-import { useCoupleData } from '@/hooks/useCoupleData';
-import { STORAGE_KEYS } from "@/lib/constants";
-import { NotificationSettings } from "@/components/settings/NotificationSettings";
-import { useDeveloperSettings } from "@/context/DeveloperContext";
-
-
-
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { LIMITS, ROUTES, STORAGE_KEYS } from "@/lib/constants"
+import { logger } from "@/lib/logger"
+import { NotificationSettings } from "@/components/settings/NotificationSettings"
+import { useDeveloperSettings } from "@/context/DeveloperContext"
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function Settings() {
     const { user, signOut } = useAuth()
     const { couple, refreshCoupleData } = useCoupleData()
     const navigate = useNavigate()
 
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [loading, setLoading] = useState(false)
     const [firstName, setFirstName] = useState("")
     const [lastName, setLastName] = useState("")
     const [avatarUrl, setAvatarUrl] = useState("")
     const [birthDate, setBirthDate] = useState("")
+
+    // ═══════════════════════════════════════
+    // REFS
+    // ═══════════════════════════════════════
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [showSpicy, setShowSpicy] = useState(false)
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+    const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
     const [showUnpairModal, setShowUnpairModal] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const { showDebugConsole, toggleDebugConsole } = useDeveloperSettings()
 
-    useEffect(() => {
-        if (user) {
-            fetchProfile()
-        }
-    }, [user])
-
-    useEffect(() => {
-        if (couple) {
-            setShowSpicy(couple.spicy_mode ?? false)
-        }
-    }, [couple])
-
-    const fetchProfile = async () => {
+    // ═══════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════
+    const fetchProfile = useCallback(async () => {
+        if (!user) return
         try {
             const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user!.id)
+                .from("profiles")
+                .select("first_name, last_name, avatar_url, birth_date")
+                .eq("id", user!.id)
                 .single()
 
             if (error) throw error
@@ -63,89 +66,125 @@ export default function Settings() {
                 setBirthDate(data.birth_date || "")
             }
         } catch (error) {
-            console.error('Error fetching profile:', error)
+            logger.error("Settings", "Error fetching profile", error)
+            setMessage({ type: "error", text: "Failed to load your profile. Please try again." })
         }
-    }
+    }, [user])
 
-    const handleUpdateProfile = async (e: React.FormEvent) => {
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    useEffect(() => {
+        fetchProfile()
+    }, [fetchProfile])
+
+    useEffect(() => {
+        if (couple) {
+            setShowSpicy(couple.spicy_mode ?? false)
+        }
+    }, [couple])
+
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleUpdateProfile = useCallback(async (e: FormEvent) => {
         e.preventDefault()
         setLoading(true)
         setMessage(null)
 
         if (!user) {
-            setMessage({ type: 'error', text: 'You must be logged in to update your profile' })
+            setMessage({ type: "error", text: "You must be logged in to update your profile" })
             setLoading(false)
             return
         }
 
         try {
             const { error } = await supabase
-                .from('profiles')
+                .from("profiles")
                 .update({
                     first_name: firstName,
                     last_name: lastName,
                     avatar_url: avatarUrl,
                     birth_date: birthDate,
                 })
-                .eq('id', user!.id)
+                .eq("id", user!.id)
 
             if (error) throw error
 
-            setMessage({ type: 'success', text: 'Profile updated successfully' })
+            setMessage({ type: "success", text: "Profile updated successfully" })
         } catch (error: any) {
-            setMessage({ type: 'error', text: error.message })
+            logger.error("Settings", "Failed to update profile", error)
+            setMessage({ type: "error", text: error.message })
         } finally {
             setLoading(false)
         }
-    }
+    }, [avatarUrl, birthDate, firstName, lastName, user])
 
-    const handleAvatarClick = () => {
+    const handleAvatarClick = useCallback(() => {
         fileInputRef.current?.click()
-    }
+    }, [])
 
-    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAvatarUpload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
         try {
             const file = e.target.files?.[0]
             if (!file) return
 
+            if (!user) {
+                setMessage({ type: "error", text: "You must be logged in to update your avatar." })
+                return
+            }
+
+            if (!file.type.startsWith("image/")) {
+                setMessage({ type: "error", text: "Please upload a valid image file." })
+                return
+            }
+
+            const maxBytes = LIMITS.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+            if (file.size > maxBytes) {
+                setMessage({ type: "error", text: `Avatar must be smaller than ${LIMITS.MAX_UPLOAD_SIZE_MB}MB.` })
+                return
+            }
+
             setLoading(true)
-            const fileExt = file.name.split('.').pop()
+            setMessage(null)
+            const fileExt = file.name.split(".").pop()
             const fileName = `${user!.id}-${Math.random()}.${fileExt}`
             const filePath = `${fileName}`
 
             const { error: uploadError } = await supabase.storage
-                .from('avatars')
+                .from("avatars")
                 .upload(filePath, file)
 
             if (uploadError) throw uploadError
 
             const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
+                .from("avatars")
                 .getPublicUrl(filePath)
 
             setAvatarUrl(publicUrl)
 
             // Auto-save the new avatar URL
             const { error: updateError } = await supabase
-                .from('profiles')
+                .from("profiles")
                 .update({ avatar_url: publicUrl })
-                .eq('id', user!.id)
+                .eq("id", user!.id)
 
             if (updateError) throw updateError
 
-            setMessage({ type: 'success', text: 'Avatar updated successfully' })
+            setMessage({ type: "success", text: "Avatar updated successfully" })
 
             // CLEANUP: Delete old avatar if it exists and is being replaced
             if (avatarUrl && avatarUrl !== publicUrl) {
                 // Check if it's a storage URL (simple check)
-                if (avatarUrl.includes('/avatars/')) {
-                    const path = avatarUrl.split('/avatars/')[1];
+                if (avatarUrl.includes("/avatars/")) {
+                    const path = avatarUrl.split("/avatars/")[1]
                     if (path) {
                         const { error: deleteError } = await supabase.storage
-                            .from('avatars')
-                            .remove([path]);
+                            .from("avatars")
+                            .remove([path])
 
                         if (deleteError) {
+                            logger.warn("Settings", "Failed to delete old avatar", deleteError)
                             // Non-blocking cleanup error
                         }
                     }
@@ -153,104 +192,115 @@ export default function Settings() {
                 }
             }
         } catch (error: any) {
-            setMessage({ type: 'error', text: error.message })
+            logger.error("Settings", "Failed to upload avatar", error)
+            setMessage({ type: "error", text: error.message })
         } finally {
             setLoading(false)
         }
-    }
+    }, [avatarUrl, user])
 
-    const handleSpicyToggle = async (checked: boolean) => {
+    const handleSpicyToggle = useCallback(async (checked: boolean) => {
         if (!couple) return
         try {
             const { error } = await supabase
-                .from('couples')
+                .from("couples")
                 .update({ spicy_mode: checked })
-                .eq('id', couple.id)
+                .eq("id", couple.id)
 
             if (error) throw error
 
             setShowSpicy(checked)
             await refreshCoupleData()
         } catch (error: any) {
-
-            setMessage({ type: 'error', text: 'Failed to update setting' })
+            logger.error("Settings", "Failed to update spicy mode", error)
+            setMessage({ type: "error", text: "Failed to update setting" })
             // Revert on error
             setShowSpicy(!checked)
         }
-    }
+    }, [couple, refreshCoupleData])
 
-    const handleUnpair = async () => {
-        setLoading(true);
+    const handleUnpair = useCallback(async () => {
+        setLoading(true)
+        setMessage(null)
 
         if (!user) {
-            setMessage({ type: 'error', text: 'You must be logged in to unpair' });
-            setLoading(false);
-            return;
+            setMessage({ type: "error", text: "You must be logged in to unpair" })
+            setLoading(false)
+            return
         }
 
         try {
             if (!couple) {
                 // Even if no couple in context, we might want to try RPC? But context should be source of truth.
-                throw new Error("No active couple found");
+                throw new Error("No active couple found")
             }
 
             // Call the secure RPC to unpair both users and delete the couple record
-            const { error: rpcError } = await supabase.rpc('unpair_couple');
+            const { error: rpcError } = await supabase.rpc("unpair_couple")
 
             if (rpcError) {
-                throw rpcError;
+                throw rpcError
             }
 
             // Clear any dismissed restore modal flag so it can reappear if they repair
-            sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL);
+            sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL)
 
             // Refresh local state to reflect changes immediately
-            await refreshCoupleData();
-            navigate("/dashboard");
+            await refreshCoupleData()
+            navigate(ROUTES.DASHBOARD)
         } catch (error: any) {
-            setMessage({ type: 'error', text: error.message });
+            logger.error("Settings", "Failed to unpair couple", error)
+            setMessage({ type: "error", text: error.message })
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    }
+    }, [couple, navigate, refreshCoupleData, user])
 
-    const handleDeleteAccount = async () => {
+    const handleDeleteAccount = useCallback(async () => {
         setLoading(true)
+        setMessage(null)
 
         try {
             // 1. If in a couple, unpair properly first
             if (couple) {
-                const { error: unpairError } = await supabase.rpc('unpair_couple')
+                const { error: unpairError } = await supabase.rpc("unpair_couple")
                 if (unpairError) {
                     // Proceeding anyway
                 }
             }
 
-
             // 2. Wipe the account
-            const { error } = await supabase.rpc('reset_profile')
+            const { error } = await supabase.rpc("reset_profile")
             if (error) throw error
 
-            sessionStorage.removeItem('dismissed_restore_modal');
+            sessionStorage.removeItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL)
 
             // Force scroll reset and blur to prevent keyboard viewport issues on mobile
             if (document.activeElement instanceof HTMLElement) {
-                document.activeElement.blur();
+                document.activeElement.blur()
             }
-            window.scrollTo(0, 0);
+            window.scrollTo(0, 0)
 
             await signOut()
-            navigate("/")
+            navigate(ROUTES.ROOT)
         } catch (error: any) {
-            setMessage({ type: 'error', text: error.message })
+            logger.error("Settings", "Failed to delete account", error)
+            setMessage({ type: "error", text: error.message })
+        } finally {
             setLoading(false)
         }
-    }
+    }, [couple, navigate, signOut])
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (loading) {
         return <div className="flex h-screen items-center justify-center">Loading...</div>
     }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="flex min-h-screen bg-background">
             <Sidebar />
