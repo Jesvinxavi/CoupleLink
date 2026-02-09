@@ -37,7 +37,7 @@ export type Database = {
       }
       calendar_events: {
         Row: {
-          category: Database["public"]["Enums"]["coupon_category"] | null
+          category: string | null
           color: string | null
           country: string | null
           couple_id: string | null
@@ -50,7 +50,7 @@ export type Database = {
           title: string | null
         }
         Insert: {
-          category?: Database["public"]["Enums"]["coupon_category"] | null
+          category?: string | null
           color?: string | null
           country?: string | null
           couple_id?: string | null
@@ -63,7 +63,7 @@ export type Database = {
           title?: string | null
         }
         Update: {
-          category?: Database["public"]["Enums"]["coupon_category"] | null
+          category?: string | null
           color?: string | null
           country?: string | null
           couple_id?: string | null
@@ -88,36 +88,36 @@ export type Database = {
       challenge_history: {
         Row: {
           activity_id: string | null
-          challenge_type: Database["public"]["Enums"]["challenge_history_type"]
+          challenge_type: string
           completed_at: string | null
           couple_id: string
           created_at: string
           id: string
           period_key: string
           shown_at: string
-          status: Database["public"]["Enums"]["challenge_history_status"] | null
+          status: string | null
         }
         Insert: {
           activity_id?: string | null
-          challenge_type: Database["public"]["Enums"]["challenge_history_type"]
+          challenge_type: string
           completed_at?: string | null
           couple_id: string
           created_at?: string
           id?: string
           period_key: string
           shown_at?: string
-          status?: Database["public"]["Enums"]["challenge_history_status"] | null
+          status?: string | null
         }
         Update: {
           activity_id?: string | null
-          challenge_type?: Database["public"]["Enums"]["challenge_history_type"]
+          challenge_type?: string
           completed_at?: string | null
           couple_id?: string
           created_at?: string
           id?: string
           period_key?: string
           shown_at?: string
-          status?: Database["public"]["Enums"]["challenge_history_status"] | null
+          status?: string | null
         }
         Relationships: [
           {
@@ -141,25 +141,19 @@ export type Database = {
           completed_at: string | null
           couple_id: string | null
           id: string
-          notes: string | null
           position_id: string
-          rating: number | null
         }
         Insert: {
           completed_at?: string | null
           couple_id?: string | null
           id?: string
-          notes?: string | null
           position_id: string
-          rating?: number | null
         }
         Update: {
           completed_at?: string | null
           couple_id?: string | null
           id?: string
-          notes?: string | null
           position_id?: string
-          rating?: number | null
         }
         Relationships: [
           {
@@ -176,6 +170,7 @@ export type Database = {
           action_points: number | null
           anniversary_date: string | null
           archived_at: string | null
+          challenge_resets: Json | null
           challenge_stats: Json | null
           created_at: string | null
           current_streak: number | null
@@ -197,6 +192,7 @@ export type Database = {
           action_points?: number | null
           anniversary_date?: string | null
           archived_at?: string | null
+          challenge_resets?: Json | null
           challenge_stats?: Json | null
           created_at?: string | null
           current_streak?: number | null
@@ -218,6 +214,7 @@ export type Database = {
           action_points?: number | null
           anniversary_date?: string | null
           archived_at?: string | null
+          challenge_resets?: Json | null
           challenge_stats?: Json | null
           created_at?: string | null
           current_streak?: number | null
@@ -294,7 +291,7 @@ export type Database = {
           acknowledged_at: string | null
           activated_at: string | null
           assigned_to: string | null
-          category: Database["public"]["Enums"]["coupon_category"] | null
+          category: string | null
           couple_id: string
           created_at: string
           description: string | null
@@ -305,7 +302,7 @@ export type Database = {
           is_gift: boolean | null
           is_redeemed: boolean | null
           redeemed_at: string | null
-          status: Database["public"]["Enums"]["coupon_status"] | null
+          status: string | null
           template_id: string | null
           title: string
         }
@@ -313,7 +310,7 @@ export type Database = {
           acknowledged_at?: string | null
           activated_at?: string | null
           assigned_to?: string | null
-          category?: Database["public"]["Enums"]["coupon_category"] | null
+          category?: string | null
           couple_id: string
           created_at?: string
           description?: string | null
@@ -324,7 +321,7 @@ export type Database = {
           is_gift?: boolean | null
           is_redeemed?: boolean | null
           redeemed_at?: string | null
-          status?: Database["public"]["Enums"]["coupon_status"] | null
+          status?: string | null
           template_id?: string | null
           title: string
         }
@@ -332,7 +329,7 @@ export type Database = {
           acknowledged_at?: string | null
           activated_at?: string | null
           assigned_to?: string | null
-          category?: Database["public"]["Enums"]["coupon_category"] | null
+          category?: string | null
           couple_id?: string
           created_at?: string
           description?: string | null
@@ -343,7 +340,7 @@ export type Database = {
           is_gift?: boolean | null
           is_redeemed?: boolean | null
           redeemed_at?: string | null
-          status?: Database["public"]["Enums"]["coupon_status"] | null
+          status?: string | null
           template_id?: string | null
           title?: string
         }
@@ -366,43 +363,34 @@ export type Database = {
       }
       fantasy_bucket_list: {
         Row: {
-          approver_id: string | null
           completed_at: string | null
           couple_id: string | null
           created_at: string | null
-          description: string | null
           fantasy_text: string
           id: string
-          category: string | null
           requester_id: string | null
           responded_at: string | null
-          status: Database["public"]["Enums"]["fantasy_status"] | null
+          status: string | null
         }
         Insert: {
-          approver_id?: string | null
           completed_at?: string | null
           couple_id?: string | null
           created_at?: string | null
-          description?: string | null
           fantasy_text: string
           id?: string
-          category?: string | null
           requester_id?: string | null
           responded_at?: string | null
-          status?: Database["public"]["Enums"]["fantasy_status"] | null
+          status?: string | null
         }
         Update: {
-          approver_id?: string | null
           completed_at?: string | null
           couple_id?: string | null
           created_at?: string | null
-          description?: string | null
           fantasy_text?: string
           id?: string
-          category?: string | null
           requester_id?: string | null
           responded_at?: string | null
-          status?: Database["public"]["Enums"]["fantasy_status"] | null
+          status?: string | null
         }
         Relationships: [
           {
@@ -624,13 +612,13 @@ export type Database = {
           id: string
           is_premium: boolean | null
           last_name: string | null
+          last_seen_coupons: string | null
           last_seen_daily_question_at: string | null
-          last_seen_rain_check_tokens: number | null
           last_seen_fantasies: string | null
-          last_seen_fantasy_pending: string | null
           last_seen_fantasy_approved: string | null
           last_seen_fantasy_completed: string | null
-          last_seen_coupons: string | null
+          last_seen_fantasy_pending: string | null
+          last_seen_rain_check_tokens: number | null
           notification_preferences: Json | null
           onboarding_completed: boolean | null
           timezone: string | null
@@ -645,12 +633,12 @@ export type Database = {
           id: string
           is_premium?: boolean | null
           last_name?: string | null
-          last_seen_daily_question_at?: string | null
           last_seen_coupons?: string | null
+          last_seen_daily_question_at?: string | null
+          last_seen_fantasies?: string | null
           last_seen_fantasy_approved?: string | null
           last_seen_fantasy_completed?: string | null
           last_seen_fantasy_pending?: string | null
-          last_seen_fantasies?: string | null
           last_seen_rain_check_tokens?: number | null
           notification_preferences?: Json | null
           onboarding_completed?: boolean | null
@@ -666,12 +654,12 @@ export type Database = {
           id?: string
           is_premium?: boolean | null
           last_name?: string | null
-          last_seen_daily_question_at?: string | null
           last_seen_coupons?: string | null
+          last_seen_daily_question_at?: string | null
+          last_seen_fantasies?: string | null
           last_seen_fantasy_approved?: string | null
           last_seen_fantasy_completed?: string | null
           last_seen_fantasy_pending?: string | null
-          last_seen_fantasies?: string | null
           last_seen_rain_check_tokens?: number | null
           notification_preferences?: Json | null
           onboarding_completed?: boolean | null
@@ -749,16 +737,19 @@ export type Database = {
         Row: {
           count: number | null
           couple_id: string | null
+          id: string
           updated_at: string | null
         }
         Insert: {
           count?: number | null
           couple_id?: string | null
+          id?: string
           updated_at?: string | null
         }
         Update: {
           count?: number | null
           couple_id?: string | null
+          id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -826,41 +817,35 @@ export type Database = {
       user_dates: {
         Row: {
           checklist: string[] | null
-          completed_at: string | null
-          cost: string | null
+          cost: string
           couple_id: string
           created_at: string
-          description: string | null
-          duration: string | null
+          description: string
+          duration: string
           id: string
           image_url: string | null
-          is_completed: boolean | null
           title: string
         }
         Insert: {
           checklist?: string[] | null
-          completed_at?: string | null
-          cost?: string | null
+          cost: string
           couple_id: string
           created_at?: string
-          description?: string | null
-          duration?: string | null
+          description: string
+          duration: string
           id?: string
           image_url?: string | null
-          is_completed?: boolean | null
           title: string
         }
         Update: {
           checklist?: string[] | null
-          completed_at?: string | null
-          cost?: string | null
+          cost?: string
           couple_id?: string
           created_at?: string
-          description?: string | null
-          duration?: string | null
+          description?: string
+          duration?: string
           id?: string
           image_url?: string | null
-          is_completed?: boolean | null
           title?: string
         }
         Relationships: [
@@ -907,6 +892,10 @@ export type Database = {
         Args: { couple_id_input: string; frequency_input: string }
         Returns: Json
       }
+      get_challenge_pool_status: {
+        Args: { couple_id_input: string }
+        Returns: Json
+      }
       get_daily_question: { Args: { couple_id_input: string }; Returns: Json }
       get_on_this_day_contents: {
         Args: {
@@ -941,6 +930,25 @@ export type Database = {
           uploader_id: string
         }[]
       }
+      get_random_throwback_by_type: {
+        Args: {
+          p_couple_id: string
+          p_exclude_date?: string
+          p_force_type: string
+          p_seed: number
+        }
+        Returns: {
+          content: string
+          created_at: string
+          extra_data: Json
+          id: string
+          location: string
+          media_urls: string[]
+          title: string
+          type: string
+          uploader_id: string
+        }[]
+      }
       get_user_couple_id: { Args: never; Returns: string }
       increment_couple_streak: {
         Args: { p_couple_id: string }
@@ -951,6 +959,10 @@ export type Database = {
       refund_rain_check_token: {
         Args: { p_couple_id: string }
         Returns: boolean
+      }
+      reset_challenge_cycle: {
+        Args: { couple_id_input: string; frequency_input: string }
+        Returns: Json
       }
       reset_profile: { Args: never; Returns: undefined }
       restore_archived_and_delete_current: {
@@ -976,19 +988,14 @@ export type Database = {
     }
     Enums: {
       activity_category:
-      | "fun"
-      | "deep"
-      | "spicy"
-      | "date_idea"
-      | "romantic"
-      | "creative"
-      | "active"
+        | "fun"
+        | "deep"
+        | "spicy"
+        | "date_idea"
+        | "romantic"
+        | "creative"
+        | "active"
       activity_type: "quiz" | "draw" | "challenge"
-      challenge_history_status: "shown" | "completed" | "expired"
-      challenge_history_type: "daily" | "weekly" | "monthly" | "question"
-      coupon_category: "romantic" | "spicy" | "service" | "fun"
-      coupon_status: "active" | "redeemed"
-      fantasy_status: "pending" | "approved" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1002,116 +1009,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {

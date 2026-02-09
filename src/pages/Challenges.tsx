@@ -96,6 +96,7 @@ export default function Challenges() {
         return Boolean(loading || forceLoading || loadingChallenges || challengeLoading)
     }, [loading, forceLoading, loadingChallenges, challengeLoading])
 
+
     // ═══════════════════════════════════════
     // RENDER
     // ═══════════════════════════════════════

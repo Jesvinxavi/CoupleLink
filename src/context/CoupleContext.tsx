@@ -25,49 +25,9 @@ interface CoupleContextType {
 // ═══════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════
-const PROFILE_FIELDS = [
-    'id',
-    'first_name',
-    'last_name',
-    'avatar_url',
-    'birth_date',
-    'timezone',
-    'couple_id',
-    'is_premium',
-    'onboarding_completed',
-    'notification_preferences',
-    'competition_points',
-    'unclaimed_vouchers',
-    'last_seen_daily_question_at',
-    'last_seen_rain_check_tokens',
-    'last_seen_fantasies',
-    'last_seen_fantasy_pending',
-    'last_seen_fantasy_approved',
-    'last_seen_fantasy_completed',
-    'last_seen_coupons'
-].join(', ');
+const PROFILE_FIELDS = 'id, first_name, last_name, avatar_url, birth_date, timezone, couple_id, is_premium, onboarding_completed, notification_preferences, competition_points, unclaimed_vouchers, last_seen_daily_question_at, last_seen_rain_check_tokens, last_seen_fantasies, last_seen_fantasy_pending, last_seen_fantasy_approved, last_seen_fantasy_completed, last_seen_coupons' as const;
 
-const COUPLE_FIELDS = [
-    'id',
-    'invite_code',
-    'user_one_id',
-    'user_two_id',
-    'status',
-    'spicy_mode',
-    'anniversary_date',
-    'archived_at',
-    'created_at',
-    'current_streak',
-    'longest_streak',
-    'previous_streak',
-    'daily_question_date',
-    'daily_question_id',
-    'last_activity_date',
-    'rain_check_tokens',
-    'total_love_points',
-    'action_points',
-    'challenge_stats'
-].join(', ');
+const COUPLE_FIELDS = 'id, invite_code, user_one_id, user_two_id, status, spicy_mode, anniversary_date, archived_at, created_at, current_streak, longest_streak, previous_streak, daily_question_date, daily_question_id, last_activity_date, rain_check_tokens, total_love_points, action_points, challenge_stats, challenge_resets' as const;
 
 // ═══════════════════════════════════════
 // CONTEXT
@@ -198,11 +158,9 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                 },
                 (payload) => {
                     const newProfile = payload.new as Profile;
-                    // const oldProfile = payload.old as Profile;
 
                     if (newProfile) {
                         const currentRefId = userProfileRef.current?.couple_id;
-                        // Check comparison logic...
 
                         // Update ref immediately to new state
                         setUserProfile(newProfile);
@@ -223,8 +181,10 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                                 // Also refresh just to be safe/clean
                                 refreshCoupleData();
                             } else {
-                                // Standard update (e.g. restore or join)
-                                refreshCoupleData(true); // Silent update
+                                // Restore or join: use non-silent refresh so loading=true
+                                // prevents the Dashboard from flashing the unpaired state
+                                // while the new couple data is being fetched
+                                refreshCoupleData(false);
                             }
                         }
                     }
@@ -278,7 +238,8 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                         if (payload.old && payload.old.id === currentCouple?.id) {
                             setCouple(null);
                             setPartner(null);
-                            refreshCoupleData(true);
+                            // Non-silent: show loading spinner while fetching the new couple
+                            refreshCoupleData(false);
                         }
                     }
                 }

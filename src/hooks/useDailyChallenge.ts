@@ -19,14 +19,20 @@ export function useDailyChallenge(coupleId: string | null) {
     const [partnerAnswer, setPartnerAnswer] = useState<UserAnswer | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // Channel Ref
+    // Refs to avoid circular dependencies in useEffect
     const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+    const activityRef = useRef<Activity | null>(null);
 
-    // Helper to fetch answers only
-    const fetchAnswers = useCallback(async (currentActivity: Activity | null) => {
+    // Keep activityRef in sync
+    useEffect(() => {
+        activityRef.current = activity;
+    }, [activity]);
+
+    // Helper to fetch answers only — uses ref to avoid dependency on activity state
+    const fetchAnswers = useCallback(async (currentActivity?: Activity | null) => {
         if (!coupleId) return;
-        // Use provided activity or fallback to current state if available
-        const targetActivity = currentActivity || activity;
+        // Use provided activity, then ref fallback
+        const targetActivity = currentActivity || activityRef.current;
 
         if (!targetActivity) return;
 
@@ -36,7 +42,7 @@ export function useDailyChallenge(coupleId: string | null) {
 
             const { data: answers, error: answersError } = await supabase
                 .from('user_answers')
-                .select('id, user_id, answer_text, created_at')
+                .select('*')
                 .eq('couple_id', coupleId)
                 .eq('activity_id', targetActivity.id);
 
@@ -49,39 +55,41 @@ export function useDailyChallenge(coupleId: string | null) {
         } catch (err) {
             logger.error('useDailyChallenge', 'Error refreshing answers', err);
         }
-    }, [coupleId, activity]);
+    }, [coupleId]); // Only depends on coupleId — uses activityRef for activity
 
+    // Main effect — only depends on coupleId. No circular dependency.
     useEffect(() => {
         if (!coupleId) {
-            setLoading(false)
-            return
+            setLoading(false);
+            return;
         }
 
         let mounted = true;
 
         const fetchDailyChallenge = async () => {
-            // ... existing start ...
             try {
                 if (mounted) {
-                    setLoading(true)
-                    setError(null)
+                    setLoading(true);
+                    setError(null);
                 }
 
                 // 1. Get synchronized daily question from RPC
                 const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('get_daily_question', {
                     couple_id_input: coupleId
-                })
+                });
 
-                if (rpcError) throw rpcError
+                if (rpcError) throw rpcError;
 
                 if (!rpcData.success) {
-                    if (mounted) setLoading(false)
-                    return
+                    if (mounted) setLoading(false);
+                    return;
                 }
 
-
-                const activityData = rpcData.data
-                if (mounted) setActivity(activityData)
+                const activityData = rpcData.data;
+                if (mounted) {
+                    setActivity(activityData);
+                    activityRef.current = activityData; // Update ref immediately
+                }
 
                 // Track question shown in challenge_history
                 if (activityData?.id) {
@@ -90,10 +98,10 @@ export function useDailyChallenge(coupleId: string | null) {
                         .from('challenge_history')
                         .upsert({
                             couple_id: coupleId,
-                            challenge_type: 'question',
+                            challenge_type: 'question' as const,
                             activity_id: activityData.id,
                             period_key: today,
-                            status: 'shown',
+                            status: 'shown' as const,
                             shown_at: new Date().toISOString()
                         }, { onConflict: 'couple_id,challenge_type,period_key' })
                         .then(({ error }) => {
@@ -103,22 +111,22 @@ export function useDailyChallenge(coupleId: string | null) {
                         });
                 }
 
-                // 2. Fetch answers immediately using our helper
+                // 2. Fetch answers immediately
                 if (mounted) await fetchAnswers(activityData);
 
             } catch (err: any) {
-                logger.error('useDailyChallenge', 'Error fetching daily challenge', err)
-                if (mounted) setError(err?.message || 'Failed to fetch daily challenge')
+                logger.error('useDailyChallenge', 'Error fetching daily challenge', err);
+                if (mounted) setError(err?.message || 'Failed to fetch daily challenge');
             } finally {
-                if (mounted) setLoading(false)
+                if (mounted) setLoading(false);
             }
-        }
+        };
 
-        fetchDailyChallenge()
+        fetchDailyChallenge();
 
         const channelName = `partner-daily-question-${coupleId}`;
 
-        // Realtime subscription
+        // Realtime subscription — uses fetchAnswers which reads activityRef
         const channel = supabase
             .channel(channelName)
             .on(
@@ -130,42 +138,28 @@ export function useDailyChallenge(coupleId: string | null) {
                     filter: `couple_id=eq.${coupleId}`
                 },
                 async () => {
-                    // Fetch answers using the LATEST activity from state (checked inside helper)
-                    // Note: 'activity' in closure might be stale if not careful. 
-                    // But we can trigger re-fetch of everything or just answers.
-                    // To be safe and simple, we call fetchAnswers which uses 'activity' from state ref? 
-                    // Actually, useEffect closure traps 'activity'.
-                    // We need to use a ref for activity if we want to access it inside the channel callback without re-subscribing.
-                    // BETTER: Just re-fetch the answers for the *current* Activity ID if we have it?
-                    // OR: Just re-run fetchDailyChallenge? No, that's heavy (RPC call).
-
-                    // We need access to the current Activity ID.
-                    // Since we can't easily get it from closure without adding it to dependency array (re-subscribing),
-                    // let's rely on the fact that 'fetchAnswers' uses the 'activity' from the closure, 
-                    // AND we add 'activity?.id' to the dependency array. 
-                    // This means whenever activity changes (once a day), we re-subscribe. This is acceptable.
-                    fetchAnswers(null);
+                    fetchAnswers();
                 }
             )
             .on('broadcast', { event: 'question_update' }, () => {
-                fetchAnswers(null);
+                fetchAnswers();
             })
-            .subscribe()
+            .subscribe();
 
         channelRef.current = channel;
 
         // 30s polling fallback
         const intervalId = setInterval(() => {
-            fetchAnswers(null);
+            fetchAnswers();
         }, 30000);
 
         return () => {
             mounted = false;
-            supabase.removeChannel(channel)
+            supabase.removeChannel(channel);
             clearInterval(intervalId);
             channelRef.current = null;
-        }
-    }, [coupleId, activity?.id, fetchAnswers]) // Re-run if activity changes, ensuring updated closure for fetchAnswers
+        };
+    }, [coupleId, fetchAnswers]); // fetchAnswers only depends on coupleId, so this is stable
 
     const submitAnswer = useCallback(async (answerText: string) => {
         if (!activity || !coupleId) return;
@@ -195,11 +189,11 @@ export function useDailyChallenge(coupleId: string | null) {
                 supabase
                     .from('challenge_history')
                     .update({
-                        status: 'completed',
+                        status: 'completed' as const,
                         completed_at: new Date().toISOString()
                     })
                     .eq('couple_id', coupleId)
-                    .eq('challenge_type', 'question')
+                    .eq('challenge_type', 'question' as const)
                     .eq('period_key', today)
                     .then(({ error }) => {
                         if (error) {

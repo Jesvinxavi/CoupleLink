@@ -18,6 +18,7 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
     const previousStreak = currentModal?.type === 'streak_broken' ? currentModal.data.previousStreak : 0;
 
     const prevTokensRef = useRef<number | null>(null);
+    const prevCoupleIdRef = useRef<string | null>(null);
     const isRefundingRef = useRef(false);
 
     // Listen for refund event (Local + Broadcast)
@@ -78,6 +79,12 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
         const currentTokens = couple.rain_check_tokens || 0;
         const lastSeen = userProfile.last_seen_rain_check_tokens || 0;
 
+        // When couple changes (restore/join), reset baseline to prevent false delta
+        if (prevCoupleIdRef.current !== null && prevCoupleIdRef.current !== couple.id) {
+            prevTokensRef.current = null;
+        }
+        prevCoupleIdRef.current = couple.id;
+
         if (prevTokensRef.current === null) {
             prevTokensRef.current = currentTokens;
             if (currentTokens > lastSeen) {
@@ -94,7 +101,7 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
 
         prevTokensRef.current = currentTokens;
 
-    }, [couple?.rain_check_tokens, couple?.current_streak, userProfile?.last_seen_rain_check_tokens, enableTokenCheck, enqueueModal]);
+    }, [couple?.id, couple?.rain_check_tokens, couple?.current_streak, userProfile?.last_seen_rain_check_tokens, enableTokenCheck, enqueueModal]);
 
     const handleCloseTokenModal = useCallback(async () => {
         // Acknowledge the modal to remove it from queue

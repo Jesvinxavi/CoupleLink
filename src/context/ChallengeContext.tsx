@@ -164,7 +164,12 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
 
     // Fetch Active Challenges from DB
     useEffect(() => {
-        if (!couple || !currentUser) return;
+        if (!currentUser) return;
+
+        if (!couple) {
+            setLoadingChallenges(false);
+            return;
+        }
 
         const fetchChallenges = async () => {
             const stopPerf = logger.perf("ChallengeContext", "fetchChallenges")
@@ -260,7 +265,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
             const stats = (couple.challenge_stats as any) || {};
             const updates: any = {};
             let needsUpdate = false;
-            const historyInserts: Array<{ couple_id: string; challenge_type: string; activity_id: string; period_key: string }> = [];
+            const historyInserts: Array<{ couple_id: string; challenge_type: 'daily' | 'weekly' | 'monthly'; activity_id: string; period_key: string }> = [];
 
             const checkType = async (type: 'daily' | 'weekly' | 'monthly', currentChallenge: Challenge | null, seedDateStr: string) => {
                 if (!currentChallenge) return;
@@ -297,7 +302,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                     // Queue for challenge_history tracking
                     historyInserts.push({
                         couple_id: couple.id,
-                        challenge_type: type,
+                        challenge_type: type as 'daily' | 'weekly' | 'monthly',
                         activity_id: currentChallenge.id,
                         period_key: getPeriodKey(type, now)
                     });
@@ -380,7 +385,12 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
 
     // Check Partner Completion & Sync My Memories
     const checkPartnerCompletion = useCallback(async () => {
-        if (!couple || !currentUser) return;
+        if (!currentUser) return;
+
+        if (!couple) {
+            setLoadingPartner(false);
+            return;
+        }
 
         let partnerId: string | null = couple.user_one_id === currentUser.id ? couple.user_two_id : couple.user_one_id;
         if (partnerId === currentUser.id) partnerId = null;

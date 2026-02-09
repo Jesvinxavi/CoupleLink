@@ -43,7 +43,7 @@ export default function JoinPartner() {
     useEffect(() => {
         if (userProfile?.couple_id) {
             setTimeout(() => {
-                navigate('/');
+                navigate('/dashboard');
             }, 500);
         }
     }, [userProfile?.couple_id, navigate]);
@@ -102,7 +102,7 @@ export default function JoinPartner() {
                     document.activeElement.blur();
                 }
                 window.scrollTo(0, 0);
-                navigate("/")
+                navigate("/dashboard")
             }, 1000)
 
         } catch (err: any) {
