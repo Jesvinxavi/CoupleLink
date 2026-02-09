@@ -40,6 +40,16 @@ export function PostNoteOverlay({ isOpen, onClose, onFocusChange }: PostNoteOver
     const [isFocused, setIsFocused] = useState(false)
     const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined)
 
+    // Cleanup logic when closing
+    useEffect(() => {
+        if (!isOpen) {
+            setNote("")
+            setSending(false)
+            setViewportStyle(undefined)
+            setIsFocused(false)
+        }
+    }, [isOpen])
+
     // Viewport resize handler
     useEffect(() => {
         if (!isOpen) return

@@ -49,6 +49,7 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
     // EFFECTS
     // ═══════════════════════════════════════
     // Combined body lock + viewport resize handler
+    // Cleanup effect when closing
     useEffect(() => {
         if (!isOpen) {
             // Reset state
@@ -57,8 +58,13 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
             setSelectedFiles([])
             setFolderName("")
             setError(null)
-            return
+            setViewportStyle(undefined)
         }
+    }, [isOpen])
+
+    // Visual Viewport logic for mobile keyboard
+    useEffect(() => {
+        if (!isOpen) return
 
         // Handle Visual Viewport for mobile keyboard
         const handleVisualResize = () => {
@@ -87,7 +93,7 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
             // Reset focus state on close
             if (onFocusChange) onFocusChange(false)
         }
-    }, [isOpen, onFocusChange, previewUrls])
+    }, [isOpen])
 
     const handleOverlayFocus = (e: React.FocusEvent) => {
         const target = e.target as HTMLElement
@@ -204,7 +210,7 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]"
                         onClick={onClose}
                         style={{ touchAction: 'none' }}
                         onTouchMove={(e) => e.preventDefault()}
@@ -223,7 +229,7 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
                         transition={{ type: "spring", damping: 35, stiffness: 150, mass: 1 }}
                         onFocus={handleOverlayFocus}
                         onBlur={handleOverlayBlur}
-                        className="fixed inset-x-0 bottom-0 z-[51] outline-none overflow-hidden"
+                        className="fixed inset-x-0 bottom-0 z-[101] outline-none overflow-hidden"
                         style={{
                             maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)',
                             touchAction: 'none',

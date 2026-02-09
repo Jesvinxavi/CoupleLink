@@ -685,7 +685,9 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         ...(winnerSelection ? { winner_selection: winnerSelection } : {}),
                         ...(isPartnerDone ? { confetti_shown: true } : {}),
                         challenge_type: type,
-                        is_competition: !!challenge.isCompetition
+                        frequency: type,
+                        is_competition: !!challenge.isCompetition,
+                        completed_count: isPartnerDone ? 2 : 1
                     };
 
                     const { error: dbError } = await supabase.from('memories').insert({
@@ -717,8 +719,11 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         });
                     }
 
-                    // Update challenge_history to mark as completed
+                    // Update challenge_history to mark as completed or partially_completed
+                    const isFullyCompleted = !!partnerMem;
+                    const status = isFullyCompleted ? 'completed' : 'partially_completed' as const;
                     const periodKey = getPeriodKey(type, new Date());
+
                     await supabase
                         .from('challenge_history')
                         .upsert({
@@ -726,8 +731,8 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                             challenge_type: type,
                             activity_id: challenge.id,
                             period_key: periodKey,
-                            status: 'completed',
-                            completed_at: new Date().toISOString()
+                            status: status,
+                            completed_at: isFullyCompleted ? new Date().toISOString() : null
                         }, { onConflict: 'couple_id,challenge_type,period_key' });
 
                     // Immediately check partner status in case we missed an event
@@ -806,6 +811,34 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                         }
                         await supabase.from('memories').delete().in('id', memories.map(m => m.id));
                     }
+                }
+
+                // Handle challenge_history status reversal
+                const isPartnerStillDone = !!partnerMem;
+                const periodKey = getPeriodKey(type, new Date());
+
+                if (isPartnerStillDone) {
+                    // Revert to partially_completed because partner is still done
+                    await supabase
+                        .from('challenge_history')
+                        .update({
+                            status: 'partially_completed' as const,
+                            completed_at: null
+                        })
+                        .eq('couple_id', couple.id)
+                        .eq('challenge_type', type)
+                        .eq('period_key', periodKey);
+                } else {
+                    // Revert to shown (or remove) because nobody is done anymore
+                    await supabase
+                        .from('challenge_history')
+                        .update({
+                            status: 'shown' as const,
+                            completed_at: null
+                        })
+                        .eq('couple_id', couple.id)
+                        .eq('challenge_type', type)
+                        .eq('period_key', periodKey);
                 }
 
                 if (channelRef.current) {

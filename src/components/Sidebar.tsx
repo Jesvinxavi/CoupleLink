@@ -236,7 +236,7 @@ export default function Sidebar() {
             </div>
 
             {/* Desktop Sidebar */}
-            <aside className="fixed left-0 top-0 hidden h-screen w-[250px] bg-white shadow-sm md:flex md:flex-col md:justify-between p-4">
+            <aside className="fixed left-0 top-0 hidden h-screen w-[250px] bg-white shadow-sm md:flex md:flex-col md:justify-between p-4 z-50">
                 <div className="flex flex-col gap-8">
                     <Link to={ROUTES.DASHBOARD} className="flex items-center gap-2 px-3 pt-2">
                         <img src={logo} alt="CoupleLink Logo" className="h-7 w-7 object-contain" />

@@ -75,6 +75,16 @@ export function AddDateIdeaOverlay({ isOpen, onClose, onSuccess, coupleId, initi
     // ═══════════════════════════════════════
     // EFFECTS
     // ═══════════════════════════════════════
+    // Cleanup logic when closing
+    useEffect(() => {
+        if (!isOpen) {
+            setViewportStyle(undefined)
+            setIsFocused(false)
+            setErrorMessage(null)
+            setLoading(false)
+        }
+    }, [isOpen])
+
     // Viewport resize handler (matches FantasyBucketListOverlay)
     useEffect(() => {
         if (!isOpen) return;

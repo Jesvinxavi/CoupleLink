@@ -50,6 +50,7 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
     // EFFECTS
     // ═══════════════════════════════════════
     // Standard Body Lock + Viewport
+    // Cleanup effect when closing
     useEffect(() => {
         if (!isOpen) {
             // Clean up previews when closed
@@ -58,10 +59,14 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
             setSelectedFiles([])
             setCaption("")
             setError(null)
-            return
+            setViewportStyle(undefined)
         }
+    }, [isOpen])
 
-        // Handle Visual Viewport for mobile keyboard
+    // Visual Viewport logic for mobile keyboard
+    useEffect(() => {
+        if (!isOpen) return
+
         const handleVisualResize = () => {
             const activeEl = document.activeElement
             const isActiveInOverlay = overlayRef.current?.contains(activeEl)
@@ -85,7 +90,7 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
             window.visualViewport?.removeEventListener("resize", handleVisualResize)
             window.visualViewport?.removeEventListener("scroll", handleVisualResize)
         }
-    }, [isOpen, previewUrls])
+    }, [isOpen])
 
     // ═══════════════════════════════════════
     // HANDLERS
@@ -196,7 +201,7 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]"
                         onClick={onClose}
                         style={{ touchAction: 'none' }}
                         onTouchMove={(e) => e.preventDefault()}
@@ -215,7 +220,7 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
                         transition={{ type: "spring", damping: 35, stiffness: 150, mass: 1 }}
                         onFocus={handleOverlayFocus}
                         onBlur={handleOverlayBlur}
-                        className="fixed inset-x-0 bottom-0 z-[51] outline-none overflow-hidden"
+                        className="fixed inset-x-0 bottom-0 z-[101] outline-none overflow-hidden"
                         style={{
                             maxHeight: isFocused ? 'none' : 'calc(100dvh - 70px)',
                             touchAction: 'none',

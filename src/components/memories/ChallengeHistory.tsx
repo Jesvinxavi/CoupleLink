@@ -35,6 +35,7 @@ interface GroupedHistory {
         monthly: HistoryItem[]
         weekly: HistoryItem[]
         daily: HistoryItem[]
+        sortKey: number
     }
 }
 
@@ -236,7 +237,7 @@ export function ChallengeHistory() {
     const [expandedYears, setExpandedYears] = useState<string[]>([])
 
     const sortedMonths = useMemo(() => Object.keys(groupedHistory).sort((a, b) =>
-        new Date(b).getTime() - new Date(a).getTime()
+        groupedHistory[b].sortKey - groupedHistory[a].sortKey
     ), [groupedHistory])
 
     // Group months by year
@@ -324,25 +325,48 @@ export function ChallengeHistory() {
             // 2. Fetch Completed Challenges (memories)
             let challengeItems: HistoryItem[] = []
             if (!memoriesError && memories) {
-                challengeItems = memories.map((mem: any) => ({
-                    id: mem.id,
-                    title: mem.caption || "Challenge",
-                    date: mem.created_at,
-                    type: mem.metadata?.frequency || "daily",
-                    description: mem.caption,
-                    photos: mem.media_urls || [],
-                    completedCount: mem.metadata?.completed_count ?? 2
-                }))
+                // Group memories by title + date (approx) to avoid duplicates if both partners completed
+                const chalGrouped = new Map<string, HistoryItem>()
+                memories.forEach((mem: any) => {
+                    const title = mem.caption || "Challenge"
+                    // Use a key that combines title and frequency (since same title could repeat across weeks/months, though unlikely)
+                    const key = `${title}-${mem.metadata?.frequency || 'daily'}`
+
+                    if (!chalGrouped.has(key)) {
+                        chalGrouped.set(key, {
+                            id: mem.id,
+                            title: title,
+                            date: mem.created_at,
+                            type: mem.metadata?.frequency || "daily",
+                            description: mem.caption,
+                            photos: mem.media_urls || [],
+                            completedCount: mem.metadata?.completed_count ?? 1
+                        })
+                    } else {
+                        // If we have a duplicate, ensure we take the highest completedCount
+                        const item = chalGrouped.get(key)!
+                        item.completedCount = Math.max(item.completedCount || 0, mem.metadata?.completed_count || 1)
+                        if (mem.media_urls?.length) {
+                            item.photos = [...(item.photos || []), ...mem.media_urls]
+                        }
+                    }
+                })
+                challengeItems = Array.from(chalGrouped.values())
             }
 
             // Combine all history items
             const allItems = [...questionItems, ...challengeItems]
 
-            // Group by month-year and type
             const grouped = allItems.reduce((acc, item) => {
-                const monthYear = new Date(item.date).toLocaleString("default", { month: "long", year: "numeric" })
+                const date = new Date(item.date)
+                const monthYear = date.toLocaleString("default", { month: "long", year: "numeric" })
                 if (!acc[monthYear]) {
-                    acc[monthYear] = { monthly: [], weekly: [], daily: [] }
+                    acc[monthYear] = {
+                        monthly: [],
+                        weekly: [],
+                        daily: [],
+                        sortKey: date.getFullYear() * 100 + date.getMonth()
+                    }
                 }
 
                 if (item.type === "question") {
@@ -352,6 +376,18 @@ export function ChallengeHistory() {
                 }
                 return acc
             }, {} as GroupedHistory)
+
+            // Ensure current month always exists
+            const now = new Date()
+            const currentMonthYear = now.toLocaleString("default", { month: "long", year: "numeric" })
+            if (!grouped[currentMonthYear]) {
+                grouped[currentMonthYear] = {
+                    monthly: [],
+                    weekly: [],
+                    daily: [],
+                    sortKey: now.getFullYear() * 100 + now.getMonth()
+                }
+            }
 
             setGroupedHistory(grouped)
             setCurrentMonthIndex(0)
@@ -416,7 +452,7 @@ export function ChallengeHistory() {
                                 <>
                                     {/* Backdrop for clicking outside */}
                                     <div
-                                        className="fixed inset-0 z-30"
+                                        className="fixed inset-0 z-[100]"
                                         onClick={() => setIsDropdownOpen(false)}
                                     />
                                     <motion.div
@@ -424,7 +460,7 @@ export function ChallengeHistory() {
                                         animate={{ opacity: 1, height: 'auto', y: 0 }}
                                         exit={{ opacity: 0, height: 0, y: -10 }}
                                         transition={{ duration: 0.2, ease: "easeInOut" }}
-                                        className="absolute top-full left-0 mt-2 z-40 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 overflow-hidden min-w-[180px]"
+                                        className="absolute top-full left-0 mt-2 z-[101] bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 overflow-hidden min-w-[180px]"
                                     >
                                         <div className="max-h-[400px] overflow-y-auto">
                                             {sortedYears.map((year) => {
@@ -490,12 +526,12 @@ export function ChallengeHistory() {
                         </AnimatePresence>
                     </div>
 
-                    {/* Navigation Arrows */}
                     <div className="flex items-center gap-1 bg-white dark:bg-gray-700 rounded-lg p-1 border border-gray-200 dark:border-gray-600">
                         <button
                             onClick={() => setCurrentMonthIndex(prev => Math.min(prev + 1, sortedMonths.length - 1))}
                             disabled={currentMonthIndex >= sortedMonths.length - 1}
                             className="p-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md transition-colors"
+                            title="Older month"
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </button>
@@ -504,6 +540,7 @@ export function ChallengeHistory() {
                             onClick={() => setCurrentMonthIndex(prev => Math.max(prev - 1, 0))}
                             disabled={currentMonthIndex <= 0}
                             className="p-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md transition-colors"
+                            title="Newer month"
                         >
                             <ChevronRight className="w-5 h-5" />
                         </button>

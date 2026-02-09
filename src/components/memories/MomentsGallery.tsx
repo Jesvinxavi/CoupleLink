@@ -36,7 +36,6 @@ interface FolderItem {
 }
 
 interface MomentsGalleryProps {
-    onOverlayFocusChange?: (isFocused: boolean) => void
 }
 
 const MOMENTS_PAGE_SIZE = 24
@@ -44,7 +43,7 @@ const MOMENTS_PAGE_SIZE = 24
 // ═══════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════
-export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
+export function MomentsGallery({ }: MomentsGalleryProps) {
     const { couple } = useCoupleData()
 
     // ═══════════════════════════════════════
@@ -70,6 +69,8 @@ export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
     const [editingFolderName, setEditingFolderName] = useState("")
     const [isDeleteFolderOpen, setIsDeleteFolderOpen] = useState(false)
     const [visibleCount, setVisibleCount] = useState(MOMENTS_PAGE_SIZE)
+
+
 
     // ═══════════════════════════════════════
     // HANDLERS
@@ -353,20 +354,23 @@ export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
 
                     {/* Moments */}
                     {visibleMoments.map((moment) => (
-                        <motion.div
-                            layoutId={`moment-${moment.id}`}
+                        <div
                             key={moment.id}
                             onClick={() => setSelectedMoment(moment)}
                             className="group relative aspect-square overflow-hidden rounded-xl bg-gray-100 cursor-pointer"
                         >
-                            <img
+                            <motion.img
+                                layoutId={`moment-${moment.id}`}
                                 src={moment.media_url || ''}
                                 alt={moment.caption || 'Moment'}
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                className="h-full w-full object-cover"
+                                style={{ transformOrigin: "center" }}
+                                whileHover={{ scale: 1.05 }}
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                 loading="lazy"
                                 decoding="async"
                             />
-                        </motion.div>
+                        </div>
                     ))}
 
                     {canLoadMore && (
@@ -401,22 +405,26 @@ export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
                 {selectedMoment && (
                     <>
                         {createPortal(
-                            <div
-                                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
-                                onClick={() => setSelectedMoment(null)}
-                            >
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                                {/* Backdrop */}
                                 <motion.div
-                                    layoutId={`moment-${selectedMoment.id}`}
-                                    className="relative w-full max-w-4xl max-h-[90vh] flex flex-col items-center justify-center gap-4"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+                                    onClick={() => setSelectedMoment(null)}
+                                />
+
+                                {/* Content */}
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.9, opacity: 0 }}
+                                    className="relative w-full max-w-4xl max-h-[90vh] flex flex-col items-center justify-center gap-4 z-10"
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     {/* Top Control Bar - Actions */}
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.2 }}
-                                        className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-full px-3 py-1.5 shadow-lg flex items-center gap-2 border border-gray-200/50 dark:border-gray-700/50"
-                                    >
+                                    <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-full px-3 py-1.5 shadow-lg flex items-center gap-2 border border-gray-200/50 dark:border-gray-700/50">
                                         <button
                                             onClick={() => {
                                                 setEditingCaption(selectedMoment.caption || '');
@@ -435,34 +443,36 @@ export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
                                         </button>
                                         <div className="h-3 w-px bg-gray-300 dark:bg-gray-600 shrink-0" />
                                         <button
-                                            onClick={() => setSelectedMoment(null)}
+                                            onClick={() => {
+                                                setSelectedMoment(null)
+                                            }}
                                             className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-700 dark:text-gray-200"
                                         >
                                             <X className="w-4 h-4" />
                                         </button>
-                                    </motion.div>
+                                    </div>
 
                                     {/* Image */}
-                                    <img
+                                    <motion.img
+                                        layoutId={`moment-${selectedMoment.id}`}
                                         src={selectedMoment.media_url || ''}
                                         alt={selectedMoment.caption || 'Expanded Moment'}
                                         className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl"
+                                        style={{ transformOrigin: "center" }}
+                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                         loading="lazy"
                                         decoding="async"
                                     />
 
                                     {/* Bottom Control Bar - Caption */}
                                     {selectedMoment.caption && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: 0.2 }}
+                                        <div
                                             className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl px-3 py-1.5 shadow-lg max-w-md w-auto text-center border border-gray-200/50 dark:border-gray-700/50"
                                         >
                                             <p className="text-xs text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words leading-relaxed font-medium">
                                                 {selectedMoment.caption}
                                             </p>
-                                        </motion.div>
+                                        </div>
                                     )}
                                 </motion.div>
                             </div>,
@@ -549,16 +559,14 @@ export function MomentsGallery({ onOverlayFocusChange }: MomentsGalleryProps) {
                 onClose={() => setIsUploadOpen(false)}
                 currentFolderId={currentFolder?.id || null}
                 onSuccess={fetchData}
-                onFocusChange={onOverlayFocusChange}
             />
 
             <CreateFolderOverlay
                 isOpen={isCreateFolderOpen}
                 onClose={() => setIsCreateFolderOpen(false)}
                 onSuccess={fetchData}
-                onFocusChange={onOverlayFocusChange}
             />
 
-        </div >
+        </div>
     );
 }
