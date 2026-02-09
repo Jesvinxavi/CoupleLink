@@ -51,25 +51,6 @@ export default function Sidebar() {
     const { signOut, user } = useAuth()
     const { couple } = useCoupleData()
     // ═══════════════════════════════════════
-    // EFFECTS
-    // ═══════════════════════════════════════
-    useEffect(() => {
-        fetchUserProfile()
-    }, [fetchUserProfile])
-
-    useEffect(() => {
-        const checkRestore = () => {
-            const dismissed = sessionStorage.getItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL)
-            setCanRestore(!!dismissed)
-        }
-        checkRestore()
-        window.addEventListener("restore_modal_dismissed", checkRestore)
-        // Also listen if restore is completed? We might want to clear it.
-        // Assuming refresh works.
-        return () => window.removeEventListener("restore_modal_dismissed", checkRestore)
-    }, [])
-
-    // ═══════════════════════════════════════
     // HELPERS
     // ═══════════════════════════════════════
     const fetchUserProfile = useCallback(async () => {
@@ -89,6 +70,26 @@ export default function Sidebar() {
             logger.error("Sidebar", "Error fetching user profile", error)
         }
     }, [user])
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
+    useEffect(() => {
+        fetchUserProfile()
+    }, [fetchUserProfile])
+
+    useEffect(() => {
+        const checkRestore = () => {
+            const dismissed = sessionStorage.getItem(STORAGE_KEYS.DISMISSED_RESTORE_MODAL)
+            setCanRestore(!!dismissed)
+        }
+        checkRestore()
+        window.addEventListener("restore_modal_dismissed", checkRestore)
+        // Also listen if restore is completed? We might want to clear it.
+        // Assuming refresh works.
+        return () => window.removeEventListener("restore_modal_dismissed", checkRestore)
+    }, [])
+
 
     // ═══════════════════════════════════════
     // HANDLERS
