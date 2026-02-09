@@ -34,7 +34,7 @@ const item = {
 // COMPONENT
 // ═══════════════════════════════════════
 export default function Challenges() {
-    const { couple, partner, userProfile, loading } = useCoupleData()
+    const { couple, partner, userProfile, loading, refreshCoupleData } = useCoupleData()
     const {
         activity,
         userAnswer,
@@ -45,7 +45,7 @@ export default function Challenges() {
     } = useDailyChallenge(couple?.id ?? null)
 
     const challengesData = useChallenges()
-    const { loadingChallenges, refreshCoupleData } = challengesData
+    const { loadingChallenges } = challengesData
 
     const {
         checkStreakUpdate,
@@ -74,7 +74,7 @@ export default function Challenges() {
 
         // Check if this completes the streak for the day
         await checkStreakUpdate()
-        await refreshCoupleData()
+        await refreshCoupleData(true) // Silent refresh — no spinner flash
     }, [submitAnswer, partnerAnswer, addPoints, checkStreakUpdate, refreshCoupleData])
 
     // ═══════════════════════════════════════
