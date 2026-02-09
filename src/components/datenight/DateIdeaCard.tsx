@@ -1,21 +1,31 @@
-import { Card, CardContent } from "../ui/card";
-import { ExternalLink, Clock } from "lucide-react";
-import { Button } from "../ui/button";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { memo } from "react"
+import { ExternalLink, Clock } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface DateIdeaCardProps {
-    title: string;
-    description: string;
-    imageUrl: string;
-    duration: string;
-    cost: string;
-    category: string;
-    link?: string;
-    onStart?: () => void;
-    buttonText?: string;
-    showExternalIcon?: boolean;
+    title: string
+    description: string
+    imageUrl: string
+    duration: string
+    cost: string
+    category: string
+    link?: string
+    onStart?: () => void
+    buttonText?: string
+    showExternalIcon?: boolean
 }
 
-export function DateIdeaCard({
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+const DateIdeaCard = memo(function DateIdeaCard({
     title,
     description,
     imageUrl,
@@ -29,11 +39,11 @@ export function DateIdeaCard({
 }: DateIdeaCardProps) {
     const handleStart = () => {
         if (onStart) {
-            onStart();
+            onStart()
         } else if (link) {
-            window.open(link, '_blank');
+            window.open(link, "_blank")
         }
-    };
+    }
 
     return (
         <Card className="overflow-hidden border-none shadow-sm md:hover:shadow-md transition-all group h-full flex flex-col">
@@ -42,6 +52,8 @@ export function DateIdeaCard({
                     src={imageUrl}
                     alt={title}
                     className="w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-105"
+                    loading="lazy"
+                    decoding="async"
                 />
                 <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-bold text-gray-800 uppercase tracking-wide">
                     {category}
@@ -72,5 +84,7 @@ export function DateIdeaCard({
                 </Button>
             </CardContent>
         </Card>
-    );
-}
+    )
+})
+
+export { DateIdeaCard }

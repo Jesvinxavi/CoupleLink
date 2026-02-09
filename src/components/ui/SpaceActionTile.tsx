@@ -1,7 +1,13 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface SpaceActionTileProps {
     title?: string
     description: string
@@ -15,6 +21,9 @@ interface SpaceActionTileProps {
     className?: string
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function SpaceActionTile({
     title,
     description,
@@ -48,6 +57,7 @@ export function SpaceActionTile({
             </CardHeader>
             <CardContent className="text-center pb-4">
                 <Button
+                    onClick={onClick}
                     className={cn(
                         "h-10 w-auto min-w-[140px] px-6 rounded-full text-sm font-medium shadow-sm transition-all",
                         variant === "primary"

@@ -1,13 +1,22 @@
-import { useRef } from 'react';
-import { motion } from 'framer-motion';
-import { useSexplorationModals } from '@/context/SexplorationModalContext';
-import { positions, getPositionOfTheWeek } from '../../data/positionsData';
-import { PositionSVG } from './PositionSVG';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useRef, useEffect, useCallback, type MouseEvent } from "react"
+import { motion } from "framer-motion"
+import { useSexplorationModals } from "@/context/SexplorationModalContext"
+import { positions, getPositionOfTheWeek } from "@/data/positionsData"
+import { PositionSVG } from "@/components/sexploration/PositionSVG"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface PositionTrackerTileProps {
-    initialOpenModal?: boolean;
+    initialOpenModal?: boolean
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function PositionTrackerTile({ initialOpenModal = false }: PositionTrackerTileProps) {
     const {
         openPositions,
@@ -15,24 +24,30 @@ export function PositionTrackerTile({ initialOpenModal = false }: PositionTracke
         togglePositionComplete,
         isPositionCompleted,
         isExplorationLoading
-    } = useSexplorationModals();
+    } = useSexplorationModals()
 
-    const positionOfTheWeek = getPositionOfTheWeek();
-    const isCompleted = isPositionCompleted(positionOfTheWeek.id);
-    const totalPositions = positions.length;
-    const completedCount = completedPositions.length;
-
-    const handleComplete = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        await togglePositionComplete(positionOfTheWeek.id);
-    };
+    const positionOfTheWeek = getPositionOfTheWeek()
+    const isCompleted = isPositionCompleted(positionOfTheWeek.id)
+    const totalPositions = positions.length
+    const completedCount = completedPositions.length
 
     // Handle initial open if needed (though usually handled by page now)
-    const mounted = useRef(false);
-    if (!mounted.current && initialOpenModal) {
-        openPositions();
-        mounted.current = true;
-    }
+    const mounted = useRef(false)
+
+    useEffect(() => {
+        if (!mounted.current && initialOpenModal) {
+            openPositions()
+            mounted.current = true
+        }
+    }, [initialOpenModal, openPositions])
+
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleComplete = useCallback(async (e: MouseEvent) => {
+        e.stopPropagation()
+        await togglePositionComplete(positionOfTheWeek.id)
+    }, [positionOfTheWeek.id, togglePositionComplete])
 
     return (
         <motion.div
@@ -79,11 +94,11 @@ export function PositionTrackerTile({ initialOpenModal = false }: PositionTracke
                         onClick={handleComplete}
                         disabled={isExplorationLoading}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${isCompleted
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                            : 'bg-gradient-to-r from-rose-500 to-pink-500 text-white hover:from-rose-600 hover:to-pink-600'
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
+                            : "bg-gradient-to-r from-rose-500 to-pink-500 text-white hover:from-rose-600 hover:to-pink-600"
                             }`}
                     >
-                        {isCompleted ? '✓ Completed' : 'Mark Complete'}
+                        {isCompleted ? "✓ Completed" : "Mark Complete"}
                     </motion.button>
                 </div>
             </div>
@@ -93,11 +108,11 @@ export function PositionTrackerTile({ initialOpenModal = false }: PositionTracke
                 <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${(completedCount / totalPositions) * 100}%` }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
                     className="h-full bg-gradient-to-r from-rose-500 to-pink-500"
                 />
             </div>
             <p className="text-xs text-gray-400 mt-2">Tap to explore all positions →</p>
         </motion.div>
-    );
+    )
 }

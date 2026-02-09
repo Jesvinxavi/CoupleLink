@@ -1,8 +1,14 @@
 
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { Avatar, AvatarImage, AvatarFallback } from './avatar';
 import { cn } from '@/lib/utils';
 import { User } from 'lucide-react';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface UserAvatarProps {
     user: {
         first_name: string | null;
@@ -15,6 +21,9 @@ interface UserAvatarProps {
     onClick?: () => void;
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function UserAvatar({ user, className, iconClassName, onClick }: UserAvatarProps) {
     const getInitials = () => {
         if (user?.first_name) {
@@ -32,6 +41,7 @@ export function UserAvatar({ user, className, iconClassName, onClick }: UserAvat
                 src={user?.avatar_url || undefined}
                 alt={user?.first_name || 'User Avatar'}
                 className="object-cover"
+                loading="lazy"
             />
             <AvatarFallback className={cn("bg-gray-200 dark:bg-gray-800 text-gray-500 font-bold", className)}>
                 {getInitials() || <User className={cn("w-1/2 h-1/2", iconClassName)} />}

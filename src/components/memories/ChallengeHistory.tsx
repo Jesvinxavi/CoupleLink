@@ -1,51 +1,82 @@
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Calendar, User, Heart, Trophy, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { SexplorationHistorySection } from './SexplorationHistory';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect, useState, useMemo, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Calendar, User, Heart, Trophy, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { SexplorationHistorySection } from "@/components/memories/SexplorationHistory"
 
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface HistoryItem {
-    id: string;
-    title: string;
-    date: string;
-    type: 'daily' | 'weekly' | 'monthly' | 'question';
-    myAnswer?: string | null;
-    partnerAnswer?: string | null;
-    category?: string;
-    description?: string;
-    photos?: string[];
-    completedCount?: number;
+    id: string
+    title: string
+    date: string
+    type: "daily" | "weekly" | "monthly" | "question"
+    myAnswer?: string | null
+    partnerAnswer?: string | null
+    category?: string
+    description?: string
+    photos?: string[]
+    completedCount?: number
 }
 
 interface GroupedHistory {
     [monthYear: string]: {
-        monthly: HistoryItem[];
-        weekly: HistoryItem[];
-        daily: HistoryItem[];
-    };
+        monthly: HistoryItem[]
+        weekly: HistoryItem[]
+        daily: HistoryItem[]
+    }
 }
 
-const ChallengeCarousel = ({ items, onOpenDetails }: { items: HistoryItem[], onOpenDetails: (item: HistoryItem) => void }) => {
-    const [currentIndex, setCurrentIndex] = useState(0);
+const CHALLENGE_PAGE_SIZE = 8
 
-    if (items.length === 0) return null;
+// ═══════════════════════════════════════
+// SUBCOMPONENTS
+// ═══════════════════════════════════════
+const ChallengeCarousel = ({ items, onOpenDetails }: { items: HistoryItem[]; onOpenDetails: (item: HistoryItem) => void }) => {
+    const [currentIndex, setCurrentIndex] = useState(0)
+    const [visibleCount, setVisibleCount] = useState(CHALLENGE_PAGE_SIZE)
+
+    if (items.length === 0) return null
+
+    useEffect(() => {
+        setVisibleCount(CHALLENGE_PAGE_SIZE)
+        setCurrentIndex(0)
+    }, [items])
+
+    const visibleItems = useMemo(() => {
+        return items.slice(0, visibleCount)
+    }, [items, visibleCount])
+
+    const canLoadMore = items.length > visibleCount
+
+    useEffect(() => {
+        if (currentIndex >= visibleItems.length) {
+            setCurrentIndex(0)
+        }
+    }, [currentIndex, visibleItems.length])
 
     const next = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setCurrentIndex((prev) => (prev + 1) % items.length);
-    };
+        e.stopPropagation()
+        setCurrentIndex((prev) => (prev + 1) % visibleItems.length)
+    }
 
     const prev = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-    };
+        e.stopPropagation()
+        setCurrentIndex((prev) => (prev - 1 + visibleItems.length) % visibleItems.length)
+    }
 
-    const currentItem = items[currentIndex];
+    const currentItem = visibleItems[currentIndex]
 
     return (
         <div className="relative group w-full">
@@ -59,7 +90,7 @@ const ChallengeCarousel = ({ items, onOpenDetails }: { items: HistoryItem[], onO
             </div>
 
             {/* Navigation & Dots */}
-            {items.length > 1 && (
+            {visibleItems.length > 1 && (
                 <div className="flex items-center justify-center gap-3 mt-2">
                     <button
                         onClick={prev}
@@ -69,7 +100,7 @@ const ChallengeCarousel = ({ items, onOpenDetails }: { items: HistoryItem[], onO
                     </button>
 
                     <div className="flex justify-center gap-1.5">
-                        {items.map((_, idx) => (
+                        {visibleItems.map((_, idx) => (
                             <div
                                 key={idx}
                                 className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentIndex
@@ -90,14 +121,29 @@ const ChallengeCarousel = ({ items, onOpenDetails }: { items: HistoryItem[], onO
             )}
 
             {/* Counter */}
-            {items.length > 1 && (
+            {visibleItems.length > 1 && (
                 <div className="text-center text-xs text-gray-400 mt-1">
-                    {currentIndex + 1} / {items.length}
+                    {currentIndex + 1} / {visibleItems.length}
+                </div>
+            )}
+
+            {canLoadMore && (
+                <div className="mt-3 flex justify-center">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setVisibleCount((prev) => Math.min(prev + CHALLENGE_PAGE_SIZE, items.length))
+                        }}
+                    >
+                        Load more ({visibleItems.length} of {items.length})
+                    </Button>
                 </div>
             )}
         </div>
-    );
-};
+    )
+}
 
 const HistoryCard = ({ item, onClick }: { item: HistoryItem; onClick?: () => void }) => {
     return (
@@ -170,210 +216,159 @@ const HistoryCard = ({ item, onClick }: { item: HistoryItem; onClick?: () => voi
                 )}
             </CardContent>
         </Card>
-    );
-};
+    )
+}
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function ChallengeHistory() {
-    const { couple } = useCoupleData();
-    const [groupedHistory, setGroupedHistory] = useState<GroupedHistory>({});
-    const [loading, setLoading] = useState(true);
-    const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
-    const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [expandedYears, setExpandedYears] = useState<string[]>([]);
+    const { couple } = useCoupleData()
 
-    const sortedMonths = Object.keys(groupedHistory).sort((a, b) =>
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [groupedHistory, setGroupedHistory] = useState<GroupedHistory>({})
+    const [loading, setLoading] = useState(true)
+    const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null)
+    const [currentMonthIndex, setCurrentMonthIndex] = useState(0)
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    const [expandedYears, setExpandedYears] = useState<string[]>([])
+
+    const sortedMonths = useMemo(() => Object.keys(groupedHistory).sort((a, b) =>
         new Date(b).getTime() - new Date(a).getTime()
-    );
+    ), [groupedHistory])
 
     // Group months by year
-    const monthsByYear = sortedMonths.reduce((acc, monthYear) => {
-        const year = monthYear.split(' ')[1];
-        if (!acc[year]) acc[year] = [];
-        acc[year].push(monthYear);
-        return acc;
-    }, {} as Record<string, string[]>);
+    const monthsByYear = useMemo(() => sortedMonths.reduce((acc, monthYear) => {
+        const year = monthYear.split(" ")[1]
+        if (!acc[year]) acc[year] = []
+        acc[year].push(monthYear)
+        return acc
+    }, {} as Record<string, string[]>), [sortedMonths])
 
-    const sortedYears = Object.keys(monthsByYear).sort((a, b) => Number(b) - Number(a));
+    const sortedYears = useMemo(() => Object.keys(monthsByYear).sort((a, b) => Number(b) - Number(a)), [monthsByYear])
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         if (sortedYears.length > 0) {
             // Default to expanding the current year (first one)
-            setExpandedYears([sortedYears[0]]);
+            setExpandedYears((prev) => (prev.length ? prev : [sortedYears[0]]))
         }
-    }, [sortedYears.length]);
+    }, [sortedYears])
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const toggleYear = (year: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setExpandedYears(prev =>
+        e.stopPropagation()
+        setExpandedYears((prev) =>
             prev.includes(year) ? [] : [year]
-        );
-    };
+        )
+    }
+
+    const fetchHistory = useCallback(async () => {
+        if (!couple) return
+        try {
+            setLoading(true)
+            const { data: { user } } = await supabase.auth.getUser()
+
+            if (!user) return
+
+            const [
+                { data: answers, error: answersError },
+                { data: memories, error: memoriesError }
+            ] = await Promise.all([
+                supabase
+                    .from("user_answers")
+                    .select("activity_id, created_at, user_id, answer_text, activities(content, category)")
+                    .eq("couple_id", couple.id)
+                    .order("created_at", { ascending: false }),
+                supabase
+                    .from("memories")
+                    .select("id, caption, created_at, metadata, media_urls")
+                    .eq("couple_id", couple.id)
+                    .eq("type", "challenge")
+                    .order("created_at", { ascending: false })
+            ])
+
+            // 1. Fetch Daily Questions (user_answers)
+            let questionItems: HistoryItem[] = []
+            if (!answersError && answers) {
+                const grouped = new Map<string, HistoryItem>()
+                answers.forEach((ans: any) => {
+                    const activityId = ans.activity_id
+                    if (!activityId) return
+
+                    if (!grouped.has(activityId)) {
+                        grouped.set(activityId, {
+                            id: activityId,
+                            title: ans.activities?.content?.question || "Daily Question",
+                            date: ans.created_at,
+                            type: "question",
+                            category: ans.activities?.category || "fun",
+                            myAnswer: null,
+                            partnerAnswer: null
+                        })
+                    }
+
+                    const item = grouped.get(activityId)!
+                    if (ans.user_id === user.id) item.myAnswer = ans.answer_text
+                    else item.partnerAnswer = ans.answer_text
+                })
+                questionItems = Array.from(grouped.values())
+            }
+
+            // 2. Fetch Completed Challenges (memories)
+            let challengeItems: HistoryItem[] = []
+            if (!memoriesError && memories) {
+                challengeItems = memories.map((mem: any) => ({
+                    id: mem.id,
+                    title: mem.caption || "Challenge",
+                    date: mem.created_at,
+                    type: mem.metadata?.frequency || "daily",
+                    description: mem.caption,
+                    photos: mem.media_urls || [],
+                    completedCount: mem.metadata?.completed_count ?? 2
+                }))
+            }
+
+            // Combine all history items
+            const allItems = [...questionItems, ...challengeItems]
+
+            // Group by month-year and type
+            const grouped = allItems.reduce((acc, item) => {
+                const monthYear = new Date(item.date).toLocaleString("default", { month: "long", year: "numeric" })
+                if (!acc[monthYear]) {
+                    acc[monthYear] = { monthly: [], weekly: [], daily: [] }
+                }
+
+                if (item.type === "question") {
+                    acc[monthYear].daily.push(item)
+                } else {
+                    acc[monthYear][item.type].push(item)
+                }
+                return acc
+            }, {} as GroupedHistory)
+
+            setGroupedHistory(grouped)
+            setCurrentMonthIndex(0)
+        } catch (err) {
+            logger.error("ChallengeHistory", "Error fetching history", err)
+        } finally {
+            setLoading(false)
+        }
+    }, [couple])
 
     useEffect(() => {
-        const fetchHistory = async () => {
-            try {
-                setLoading(true);
-                const { data: { user } } = await supabase.auth.getUser();
+        fetchHistory()
+    }, [fetchHistory])
 
-                if (!user || !couple) return;
-
-                // 1. Fetch Daily Questions (user_answers)
-                let questionItems: HistoryItem[] = [];
-                const { data: answers, error: answersError } = await supabase
-                    .from('user_answers')
-                    .select(`*, activities(*)`)
-                    .eq('couple_id', couple.id)
-                    .order('created_at', { ascending: false });
-
-                if (!answersError && answers) {
-                    const grouped = new Map<string, HistoryItem>();
-                    answers.forEach((ans: any) => {
-                        const activityId = ans.activity_id;
-                        if (!activityId) return;
-
-                        if (!grouped.has(activityId)) {
-                            grouped.set(activityId, {
-                                id: activityId,
-                                title: ans.activities?.content?.question || 'Daily Question',
-                                date: ans.created_at,
-                                type: 'question',
-                                category: ans.activities?.category || 'fun',
-                                myAnswer: null,
-                                partnerAnswer: null
-                            });
-                        }
-
-                        const item = grouped.get(activityId)!;
-                        if (ans.user_id === user.id) item.myAnswer = ans.answer_text;
-                        else item.partnerAnswer = ans.answer_text;
-                    });
-                    questionItems = Array.from(grouped.values());
-                }
-
-                // 2. Fetch Completed Challenges (memories)
-                let challengeItems: HistoryItem[] = [];
-                const { data: memories, error: memoriesError } = await supabase
-                    .from('memories')
-                    .select('*')
-                    .eq('couple_id', couple.id)
-                    .eq('type', 'challenge')
-                    .order('created_at', { ascending: false });
-
-                if (!memoriesError && memories) {
-                    // Group by title to combine partner entries if needed, 
-                    // but usually challenges are individual completions. 
-                    // However, we want to show photos from both if they did the same challenge around the same time.
-                    // Given the requirement "photos associated (from both partners)", we should group by title + date(approx).
-
-                    const groupedChallenges = new Map<string, HistoryItem>();
-                    memories.forEach((mem: any) => {
-                        const dateKey = mem.created_at.split('T')[0];
-                        const key = `${mem.title}-${dateKey}`;
-
-                        if (!groupedChallenges.has(key)) {
-                            // Try to get type from metadata
-                            let type = mem.metadata?.challenge_type;
-
-                            // If not in metadata, default to daily or infer from other means if possible
-                            if (!type) {
-                                type = 'daily';
-                            }
-
-                            groupedChallenges.set(key, {
-                                id: mem.id,
-                                title: mem.title,
-                                date: mem.created_at,
-                                type: type as 'daily' | 'weekly' | 'monthly',
-                                description: mem.caption,
-                                photos: []
-                            });
-                        }
-
-                        const item = groupedChallenges.get(key)!;
-                        if (mem.media_url) {
-                            item.photos?.push(mem.media_url);
-                        }
-                    });
-
-                    challengeItems = Array.from(groupedChallenges.values());
-
-                    // Count unique uploaders per challenge group
-
-                    memories.forEach((mem: any) => {
-                        const dateKey = mem.created_at.split('T')[0];
-                        const key = `${mem.title}-${dateKey}`;
-
-                        if (groupedChallenges.has(key)) {
-                            const item = groupedChallenges.get(key)!;
-                            // We re-use 'completedCount' as a set of uploaders first, then convert to number
-                            if (!item.completedCount) item.completedCount = 0; // Initialize
-                        }
-                    });
-
-                    // Second pass to count unique uploaders
-                    const uploaderSets = new Map<string, Set<string>>();
-                    memories.forEach((mem: any) => {
-                        const dateKey = mem.created_at.split('T')[0];
-                        const key = `${mem.title}-${dateKey}`;
-                        if (!uploaderSets.has(key)) uploaderSets.set(key, new Set());
-                        if (mem.uploader_id) uploaderSets.get(key)?.add(mem.uploader_id);
-
-
-                    });
-
-                    challengeItems.forEach(item => {
-                        // We reconstruct 'key' or just map back... 
-                        // Actually simpler to just filter memories for this item
-                        // This is O(N*M) but N matches is small.
-                        // Let's use the map we just built.
-                        const dateKey = item.date.split('T')[0];
-                        const key = `${item.title}-${dateKey}`;
-                        item.completedCount = uploaderSets.get(key)?.size || 0;
-
-                    });
-                }
-
-                // 3. Merge and Group
-                const merged = [...challengeItems, ...questionItems].sort((a, b) =>
-                    new Date(b.date).getTime() - new Date(a.date).getTime()
-                );
-
-                const grouped: GroupedHistory = {};
-
-                merged.forEach(item => {
-                    const date = new Date(item.date);
-                    const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-
-                    if (!grouped[monthYear]) {
-                        grouped[monthYear] = {
-                            monthly: [],
-                            weekly: [],
-                            daily: []
-                        };
-                    }
-
-                    if (item.type === 'monthly') {
-                        grouped[monthYear].monthly.push(item);
-                    } else if (item.type === 'weekly') {
-                        grouped[monthYear].weekly.push(item);
-                    } else {
-                        grouped[monthYear].daily.push(item);
-                    }
-                });
-
-                setGroupedHistory(grouped);
-
-            } catch (err) {
-                console.error('Error fetching history:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchHistory();
-    }, [couple]);
-
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-500">
@@ -393,6 +388,9 @@ export function ChallengeHistory() {
         );
     }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="space-y-6">
             {/* Month Navigation & Display */}
@@ -609,6 +607,8 @@ export function ChallengeHistory() {
                                                 src={photo}
                                                 alt={`Challenge photo ${idx + 1}`}
                                                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                                loading="lazy"
+                                                decoding="async"
                                             />
                                         </div>
                                     ))}

@@ -1,22 +1,32 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Button } from '../ui/button';
-import { motion } from 'framer-motion';
-import type { Fantasy } from '../../hooks/useFantasyBucketList';
-import { ArrowLeft, Trash2, X } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { format } from 'date-fns';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { motion } from "framer-motion"
+import { ArrowLeft, Trash2, X } from "lucide-react"
+import { format } from "date-fns"
+import type { Fantasy } from "@/hooks/useFantasyBucketList"
+import { logger } from "@/lib/logger"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface FantasyDetailModalProps {
-    fantasy: Fantasy | null;
-    isOpen: boolean;
-    onClose: () => void;
-    onApprove: (id: string) => Promise<void>;
-    onVeto: (id: string) => Promise<void>;
-    onDelete: (id: string) => Promise<void>;
-    onComplete: (id: string) => Promise<void>;
-    isRequester: (fantasy: Fantasy) => boolean;
+    fantasy: Fantasy | null
+    isOpen: boolean
+    onClose: () => void
+    onApprove: (id: string) => Promise<void>
+    onVeto: (id: string) => Promise<void>
+    onDelete: (id: string) => Promise<void>
+    onComplete: (id: string) => Promise<void>
+    isRequester: (fantasy: Fantasy) => boolean
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function FantasyDetailModal({
     fantasy,
     isOpen,
@@ -27,32 +37,43 @@ export function FantasyDetailModal({
     onComplete,
     isRequester
 }: FantasyDetailModalProps) {
-    if (!fantasy) return null;
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
+    if (!fantasy) return null
 
-    const isMyRequest = isRequester(fantasy);
-    const isPending = fantasy.status === 'pending';
-    const isApproved = fantasy.status === 'approved';
-    const isCompleted = fantasy.status === 'completed';
+    const isMyRequest = isRequester(fantasy)
+    const isPending = fantasy.status === "pending"
+    const isApproved = fantasy.status === "approved"
+    const isCompleted = fantasy.status === "completed"
 
     const handleApprove = () => {
-        onApprove(fantasy.id); // Fire and forget - optimistic update handles UI
-        onClose();
-    };
+        void onApprove(fantasy.id).catch((error) => {
+            logger.error("FantasyDetailModal", "Failed to approve fantasy", error)
+        })
+        onClose()
+    }
 
     const handleVeto = () => {
-        onVeto(fantasy.id); // Fire and forget
-        onClose();
-    };
+        void onVeto(fantasy.id).catch((error) => {
+            logger.error("FantasyDetailModal", "Failed to veto fantasy", error)
+        })
+        onClose()
+    }
 
     const handleDelete = () => {
-        onDelete(fantasy.id); // Fire and forget
-        onClose();
-    };
+        void onDelete(fantasy.id).catch((error) => {
+            logger.error("FantasyDetailModal", "Failed to delete fantasy", error)
+        })
+        onClose()
+    }
 
     const handleComplete = () => {
-        onComplete(fantasy.id); // Fire and forget
-        onClose();
-    };
+        void onComplete(fantasy.id).catch((error) => {
+            logger.error("FantasyDetailModal", "Failed to complete fantasy", error)
+        })
+        onClose()
+    }
 
     // Determine status badge and text box colors
     const getStatusBadge = () => {
@@ -62,7 +83,7 @@ export function FantasyDetailModal({
                     <span className="material-symbols-outlined text-xs">task_alt</span>
                     Completed
                 </span>
-            );
+            )
         }
         if (isApproved) {
             return (
@@ -70,26 +91,29 @@ export function FantasyDetailModal({
                     <span className="material-symbols-outlined text-xs">check_circle</span>
                     Approved
                 </span>
-            );
+            )
         }
         return (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
                 <span className="material-symbols-outlined text-xs animate-pulse">pending</span>
                 Pending
             </span>
-        );
-    };
+        )
+    }
 
     const getTextBoxStyles = () => {
         if (isCompleted) {
-            return 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800';
+            return "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
         }
         if (isApproved) {
-            return 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800';
+            return "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
         }
-        return 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800';
-    };
+        return "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-md rounded-3xl overflow-hidden bg-rose-50 dark:bg-gray-900 border-none shadow-2xl p-0" hideClose={true}>
@@ -117,13 +141,13 @@ export function FantasyDetailModal({
                             <Avatar className="w-12 h-12 border-2 border-rose-200 dark:border-gray-700">
                                 <AvatarImage src={fantasy.requester_avatar} />
                                 <AvatarFallback className="bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-900/30 dark:to-pink-900/30 text-rose-600">
-                                    {fantasy.requester_name?.charAt(0)?.toUpperCase() || 'P'}
+                                    {fantasy.requester_name?.charAt(0)?.toUpperCase() || "P"}
                                 </AvatarFallback>
                             </Avatar>
                             <p className="text-gray-600 dark:text-gray-400">
                                 <span className="font-semibold text-gray-900 dark:text-white">
                                     {fantasy.requester_name}
-                                </span>{' '}
+                                </span>{" "}
                                 would like to...
                             </p>
                         </motion.div>
@@ -148,7 +172,7 @@ export function FantasyDetailModal({
                                 className="text-center text-sm text-gray-500"
                             >
                                 <span className="material-symbols-outlined text-blue-500 text-sm mr-1 align-middle">celebration</span>
-                                Completed on {format(new Date(fantasy.completed_at), 'dd-MM-yyyy')}
+                                Completed on {format(new Date(fantasy.completed_at), "dd-MM-yyyy")}
                             </motion.div>
                         )}
 
@@ -218,5 +242,5 @@ export function FantasyDetailModal({
                 <div className="h-3" /> {/* Bottom spacer */}
             </DialogContent>
         </Dialog>
-    );
+    )
 }

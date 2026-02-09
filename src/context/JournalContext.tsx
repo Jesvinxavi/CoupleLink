@@ -1,8 +1,12 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import { useCoupleData } from '../hooks/useCoupleData';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { useCoupleData } from '@/hooks/useCoupleData';
 import { useAuth } from './AuthContext';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 export interface JournalEntry {
     id: string;
     caption: string | null;
@@ -41,8 +45,14 @@ interface JournalContextType {
     toggleReaction: (entryId: string, emoji: string) => Promise<void>;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const JournalContext = createContext<JournalContextType | undefined>(undefined);
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export function JournalProvider({ children }: { children: ReactNode }) {
     const { couple } = useCoupleData();
     const { user } = useAuth();
@@ -81,7 +91,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             setEntries(data as any);
             hasLoaded.current = true;
         } catch (err) {
-            console.error('Error fetching journal entries:', err);
+            logger.error('JournalContext', 'Error fetching journal entries', err);
         } finally {
             setLoading(false);
         }
@@ -153,7 +163,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         };
     }, [couple, fetchEntries]);
 
-    const saveEntry = async (data: SaveJournalEntryParams, editingId?: string | null) => {
+    const saveEntry = useCallback(async (data: SaveJournalEntryParams, editingId?: string | null) => {
         const { title, location, date, text, selectedFiles, existingMediaUrls } = data;
 
         if (!couple || !user) return;
@@ -210,7 +220,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
                                 .remove(filesToRemove);
 
                             if (removeError) {
-                                console.error('Error removing deleted journal images:', removeError);
+                                logger.error('JournalContext', 'Error removing deleted journal images', removeError);
                             }
                         }
                     }
@@ -259,12 +269,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             fetchEntries();
 
         } catch (error) {
-            console.error('Error saving journal entry:', error);
+            logger.error('JournalContext', 'Error saving journal entry', error);
             throw error;
         }
-    };
+    }, [couple, user, fetchEntries]);
 
-    const deleteEntry = async (id: string) => {
+    const deleteEntry = useCallback(async (id: string) => {
         try {
             // 1. Get the entry first to find media URLs
             const { data: entry } = await supabase
@@ -288,7 +298,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
                         .remove(filesToRemove);
 
                     if (storageError) {
-                        console.error('Error deleting files from storage:', storageError);
+                        logger.error('JournalContext', 'Error deleting files from storage', storageError);
                         // We continue even if storage delete fails, to ensure DB consistency
                     }
                 }
@@ -313,12 +323,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
             fetchEntries();
         } catch (error) {
-            console.error('Error deleting journal entry:', error);
+            logger.error('JournalContext', 'Error deleting journal entry', error);
             throw error;
         }
-    };
+    }, [fetchEntries]);
 
-    const toggleReaction = async (entryId: string, emoji: string) => {
+    const toggleReaction = useCallback(async (entryId: string, emoji: string) => {
         if (!user) return;
 
         try {
@@ -354,25 +364,30 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             }
             fetchEntries();
         } catch (err) {
-            console.error('Error handling reaction:', err);
+            logger.error('JournalContext', 'Error handling reaction', err);
             throw err;
         }
-    };
+    }, [entries, user, fetchEntries]);
+
+    const contextValue = useMemo(() => ({
+        entries,
+        loading,
+        refreshEntries: fetchEntries,
+        saveEntry,
+        deleteEntry,
+        toggleReaction
+    }), [entries, loading, fetchEntries, saveEntry, deleteEntry, toggleReaction]);
 
     return (
-        <JournalContext.Provider value={{
-            entries,
-            loading,
-            refreshEntries: fetchEntries,
-            saveEntry,
-            deleteEntry,
-            toggleReaction
-        }}>
+        <JournalContext.Provider value={contextValue}>
             {children}
         </JournalContext.Provider>
     );
 }
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useJournalContext() {
     const context = useContext(JournalContext);
     if (context === undefined) {

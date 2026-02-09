@@ -1,74 +1,90 @@
 
-import { useState } from 'react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useCallback, useMemo } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday, startOfDay, endOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Pencil, Loader2, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AddEventOverlay } from '@/components/calendar/AddEventOverlay';
+import { expandRecurringEvents } from '@/components/calendar/eventUtils';
 import { cn } from '@/lib/utils';
-import { AddEventOverlay } from './AddEventOverlay';
-import { expandRecurringEvents } from './eventUtils';
+import { logger } from '@/lib/logger';
 import { useCoupleData } from '@/hooks/useCoupleData';
 import { useCalendarContext, type CalendarEvent } from '@/context/CalendarContext';
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function CalendarView() {
     const { couple } = useCoupleData();
     const { events, loading, saveEvent, deleteEvent } = useCalendarContext();
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isOverlayFocused, setIsOverlayFocused] = useState(false);
     const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-    const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const nextMonth = useCallback(() => {
+        setCurrentDate((prev) => addMonths(prev, 1));
+    }, []);
 
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(monthStart);
-    const startDate = startOfWeek(monthStart);
-    const endDate = endOfWeek(monthEnd);
+    const prevMonth = useCallback(() => {
+        setCurrentDate((prev) => subMonths(prev, 1));
+    }, []);
 
-    const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
-
-    const handleSaveEvent = async (event: CalendarEvent) => {
+    const handleSaveEvent = useCallback(async (event: CalendarEvent) => {
         if (!couple) {
-            alert('Error: No couple data found. Please try refreshing the page.');
-            return;
+            const message = 'Unable to save event. Please refresh and try again.';
+            logger.error('CalendarView', 'Missing couple data while saving event');
+            setErrorMessage(message);
+            throw new Error(message);
         }
+
         try {
             await saveEvent(event);
-            // Modal close handled by caller if strictly async awaiting? 
-            // In original code, fetchEvents was called. 
-            // Here saveEvent is async.
+            setErrorMessage(null);
         } catch (error: any) {
-            console.error('Error saving event:', error);
-            alert(`Failed to save event: ${error.message || JSON.stringify(error)} `);
-            throw error; // Re-throw so overlay knows to stop loading if it wants
+            logger.error('CalendarView', 'Error saving event', error);
+            setErrorMessage('Failed to save event. Please try again.');
+            throw error;
         }
-    };
+    }, [couple, saveEvent]);
 
-    const handleDeleteEvent = async (eventId: string) => {
+    const handleDeleteEvent = useCallback(async (eventId: string) => {
         if (!couple) return;
         try {
             await deleteEvent(eventId);
             setIsAddModalOpen(false);
+            setEditingEvent(null);
+            setErrorMessage(null);
         } catch (error: any) {
-            console.error('Error deleting event:', error);
-            alert('Failed to delete event: ' + error.message);
+            logger.error('CalendarView', 'Error deleting event', error);
+            setErrorMessage('Failed to delete event. Please try again.');
         }
-    };
+    }, [couple, deleteEvent]);
 
-    const handleEditEvent = (event: CalendarEvent) => {
+    const handleEditEvent = useCallback((event: CalendarEvent) => {
         setEditingEvent(event);
         setIsAddModalOpen(true);
-    };
+        setErrorMessage(null);
+    }, []);
 
-    const handleAddEvent = () => {
+    const handleAddEvent = useCallback(() => {
         setEditingEvent(null);
         setIsAddModalOpen(true);
-    };
+        setErrorMessage(null);
+    }, []);
 
-    const allEvents = expandRecurringEvents(events, startDate, endDate);
-
-    const checkEventMatch = (event: CalendarEvent, date: Date) => {
+    const checkEventMatch = useCallback((event: CalendarEvent, date: Date) => {
         // Simple day match
         if (isSameDay(new Date(event.event_date), date)) return true;
         // Multiday match
@@ -78,10 +94,34 @@ export function CalendarView() {
             return date >= start && date <= end;
         }
         return false;
-    };
+    }, []);
 
-    const selectedDateEvents = allEvents.filter(event => checkEventMatch(event, selectedDate));
+    // ═══════════════════════════════════════
+    // DERIVED DATA
+    // ═══════════════════════════════════════
+    const { startDate, endDate, calendarDays } = useMemo(() => {
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(monthStart);
+        const startDate = startOfWeek(monthStart);
+        const endDate = endOfWeek(monthEnd);
+        return {
+            startDate,
+            endDate,
+            calendarDays: eachDayOfInterval({ start: startDate, end: endDate })
+        };
+    }, [currentDate]);
 
+    const allEvents = useMemo(() => {
+        return expandRecurringEvents(events, startDate, endDate);
+    }, [events, startDate, endDate]);
+
+    const selectedDateEvents = useMemo(() => {
+        return allEvents.filter(event => checkEventMatch(event, selectedDate));
+    }, [allEvents, checkEventMatch, selectedDate]);
+
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="flex flex-col h-full gap-6">
             <div style={{ display: isOverlayFocused ? 'none' : 'contents' }}>
@@ -266,6 +306,12 @@ export function CalendarView() {
                                 </Button>
                             </div>
 
+                            {errorMessage && (
+                                <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2 mb-4">
+                                    {errorMessage}
+                                </div>
+                            )}
+
                             <div className="space-y-3 flex-1 overflow-y-auto">
                                 {loading ? (
                                     <div className="flex items-center justify-center h-full">
@@ -337,7 +383,11 @@ export function CalendarView() {
 
             <AddEventOverlay
                 isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
+                onClose={() => {
+                    setIsAddModalOpen(false);
+                    setEditingEvent(null);
+                    setErrorMessage(null);
+                }}
                 selectedDate={selectedDate}
                 eventToEdit={editingEvent}
                 onSave={handleSaveEvent}

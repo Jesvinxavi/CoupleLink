@@ -1,20 +1,30 @@
-import { useEffect } from "react";
-import { Dialog, DialogContent } from "../ui/dialog";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect } from "react"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { INTERVALS } from "@/lib/constants"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface TokenEarnedModalProps {
-    isOpen: boolean;
-    onClose: () => void;
+    isOpen: boolean
+    onClose: () => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function TokenEarnedModal({ isOpen, onClose }: TokenEarnedModalProps) {
     useEffect(() => {
         if (isOpen) {
             const timer = setTimeout(() => {
-                onClose();
-            }, 3000);
-            return () => clearTimeout(timer);
+                onClose()
+            }, INTERVALS.ANIMATION_LONG)
+            return () => clearTimeout(timer)
         }
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose])
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -45,5 +55,5 @@ export function TokenEarnedModal({ isOpen, onClose }: TokenEarnedModalProps) {
                 </div>
             </DialogContent>
         </Dialog>
-    );
+    )
 }

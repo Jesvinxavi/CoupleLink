@@ -1,19 +1,31 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { supabase } from "../lib/supabase"
-import { useAuth } from "../context/AuthContext"
-import { useCoupleData } from "../hooks/useCoupleData"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
-import { Alert, AlertDescription } from "../components/ui/alert"
+import { supabase } from "@/lib/supabase"
+import { LIMITS } from "@/lib/constants"
+import { logger } from "@/lib/logger"
+import { useAuth } from "@/context/AuthContext"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { motion } from "framer-motion"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function ProfileSetup() {
     const { user } = useAuth()
     const { refreshCoupleData } = useCoupleData()
     const navigate = useNavigate()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [firstName, setFirstName] = useState("")
     const [lastName, setLastName] = useState("")
     const [birthDate, setBirthDate] = useState("")
@@ -21,6 +33,9 @@ export default function ProfileSetup() {
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const handleProfileSetup = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!user) return
@@ -29,6 +44,23 @@ export default function ProfileSetup() {
         setMessage(null)
 
         try {
+            if (!firstName.trim() || !lastName.trim() || !birthDate) {
+                setMessage({ type: "error", text: "Please complete all required fields." })
+                return
+            }
+
+            if (avatarFile) {
+                const maxBytes = LIMITS.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+                if (avatarFile.size > maxBytes) {
+                    setMessage({ type: "error", text: `Profile image must be under ${LIMITS.MAX_UPLOAD_SIZE_MB}MB.` })
+                    return
+                }
+                if (!avatarFile.type.startsWith("image/")) {
+                    setMessage({ type: "error", text: "Please upload a valid image file." })
+                    return
+                }
+            }
+
             let avatarUrl = null
             if (avatarFile) {
 
@@ -39,7 +71,7 @@ export default function ProfileSetup() {
                     .upload(fileName, avatarFile)
 
                 if (uploadError) {
-                    console.error('Avatar upload error:', uploadError)
+                    logger.error('ProfileSetup', 'Avatar upload error', uploadError)
                     throw uploadError
                 }
 
@@ -61,7 +93,7 @@ export default function ProfileSetup() {
                 .eq("id", user.id)
 
             if (updateError) {
-                console.error('Profile update error:', updateError)
+                logger.error('ProfileSetup', 'Profile update error', updateError)
                 throw updateError
             }
 
@@ -70,13 +102,16 @@ export default function ProfileSetup() {
 
             navigate("/pairing")
         } catch (error: any) {
-            console.error('Setup failed:', error)
+            logger.error('ProfileSetup', 'Setup failed', error)
             setMessage({ type: "error", text: error.message || "An error occurred" })
         } finally {
             setLoading(false)
         }
     }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="flex min-h-screen items-center justify-center bg-[#FFF5F5] p-4">
             <motion.div

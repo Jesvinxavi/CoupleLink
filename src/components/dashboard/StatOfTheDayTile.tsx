@@ -1,8 +1,15 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { Link } from "react-router-dom"
+import { useMemo, memo } from "react"
 import { useCoupleData } from "@/hooks/useCoupleData"
 import { type RelationshipStats } from "@/hooks/useRelationshipStats"
-import { useMemo, memo } from "react"
+import { ROUTES, URGENCY_THRESHOLDS } from "@/lib/constants"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface Stat {
     label: string
     value: string | number
@@ -14,6 +21,9 @@ interface StatOfTheDayTileProps {
     stats: RelationshipStats | null
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relationshipStats }: StatOfTheDayTileProps) {
 
     const { couple } = useCoupleData()
@@ -22,7 +32,7 @@ export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relation
         if (!couple || !relationshipStats) return []
 
         const daysTogether = couple.anniversary_date
-            ? Math.floor((new Date().getTime() - new Date(couple.anniversary_date).getTime()) / (1000 * 60 * 60 * 24))
+            ? Math.floor((Date.now() - new Date(couple.anniversary_date).getTime()) / URGENCY_THRESHOLDS.ONE_DAY)
             : 0
 
         const nextMilestone = 365 - (daysTogether % 365)
@@ -76,8 +86,8 @@ export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relation
     // Rotate stat every week
     const currentStatIndex = useMemo(() => {
         if (stats.length === 0) return 0
-        const today = new Date().getTime()
-        const oneWeek = 1000 * 60 * 60 * 24 * 7
+        const today = Date.now()
+        const oneWeek = URGENCY_THRESHOLDS.ONE_DAY * 7
         return Math.floor(today / oneWeek) % stats.length
     }, [stats.length])
 
@@ -87,7 +97,7 @@ export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relation
 
     return (
         <Link
-            to="/stats"
+            to={ROUTES.STATS}
             className="group block relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm transition-all hover:shadow-md cursor-pointer h-full"
         >
             <div className="flex items-center justify-between mb-1">

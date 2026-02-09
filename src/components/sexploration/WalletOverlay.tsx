@@ -1,85 +1,116 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Wallet, Ticket, Zap, Loader2 } from 'lucide-react';
-import { Button } from '../ui/button';
-import { useCoupons, type Coupon as CouponType } from '../../hooks/useCoupons';
-import { Coupon } from './Coupon';
-import { GiftReceivedModal } from './GiftReceivedModal';
-import { CouponCollectionModal } from './CouponCollectionModal';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useCallback, useMemo, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { X, Wallet, Ticket, Zap, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useCoupons, type Coupon as CouponType } from "@/hooks/useCoupons"
+import { Coupon } from "@/components/sexploration/Coupon"
+import { GiftReceivedModal } from "@/components/sexploration/GiftReceivedModal"
+import { CouponCollectionModal } from "@/components/sexploration/CouponCollectionModal"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface WalletOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
+    isOpen: boolean
+    onClose: () => void
 }
 
+const COUPON_PAGE_SIZE = 9
+
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
-    const { coupons, activateCoupon, refreshCoupons } = useCoupons();
-    const [activeTab, setActiveTab] = useState<'available' | 'active'>('available');
+    useLockBodyScroll(isOpen)
+
+    const { coupons, activateCoupon, refreshCoupons } = useCoupons()
+    const [activeTab, setActiveTab] = useState<"available" | "active">("available")
+    const [visibleAvailableCount, setVisibleAvailableCount] = useState(COUPON_PAGE_SIZE)
+    const [visibleActiveCount, setVisibleActiveCount] = useState(COUPON_PAGE_SIZE)
 
     // Modal/Action states
-    const [viewingGift, setViewingGift] = useState<CouponType | null>(null);
-    const [convertingCoupon, setConvertingCoupon] = useState<CouponType | null>(null);
-    const [selectedCoupon, setSelectedCoupon] = useState<CouponType | null>(null);
-    const [isActivating, setIsActivating] = useState(false);
+    const [viewingGift, setViewingGift] = useState<CouponType | null>(null)
+    const [convertingCoupon, setConvertingCoupon] = useState<CouponType | null>(null)
+    const [selectedCoupon, setSelectedCoupon] = useState<CouponType | null>(null)
+    const [isActivating, setIsActivating] = useState(false)
 
-    // Robust Body Lock
+    // ═══════════════════════════════════════
+    // DERIVED DATA
+    // ═══════════════════════════════════════
+    const activatedCoupons = useMemo(() => {
+        return coupons.filter(c =>
+            !!c.activated_at &&
+            !c.redeemed_at &&
+            (!c.expires_at || new Date(c.expires_at) > new Date())
+        )
+    }, [coupons])
+
+    const availableCoupons = useMemo(() => {
+        return coupons.filter(c =>
+            !c.activated_at &&
+            !c.redeemed_at &&
+            (c.status === "active" || !c.status)
+        )
+    }, [coupons])
+
     useEffect(() => {
-        if (!isOpen) return;
+        setVisibleAvailableCount(COUPON_PAGE_SIZE)
+    }, [availableCoupons.length])
 
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
+    useEffect(() => {
+        setVisibleActiveCount(COUPON_PAGE_SIZE)
+    }, [activatedCoupons.length])
 
-        return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-        };
-    }, [isOpen]);
+    const visibleAvailableCoupons = useMemo(() => {
+        return availableCoupons.slice(0, visibleAvailableCount)
+    }, [availableCoupons, visibleAvailableCount])
 
-    // Filter coupons
-    const activatedCoupons = coupons.filter(c =>
-        !!c.activated_at &&
-        !c.redeemed_at &&
-        (!c.expires_at || new Date(c.expires_at) > new Date())
-    );
+    const visibleActivatedCoupons = useMemo(() => {
+        return activatedCoupons.slice(0, visibleActiveCount)
+    }, [activatedCoupons, visibleActiveCount])
 
-    const availableCoupons = coupons.filter(c =>
-        !c.activated_at &&
-        !c.redeemed_at &&
-        (c.status === 'active' || !c.status)
-    );
+    const canLoadMoreAvailable = availableCoupons.length > visibleAvailableCount
+    const canLoadMoreActive = activatedCoupons.length > visibleActiveCount
 
-    const handleCouponClick = (coupon: CouponType) => {
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleCouponClick = useCallback((coupon: CouponType) => {
         if (selectedCoupon?.id === coupon.id) {
-            setSelectedCoupon(null);
+            setSelectedCoupon(null)
         } else {
-            setSelectedCoupon(coupon);
+            setSelectedCoupon(coupon)
         }
-    };
+    }, [selectedCoupon])
 
-    const handleActivate = async (coupon: CouponType) => {
-        setIsActivating(true);
+    const handleActivate = useCallback(async (coupon: CouponType) => {
+        setIsActivating(true)
         try {
-            await activateCoupon(coupon.id);
-            setSelectedCoupon(null);
+            await activateCoupon(coupon.id)
+            setSelectedCoupon(null)
             // Switch to active tab to show the newly activated coupon
-            setActiveTab('active');
+            setActiveTab("active")
         } finally {
-            setIsActivating(false);
+            setIsActivating(false)
         }
-    };
+    }, [activateCoupon])
 
-    const handleConvert = (coupon: CouponType) => {
-        setConvertingCoupon(coupon);
-        setSelectedCoupon(null);
-    };
+    const handleConvert = useCallback((coupon: CouponType) => {
+        setConvertingCoupon(coupon)
+        setSelectedCoupon(null)
+    }, [])
 
+    const handleTabChange = useCallback((tab: "available" | "active") => {
+        setActiveTab(tab)
+    }, [])
+
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
             <AnimatePresence>
@@ -140,10 +171,10 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                 <div className="px-6 pt-4 pb-2 bg-rose-50 dark:bg-gray-900 shrink-0">
                                     <div className="flex p-1 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                                         <button
-                                            onClick={() => setActiveTab('available')}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'available'
-                                                ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                            onClick={() => handleTabChange("available")}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === "available"
+                                                ? "bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                                 }`}
                                         >
                                             <Ticket className="w-4 h-4" />
@@ -153,10 +184,10 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                             </span>
                                         </button>
                                         <button
-                                            onClick={() => setActiveTab('active')}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'active'
-                                                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                            onClick={() => handleTabChange("active")}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === "active"
+                                                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                                 }`}
                                         >
                                             <Zap className="w-4 h-4" />
@@ -175,7 +206,7 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                     onTouchMove={(e) => e.stopPropagation()}
                                 >
                                     <AnimatePresence mode="wait">
-                                        {activeTab === 'available' ? (
+                                        {activeTab === "available" ? (
                                             <motion.div
                                                 key="available"
                                                 initial={{ opacity: 0, x: -20 }}
@@ -185,7 +216,7 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                             >
                                                 {availableCoupons.length > 0 ? (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
-                                                        {availableCoupons.map(coupon => {
+                                                        {visibleAvailableCoupons.map(coupon => {
                                                             const isSelected = selectedCoupon?.id === coupon.id;
 
 
@@ -242,6 +273,17 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                                                 </div>
                                                             );
                                                         })}
+
+                                                        {canLoadMoreAvailable && (
+                                                            <div className="col-span-full flex justify-center pt-2">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    onClick={() => setVisibleAvailableCount((prev) => Math.min(prev + COUPON_PAGE_SIZE, availableCoupons.length))}
+                                                                >
+                                                                    Load more ({visibleAvailableCoupons.length} of {availableCoupons.length})
+                                                                </Button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <div className="flex flex-col items-center justify-center pt-0 pb-6 text-center">
@@ -266,7 +308,7 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                             >
                                                 {activatedCoupons.length > 0 ? (
                                                     <div className="space-y-4 pb-4">
-                                                        {activatedCoupons.map(coupon => (
+                                                        {visibleActivatedCoupons.map(coupon => (
                                                             <div key={coupon.id} onClick={() => handleConvert(coupon)} className="cursor-pointer">
                                                                 <Coupon
                                                                     title={coupon.title}
@@ -276,6 +318,17 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                                                                 />
                                                             </div>
                                                         ))}
+
+                                                        {canLoadMoreActive && (
+                                                            <div className="flex justify-center pt-2">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    onClick={() => setVisibleActiveCount((prev) => Math.min(prev + COUPON_PAGE_SIZE, activatedCoupons.length))}
+                                                                >
+                                                                    Load more ({visibleActivatedCoupons.length} of {activatedCoupons.length})
+                                                                </Button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <div className="flex flex-col items-center justify-center pt-0 pb-6 text-center">
@@ -313,10 +366,10 @@ export function WalletOverlay({ isOpen, onClose }: WalletOverlayProps) {
                 targetCouponId={convertingCoupon?.id}
                 mode="convert"
                 onClaimSuccess={() => { // Changed onSuccess to onClaimSuccess based on interface
-                    setConvertingCoupon(null);
-                    refreshCoupons();
+                    setConvertingCoupon(null)
+                    refreshCoupons()
                 }}
             />
         </>
-    );
+    )
 }

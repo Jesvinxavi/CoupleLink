@@ -1,21 +1,37 @@
-const { createClient } = require('@supabase/supabase-js');
-const { activities } = require('./data/activities');
-require('dotenv').config(); // You might need to install dotenv: npm install dotenv
+// ═══════════════════════════════════════
+// CONTENT SYNC SCRIPT
+// ═══════════════════════════════════════
+// Syncs local activity data into Supabase.
+import { createClient } from '@supabase/supabase-js'
+import { activities } from './data/activities.js'
+
+try {
+    // Optional: load .env if dotenv is installed
+    await import('dotenv/config')
+} catch {
+    // If dotenv isn't installed, rely on environment variables provided by the shell
+}
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 // CRITICAL: We need the SERVICE_ROLE_KEY to bypass RLS and WRITE to the activities table
 // if it is read-only for public users.
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
+const log = {
+    info: (message, data) => console.log('[sync_content]', message, data ?? ''),
+    warn: (message, data) => console.warn('[sync_content]', message, data ?? ''),
+    error: (message, data) => console.error('[sync_content]', message, data ?? '')
+};
+
 if (!supabaseUrl || !supabaseKey) {
-    console.error('Error: Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY/VITE_SUPABASE_ANON_KEY in .env');
+    log.error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY/VITE_SUPABASE_ANON_KEY in environment');
     process.exit(1);
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function syncActivities() {
-    console.log(`Starting sync of ${activities.length} activities...`);
+    log.info(`Starting sync of ${activities.length} activities...`);
 
     let inserted = 0;
     let skipped = 0;
@@ -28,7 +44,7 @@ async function syncActivities() {
 
         // Safety check: skip if no title/question found
         if (!title) {
-            console.warn('Skipping activity with missing title/question:', activity);
+            log.warn('Skipping activity with missing title/question:', activity);
             continue;
         }
 
@@ -43,7 +59,7 @@ async function syncActivities() {
             .limit(1);
 
         if (findError) {
-            console.error(`Error checking existence of "${title}":`, findError);
+            log.error(`Error checking existence of "${title}":`, findError);
             errors++;
             continue;
         }
@@ -66,19 +82,19 @@ async function syncActivities() {
                 .insert([activity]);
 
             if (insertError) {
-                console.error(`Error inserting "${title}":`, insertError);
+                log.error(`Error inserting "${title}":`, insertError);
                 errors++;
             } else {
-                console.log(`Successfully added: "${title}"`);
+                log.info(`Successfully added: "${title}"`);
                 inserted++;
             }
         }
     }
 
-    console.log('--- Sync Complete ---');
-    console.log(`Inserted: ${inserted}`);
-    console.log(`Skipped:  ${skipped}`);
-    console.log(`Errors:   ${errors}`);
+    log.info('--- Sync Complete ---');
+    log.info(`Inserted: ${inserted}`);
+    log.info(`Skipped:  ${skipped}`);
+    log.info(`Errors:   ${errors}`);
 }
 
 syncActivities();

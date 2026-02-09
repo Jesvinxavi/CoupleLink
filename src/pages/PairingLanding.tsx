@@ -1,12 +1,28 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { SpaceActionTile } from "../components/ui/SpaceActionTile"
-import { useLockBodyScroll } from "../hooks/useLockBodyScroll"
+import { SpaceActionTile } from "@/components/ui/SpaceActionTile"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function PairingLanding() {
     const navigate = useNavigate()
     useLockBodyScroll()
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleCreateSpace = () => navigate("/create-space")
+    const handleJoinPartner = () => navigate("/join-partner")
+    const handleRestoreSpace = () => navigate("/restore-space")
+
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div
             className="fixed inset-0 flex h-[100dvh] w-full flex-col items-center overflow-hidden overscroll-none bg-[#FFF5F5] p-4 pt-12"
@@ -35,7 +51,7 @@ export default function PairingLanding() {
                         description="Ready to start your journey? Create a space now"
                         icon="add_circle"
                         buttonText="Create Space"
-                        onClick={() => navigate("/create-space")}
+                        onClick={handleCreateSpace}
                         variant="primary"
                         className="bg-[#FFF5F5]"
                     />
@@ -47,7 +63,7 @@ export default function PairingLanding() {
                         iconColor="text-blue-500"
                         iconBgColor="bg-blue-50"
                         buttonText="Join Partner"
-                        onClick={() => navigate("/join-partner")}
+                        onClick={handleJoinPartner}
                         variant="primary"
                         buttonClassName="bg-[#3B82F6] hover:bg-[#2563EB]"
                         className="bg-blue-50/50"
@@ -60,7 +76,7 @@ export default function PairingLanding() {
                         iconColor="text-purple-500"
                         iconBgColor="bg-purple-50"
                         buttonText="Restore Space"
-                        onClick={() => navigate("/restore-space")}
+                        onClick={handleRestoreSpace}
                         variant="primary"
                         buttonClassName="bg-purple-600 hover:bg-purple-700"
                         className="bg-purple-50/50"

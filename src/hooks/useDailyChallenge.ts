@@ -1,10 +1,17 @@
-import { useEffect, useState, useRef } from 'react';
-import { supabase } from '../lib/supabase';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 import type { Database } from '@/lib/database.types';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 type Activity = Database['public']['Tables']['activities']['Row'];
 type UserAnswer = Database['public']['Tables']['user_answers']['Row'];
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useDailyChallenge(coupleId: string | null) {
     const [loading, setLoading] = useState(true);
     const [activity, setActivity] = useState<Activity | null>(null);
@@ -16,7 +23,7 @@ export function useDailyChallenge(coupleId: string | null) {
     const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     // Helper to fetch answers only
-    const fetchAnswers = async (currentActivity: Activity | null) => {
+    const fetchAnswers = useCallback(async (currentActivity: Activity | null) => {
         if (!coupleId) return;
         // Use provided activity or fallback to current state if available
         const targetActivity = currentActivity || activity;
@@ -29,7 +36,7 @@ export function useDailyChallenge(coupleId: string | null) {
 
             const { data: answers, error: answersError } = await supabase
                 .from('user_answers')
-                .select('*')
+                .select('id, user_id, answer_text, created_at')
                 .eq('couple_id', coupleId)
                 .eq('activity_id', targetActivity.id);
 
@@ -40,9 +47,9 @@ export function useDailyChallenge(coupleId: string | null) {
                 setPartnerAnswer(partnerAns);
             }
         } catch (err) {
-            console.error("Error refreshing answers:", err);
+            logger.error('useDailyChallenge', 'Error refreshing answers', err);
         }
-    };
+    }, [coupleId, activity]);
 
     useEffect(() => {
         if (!coupleId) {
@@ -90,7 +97,9 @@ export function useDailyChallenge(coupleId: string | null) {
                             shown_at: new Date().toISOString()
                         }, { onConflict: 'couple_id,challenge_type,period_key' })
                         .then(({ error }) => {
-                            if (error) console.error('[QuestionTracking] Error:', error);
+                            if (error) {
+                                logger.error('useDailyChallenge', 'Question tracking error', error);
+                            }
                         });
                 }
 
@@ -98,8 +107,8 @@ export function useDailyChallenge(coupleId: string | null) {
                 if (mounted) await fetchAnswers(activityData);
 
             } catch (err: any) {
-                console.error('Error fetching daily challenge:', err)
-                if (mounted) setError(err.message)
+                logger.error('useDailyChallenge', 'Error fetching daily challenge', err)
+                if (mounted) setError(err?.message || 'Failed to fetch daily challenge')
             } finally {
                 if (mounted) setLoading(false)
             }
@@ -156,9 +165,9 @@ export function useDailyChallenge(coupleId: string | null) {
             clearInterval(intervalId);
             channelRef.current = null;
         }
-    }, [coupleId, activity?.id]) // Re-run if activity changes, ensuring updated closure for fetchAnswers
+    }, [coupleId, activity?.id, fetchAnswers]) // Re-run if activity changes, ensuring updated closure for fetchAnswers
 
-    const submitAnswer = async (answerText: string) => {
+    const submitAnswer = useCallback(async (answerText: string) => {
         if (!activity || !coupleId) return;
 
         try {
@@ -193,7 +202,9 @@ export function useDailyChallenge(coupleId: string | null) {
                     .eq('challenge_type', 'question')
                     .eq('period_key', today)
                     .then(({ error }) => {
-                        if (error) console.error('[QuestionTracking] Completion error:', error);
+                        if (error) {
+                            logger.error('useDailyChallenge', 'Question completion update error', error);
+                        }
                     });
             }
 
@@ -207,12 +218,12 @@ export function useDailyChallenge(coupleId: string | null) {
 
             return data;
         } catch (err) {
-            console.error("Error submitting answer:", err);
+            logger.error('useDailyChallenge', 'Error submitting answer', err);
             throw err;
         }
-    };
+    }, [activity, coupleId, partnerAnswer]);
 
-    const markAnswerSeen = async () => {
+    const markAnswerSeen = useCallback(async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -221,11 +232,11 @@ export function useDailyChallenge(coupleId: string | null) {
                 last_seen_daily_question_at: new Date().toISOString()
             }).eq('id', user.id);
         } catch (error) {
-            console.error("Error marking answer seen:", error);
+            logger.error('useDailyChallenge', 'Error marking answer seen', error);
         }
-    };
+    }, []);
 
-    return {
+    return useMemo(() => ({
         loading,
         activity,
         userAnswer,
@@ -233,5 +244,5 @@ export function useDailyChallenge(coupleId: string | null) {
         error,
         submitAnswer,
         markAnswerSeen
-    };
+    }), [loading, activity, userAnswer, partnerAnswer, error, submitAnswer, markAnswerSeen]);
 }

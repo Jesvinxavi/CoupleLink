@@ -1,54 +1,60 @@
-import { useEffect } from 'react';
-import { useCoupons } from '../hooks/useCoupons';
-import { useCoupleData } from '../hooks/useCoupleData';
-import { GiftReceivedModal } from './sexploration/GiftReceivedModal';
-import { useGlobalModalQueue } from '../context/GlobalModalQueueContext';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect, useCallback } from "react"
+import { useCoupons } from "@/hooks/useCoupons"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { GiftReceivedModal } from "@/components/sexploration/GiftReceivedModal"
+import { useGlobalModalQueue } from "@/context/GlobalModalQueueContext"
+import { logger } from "@/lib/logger"
 
 export function GlobalCouponListener() {
-    const { coupons, refreshCoupons, acknowledgeCoupon } = useCoupons();
-    const { userProfile } = useCoupleData();
-    const { enqueueModal, ackModal, currentModal } = useGlobalModalQueue();
+    const { coupons, refreshCoupons, acknowledgeCoupon } = useCoupons()
+    const { userProfile } = useCoupleData()
+    const { enqueueModal, ackModal, currentModal } = useGlobalModalQueue()
 
-    const receivedCoupon = currentModal?.type === 'gift' ? currentModal.data.coupon : null;
+    const receivedCoupon = currentModal?.type === "gift" ? currentModal.data.coupon : null
 
     // Check for pending gift coupons on mount/coupons update
     useEffect(() => {
-        if (!userProfile?.id || !coupons.length) return;
+        if (!userProfile?.id || !coupons.length) return
 
         // Find any gift coupons that haven't been acknowledged
         const pendingGifts = coupons.filter(c =>
             c.assigned_to === userProfile.id && // It's for me
             !c.acknowledged_at && // I haven't seen it
             c.is_gift === true // It was a gift
-        );
+        )
 
         if (pendingGifts.length > 0) {
-            enqueueModal('gift', { coupon: pendingGifts[0] });
+            enqueueModal("gift", { coupon: pendingGifts[0] })
         }
 
-    }, [coupons, userProfile?.id, enqueueModal]);
+    }, [coupons, enqueueModal, userProfile?.id])
 
     // When modal opens/closes, handle side effects
     useEffect(() => {
         const handleAck = async () => {
-            if (receivedCoupon) {
+            if (!receivedCoupon) return
+            try {
                 // Determine if this is a "Free Reign" coupon (which is actually a voucher)
                 // In our system, real "coupons" are vouchers.
                 // The Coupon type has a title or code we can check, or just assume all gifts need ack.
-                await acknowledgeCoupon(receivedCoupon.id).catch(() => { });
-                refreshCoupons();
-
+                await acknowledgeCoupon(receivedCoupon.id)
+                refreshCoupons()
+            } catch (error) {
+                logger.error("GlobalCouponListener", "Failed to acknowledge coupon", error)
             }
-        };
+        }
 
         if (receivedCoupon) {
-            handleAck();
+            handleAck()
         }
-    }, [receivedCoupon, acknowledgeCoupon, refreshCoupons]);
+    }, [receivedCoupon, acknowledgeCoupon, refreshCoupons])
 
-    const handleValidClose = () => {
-        ackModal('gift');
-    };
+    const handleValidClose = useCallback(() => {
+        ackModal("gift")
+    }, [ackModal])
 
     /* 
        Note: We removed CouponCollectionModal logic from here as it seems handled elsewhere 
@@ -64,5 +70,5 @@ export function GlobalCouponListener() {
             onClose={handleValidClose}
             coupon={receivedCoupon}
         />
-    );
+    )
 }

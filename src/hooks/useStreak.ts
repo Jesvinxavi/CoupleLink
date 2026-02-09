@@ -1,7 +1,12 @@
-import { useEffect, useRef } from 'react';
-import { supabase } from '../lib/supabase';
-import { useCoupleData } from './useCoupleData';
-import { useGlobalModalQueue } from '../context/GlobalModalQueueContext';
+import { useCallback, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { useCoupleData } from '@/hooks/useCoupleData';
+import { useGlobalModalQueue } from '@/context/GlobalModalQueueContext';
+
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 
 export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: boolean } = {}) {
     const { couple, userProfile, loading: coupleLoading } = useCoupleData();
@@ -60,7 +65,7 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
                     });
                 }
             } catch (err) {
-                console.error('Error checking streak status:', err);
+                logger.error('useStreak', 'Error checking streak status', err);
             }
         };
 
@@ -91,7 +96,7 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
 
     }, [couple?.rain_check_tokens, couple?.current_streak, userProfile?.last_seen_rain_check_tokens, enableTokenCheck, enqueueModal]);
 
-    const handleCloseTokenModal = async () => {
+    const handleCloseTokenModal = useCallback(async () => {
         // Acknowledge the modal to remove it from queue
         ackModal('raincheck');
 
@@ -103,10 +108,10 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
                     .update({ last_seen_rain_check_tokens: currentTokens } as any)
                     .eq('id', userProfile.id);
             } catch (err) {
-                console.error('[useStreak] Failed to update last_seen_rain_check_tokens', err);
+                logger.error('useStreak', 'Failed to update last_seen_rain_check_tokens', err);
             }
         }
-    };
+    }, [ackModal, couple?.rain_check_tokens, userProfile?.id, userProfile?.last_seen_rain_check_tokens]);
 
     // Self-healing: If currents tokens are LESS than last seen (e.g. spent tokens), 
     // update last_seen silently so the NEXT earn counts as an increase.
@@ -116,22 +121,24 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
         const lastSeen = userProfile.last_seen_rain_check_tokens || 0;
 
         if (currentTokens < lastSeen) {
-            console.log('[useStreak] Current tokens < last seen. Syncing baseline.', { currentTokens, lastSeen });
+            logger.debug('useStreak', 'Current tokens < last seen. Syncing baseline', { currentTokens, lastSeen });
             supabase
                 .from('profiles')
                 .update({ last_seen_rain_check_tokens: currentTokens } as any)
                 .eq('id', userProfile.id)
                 .then(({ error }) => {
-                    if (error) console.error('[useStreak] Failed to silent-sync last_seen', error);
+                    if (error) {
+                        logger.error('useStreak', 'Failed to silent-sync last_seen', error);
+                    }
                 });
         }
     }, [couple?.rain_check_tokens, userProfile?.last_seen_rain_check_tokens, userProfile?.id]);
 
-    const handleCloseStreakBroken = () => {
+    const handleCloseStreakBroken = useCallback(() => {
         ackModal('streak_broken');
-    };
+    }, [ackModal]);
 
-    const restoreStreak = async () => {
+    const restoreStreak = useCallback(async () => {
         if (!couple?.id) return;
         try {
             const { data, error } = await supabase.rpc('restore_streak', {
@@ -143,22 +150,22 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
                 ackModal('streak_broken');
             }
         } catch (err) {
-            console.error('Error restoring streak:', err);
+            logger.error('useStreak', 'Error restoring streak', err);
         }
-    };
+    }, [couple?.id, ackModal]);
 
-    const checkStreakUpdate = async () => {
+    const checkStreakUpdate = useCallback(async () => {
         if (!couple?.id) return;
         try {
             await supabase.rpc('check_and_update_streak', {
                 p_couple_id: couple.id
             });
         } catch (err) {
-            console.error('Error updating streak:', err);
+            logger.error('useStreak', 'Error updating streak', err);
         }
-    };
+    }, [couple?.id]);
 
-    const addPoints = async (points: number) => {
+    const addPoints = useCallback(async (points: number) => {
         if (!couple?.id) return;
         try {
             await supabase.rpc('add_love_action_points', {
@@ -166,9 +173,9 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
                 p_points: points
             });
         } catch (err) {
-            console.error('Error adding points:', err);
+            logger.error('useStreak', 'Error adding points', err);
         }
-    };
+    }, [couple?.id]);
 
     return {
         streakBroken,

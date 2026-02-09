@@ -1,20 +1,27 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Palette, Eraser, Undo, Clock, Eye, Check, Sparkles } from 'lucide-react';
-import CanvasDraw from 'react-canvas-draw';
-import { Button } from '../ui/button';
-import type { GameSession } from '../../hooks/useGameSession';
-import { useGameSession } from '../../hooks/useGameSession';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { supabase } from '../../lib/supabase';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect, useRef, useState, useMemo, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Palette, Eraser, Undo, Clock, Eye, Check, Sparkles } from "lucide-react"
+import CanvasDraw from "react-canvas-draw"
+import { Button } from "@/components/ui/button"
+import { useGameSession, type GameSession } from "@/hooks/useGameSession"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { supabase } from "@/lib/supabase"
+import { drawPrompts } from "@/data/gameQuestions"
+import { GameTimer } from "@/components/games/GameTimer"
 
-import { drawPrompts } from '../../data/gameQuestions';
-import { GameTimer } from './GameTimer';
-
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface DrawAndGuessGameProps {
-    session: GameSession;
+    session: GameSession
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
     const { updateGameState, nextRound, isPlayerOne, isPlayerTwo, partnerInSession } = useGameSession();
 

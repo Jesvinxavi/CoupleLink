@@ -1,23 +1,33 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useMemo } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { X } from "lucide-react"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface LovePointsBreakdown {
-    dailyChallenges: number;
-    weeklyChallenges: number;
-    monthlyChallenges: number;
-    dailyQuestions: number;
-    positionsCompleted: number;
-    fantasiesCompleted: number;
+    dailyChallenges: number
+    weeklyChallenges: number
+    monthlyChallenges: number
+    dailyQuestions: number
+    positionsCompleted: number
+    fantasiesCompleted: number
 }
 
 interface LovePointsOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    totalPoints: number;
-    breakdown: LovePointsBreakdown;
+    isOpen: boolean
+    onClose: () => void
+    totalPoints: number
+    breakdown: LovePointsBreakdown
 }
 
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
 const CATEGORIES = [
     {
         key: 'dailyChallenges' as const,
@@ -85,44 +95,36 @@ const CATEGORIES = [
         pointsPerUnit: 5,
         unit: 'fantasy',
     },
-];
+]
 
-export const LovePointsOverlay: React.FC<LovePointsOverlayProps> = ({
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+export function LovePointsOverlay({
     isOpen,
     onClose,
     totalPoints,
     breakdown
-}) => {
-    // Robust Body Lock
-    React.useEffect(() => {
-        if (!isOpen) return;
-
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
-
-        return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-        };
-    }, [isOpen]);
+}: LovePointsOverlayProps) {
+    useLockBodyScroll(isOpen)
 
     // Calculate points for each category
-    const categoriesWithPoints = CATEGORIES.map(cat => ({
-        ...cat,
-        count: breakdown[cat.key],
-        points: breakdown[cat.key] * cat.pointsPerUnit
-    })).filter(cat => cat.count > 0); // Only show categories with points
+    const categoriesWithPoints = useMemo(() => {
+        return CATEGORIES.map(cat => ({
+            ...cat,
+            count: breakdown[cat.key],
+            points: breakdown[cat.key] * cat.pointsPerUnit
+        })).filter(cat => cat.count > 0) // Only show categories with points
+    }, [breakdown])
 
     // Calculate total from breakdown (to show any discrepancy)
-    const calculatedTotal = categoriesWithPoints.reduce((sum, cat) => sum + cat.points, 0);
+    const calculatedTotal = useMemo(() => {
+        return categoriesWithPoints.reduce((sum, cat) => sum + cat.points, 0)
+    }, [categoriesWithPoints])
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <AnimatePresence>
             {isOpen && (
@@ -222,7 +224,7 @@ export const LovePointsOverlay: React.FC<LovePointsOverlayProps> = ({
                                                     {cat.label}
                                                 </div>
                                                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                                                    {cat.count} {cat.count === 1 ? cat.unit : cat.unit + 's'} × {cat.pointsPerUnit} pts
+                                                {cat.count} {cat.count === 1 ? cat.unit : `${cat.unit}s`} × {cat.pointsPerUnit} pts
                                                 </div>
                                             </div>
 
@@ -262,5 +264,5 @@ export const LovePointsOverlay: React.FC<LovePointsOverlayProps> = ({
                 </>
             )}
         </AnimatePresence>
-    );
-};
+    )
+}

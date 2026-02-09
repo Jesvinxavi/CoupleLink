@@ -2,10 +2,9 @@
 -- Frequency: monthly
 -- Mix: ~33% Competitive, ~67% Normal
 
-DELETE FROM public.user_answers WHERE activity_id IN (SELECT id FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'monthly');
-DELETE FROM public.activities WHERE type = 'challenge' AND content->>'frequency' = 'monthly';
-
-INSERT INTO public.activities (category, type, content) VALUES
+INSERT INTO public.activities (category, type, content)
+SELECT v.category, v.type, v.content
+FROM (VALUES
 -- COMPETITIVE (approx 8)
 ('romantic', 'challenge', '{"frequency": "monthly", "title": "Virtual Date Night", "description": "Plan a fancy virtual date night (dress up!). Best outfit wins!", "durationMinutes": 90, "isCompetition": true}'),
 ('creative', 'challenge', '{"frequency": "monthly", "title": "DIY Project", "description": "Do a craft or DIY project \"together\". Best creation wins.", "durationMinutes": 90, "isCompetition": true}'),
@@ -45,4 +44,9 @@ INSERT INTO public.activities (category, type, content) VALUES
 ('creative', 'challenge', '{"frequency": "monthly", "title": "Monthly Album", "description": "Create a shared digital photo album of your month.", "durationMinutes": 120, "isCompetition": false}'),
 ('fun', 'challenge', '{"frequency": "monthly", "title": "Physical Puzzle", "description": "Each work on a physical puzzle and share progress.", "durationMinutes": 120, "isCompetition": false}'),
 ('creative', 'challenge', '{"frequency": "monthly", "title": "Vlog", "description": "Put together a fun video of your day to send to your partner.", "durationMinutes": 60, "isCompetition": false}'),
-('creative', 'challenge', '{"frequency": "monthly", "title": "Video Montage", "description": "Make a short video montage of your month.", "durationMinutes": 60, "isCompetition": false}');
+('creative', 'challenge', '{"frequency": "monthly", "title": "Video Montage", "description": "Make a short video montage of your month.", "durationMinutes": 60, "isCompetition": false}')
+) AS v(category, type, content)
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.activities a
+    WHERE a.type = v.type AND a.content = v.content
+);

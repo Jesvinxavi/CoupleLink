@@ -1,9 +1,19 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { Navigate, Outlet } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
+import { ROUTES } from "@/lib/constants"
 
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
 // Set to true to skip authentication during testing
 const SKIP_AUTH = false
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function ProtectedRoute() {
     const { user, loading } = useAuth()
 
@@ -12,9 +22,15 @@ export default function ProtectedRoute() {
         return <Outlet />
     }
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (loading) {
         return <div className="flex h-screen items-center justify-center">Loading...</div>
     }
 
-    return user ? <Outlet /> : <Navigate to="/login" />
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
+    return user ? <Outlet /> : <Navigate to={ROUTES.LOGIN} />
 }

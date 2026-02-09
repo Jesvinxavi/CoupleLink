@@ -1,22 +1,31 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import confetti from "canvas-confetti"
-import { supabase } from "../lib/supabase"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
 
-import { useCoupleData } from "../hooks/useCoupleData"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { Alert, AlertDescription } from "../components/ui/alert"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Image as ImageIcon, BookHeart, Clock, AlertTriangle } from "lucide-react"
-import type { CheckArchivedCoupleResult } from "../types/rpc"
+import type { CheckArchivedCoupleResult } from "@/types/rpc"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function RestoreSpace() {
     const { refreshCoupleData, userProfile } = useCoupleData()
     const navigate = useNavigate()
 
-    // State
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [email, setEmail] = useState("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -24,6 +33,9 @@ export default function RestoreSpace() {
     const [restoreStats, setRestoreStats] = useState<any>(null)
     const [archivedCoupleId, setArchivedCoupleId] = useState<string | null>(null)
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const checkArchivedSpace = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!email) return;
@@ -56,8 +68,8 @@ export default function RestoreSpace() {
                 setError("No archived space found with this email.");
             }
         } catch (err: any) {
-            console.error("Error checking archive:", err);
-            setError(err.message || "Failed to check archives.");
+            logger.error("RestoreSpace", "Error checking archive", err);
+            setError(err?.message || "Failed to check archives.");
         } finally {
             setLoading(false);
         }
@@ -68,10 +80,7 @@ export default function RestoreSpace() {
 
         // Premium Check
         if (!userProfile?.is_premium) {
-            // You might want to trigger the PaywallModal here or redirect functionality
-            // For now, let's just alert or error matching existing logic, 
-            // or we could import PaywallModal and use it like Dashboard
-            alert("Premium required to restore space"); // Placeholder if paywall modal logic isn't easily portable without context/props
+            setError("Premium required to restore space.");
             return;
         }
 
@@ -95,13 +104,16 @@ export default function RestoreSpace() {
             setTimeout(() => navigate("/"), 1000);
 
         } catch (err: any) {
-            console.error("Restore failed:", err);
+            logger.error("RestoreSpace", "Restore failed", err);
             setError("Failed to restore space. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md relative overflow-hidden">

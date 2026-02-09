@@ -1,13 +1,18 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { ChallengeHistory } from "../components/memories/ChallengeHistory";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
+import { motion } from "framer-motion"
+import { Image, History } from "lucide-react"
+import Sidebar from "@/components/Sidebar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ChallengeHistory } from "@/components/memories/ChallengeHistory"
+import { MomentsGallery } from "@/components/memories/MomentsGallery"
 
-import { MomentsGallery } from "../components/memories/MomentsGallery";
-import { Image, History } from "lucide-react";
-import { motion } from "framer-motion";
-
+// ═══════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════
 const container = {
     hidden: { opacity: 0 },
     show: {
@@ -23,31 +28,47 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function MemoriesPage() {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const tabParam = searchParams.get('tab');
-    const [activeTab, setActiveTab] = useState(tabParam === 'moments' ? 'moments' : 'history');
+    const [searchParams, setSearchParams] = useSearchParams()
+    const tabParam = searchParams.get("tab")
 
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [activeTab, setActiveTab] = useState(tabParam === "moments" ? "moments" : "history")
+    const [isOverlayFocused, setIsOverlayFocused] = useState(false)
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     // Sync state with URL param if it changes externally (e.g. navigation)
     useEffect(() => {
-        if (tabParam === 'moments' || tabParam === 'history') {
-            setActiveTab(tabParam);
+        if (tabParam === "moments" || tabParam === "history") {
+            setActiveTab(tabParam)
         }
-    }, [tabParam]);
+    }, [tabParam])
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const handleTabChange = (value: string) => {
-        setActiveTab(value);
+        setActiveTab(value)
         setSearchParams(prev => {
-            prev.set('tab', value);
-            return prev;
-        });
-    };
+            const next = new URLSearchParams(prev)
+            next.set("tab", value)
+            return next
+        })
+    }
 
-    const [isOverlayFocused, setIsOverlayFocused] = useState(false);
-
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
-            <div style={{ display: isOverlayFocused ? 'none' : 'contents' }}>
+            <div style={{ display: isOverlayFocused ? "none" : "contents" }}>
                 <Sidebar />
                 <div className="pt-14 md:ml-[250px] md:pt-0 min-h-screen dark:bg-gray-900">
                     <main className="p-4 md:p-8">
@@ -76,7 +97,7 @@ export default function MemoriesPage() {
                                             className="absolute left-1 inset-y-1 w-[calc(50%-4px)] bg-white dark:bg-gray-700 rounded-lg shadow-sm"
                                             initial={false}
                                             animate={{
-                                                x: activeTab === 'history' ? 0 : '100%'
+                                                x: activeTab === "history" ? 0 : "100%"
                                             }}
                                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                         />
@@ -110,5 +131,5 @@ export default function MemoriesPage() {
                 </div>
             </div>
         </>
-    );
+    )
 }

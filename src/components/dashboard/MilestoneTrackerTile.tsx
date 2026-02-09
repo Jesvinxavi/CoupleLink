@@ -1,61 +1,78 @@
-import { useState, useEffect } from 'react';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { supabase } from '../../lib/supabase';
-import { AddEventOverlay, type CalendarEvent } from '../calendar/AddEventOverlay';
-import { format, parseISO } from 'date-fns';
-import { Plus, Calendar as CalendarIcon, Flag } from 'lucide-react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useCallback } from "react"
+import { format, parseISO } from "date-fns"
+import { Plus, Calendar as CalendarIcon, Flag } from "lucide-react"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { AddEventOverlay, type CalendarEvent } from "@/components/calendar/AddEventOverlay"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function MilestoneTrackerTile() {
-    const { couple } = useCoupleData();
-    const [today] = useState(new Date());
-    const [events, setEvents] = useState<CalendarEvent[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const { couple } = useCoupleData()
 
-    const fetchEvents = async () => {
-        if (!couple) return;
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [today] = useState(new Date())
+    const [events, setEvents] = useState<CalendarEvent[]>([])
+    const [loading, setLoading] = useState(true)
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const fetchEvents = useCallback(async () => {
+        if (!couple) return
         try {
-            setLoading(true);
-            const today = new Date().toISOString().split('T')[0];
+            setLoading(true)
+            const today = new Date().toISOString().split("T")[0]
 
             const { data, error } = await supabase
-                .from('calendar_events')
-                .select('*')
-                .eq('couple_id', couple.id)
-                .gte('event_date', today)
-                .order('event_date', { ascending: true })
-                .limit(3);
+                .from("calendar_events")
+                .select("id, title, event_date, end_date, category, color, location, description")
+                .eq("couple_id", couple.id)
+                .gte("event_date", today)
+                .order("event_date", { ascending: true })
+                .limit(3)
 
-            if (error) throw error;
+            if (error) throw error
 
             if (data) {
                 setEvents(data.map((e: any) => ({
                     id: e.id,
-                    title: e.title || 'Untitled',
-                    event_date: e.event_date || '',
+                    title: e.title || "Untitled",
+                    event_date: e.event_date || "",
                     end_date: e.end_date,
-                    category: e.category || 'Event',
-                    color: e.color || '#e11d48',
+                    category: e.category || "Event",
+                    color: e.color || "#e11d48",
                     location: e.location,
                     description: e.description
-                } as CalendarEvent)));
+                } as CalendarEvent)))
             }
         } catch (error) {
-            console.error('Error fetching milestones:', error);
+            logger.error("MilestoneTrackerTile", "Error fetching milestones", error)
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }, [couple])
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
-        fetchEvents();
-    }, [couple?.id]);
+        fetchEvents()
+    }, [fetchEvents])
 
     const handleSaveEvent = async (event: CalendarEvent) => {
-        if (!couple) return;
+        if (!couple) return
         try {
             const { error } = await supabase
-                .from('calendar_events')
+                .from("calendar_events")
                 .insert({
                     couple_id: couple.id,
                     title: event.title,
@@ -68,20 +85,23 @@ export function MilestoneTrackerTile() {
                         location: event.location,
                         description: event.description
                     } as any)
-                });
+                })
 
-            if (error) throw error;
-            await fetchEvents();
+            if (error) throw error
+            await fetchEvents()
         } catch (error) {
-            console.error('Error saving event:', error);
+            logger.error("MilestoneTrackerTile", "Error saving event", error)
         }
-    };
+    }
 
     const formatDate = (dateStr: string) => {
-        const date = parseISO(dateStr);
-        return format(date, 'MMM d');
-    };
+        const date = parseISO(dateStr)
+        return format(date, "MMM d")
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
             <div className="rounded-2xl bg-white p-4 shadow-sm h-full">

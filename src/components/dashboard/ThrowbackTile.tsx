@@ -1,45 +1,79 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { useCoupleData } from '@/hooks/useCoupleData';
-import { Loader2, Calendar, CalendarDays, Quote, Image as ImageIcon, HelpCircle, X, MapPin, Heart, Sparkles, Ticket, StickyNote, Trophy, CircleDashed, Check } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { positions } from '@/data/positionsData';
-import { PositionSVG } from '../sexploration/PositionSVG';
-import { DateBadge } from '../ui/DateBadge';
-import { UserAvatar } from '../ui/UserAvatar';
-import { ImageCarousel } from '../ui/ImageCarousel';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import {
+    Loader2,
+    Calendar,
+    CalendarDays,
+    Quote,
+    Image as ImageIcon,
+    HelpCircle,
+    X,
+    MapPin,
+    Heart,
+    Sparkles,
+    Ticket,
+    StickyNote,
+    Trophy,
+    CircleDashed,
+    Check
+} from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { positions } from "@/data/positionsData"
+import { PositionSVG } from "@/components/sexploration/PositionSVG"
+import { DateBadge } from "@/components/ui/DateBadge"
+import { UserAvatar } from "@/components/ui/UserAvatar"
+import { ImageCarousel } from "@/components/ui/ImageCarousel"
+import { URGENCY_THRESHOLDS } from "@/lib/constants"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface MemoryItem {
-    id: string;
-    type: 'journal' | 'photo' | 'challenge' | 'position' | 'fantasy' | 'voucher' | 'sticky_note' | 'event' | 'quiz';
-    content: string | null;
-    title?: string | null;
-    media_urls?: string[] | null;
-    location?: string | null;
-    created_at: string;
-    activity_question?: string;
-    category?: string;
+    id: string
+    type: "journal" | "photo" | "challenge" | "position" | "fantasy" | "voucher" | "sticky_note" | "event" | "quiz"
+    content: string | null
+    title?: string | null
+    media_urls?: string[] | null
+    location?: string | null
+    created_at: string
+    activity_question?: string
+    category?: string
     // Attribution fields
-    uploader_id?: string | null;      // For journals, photos, sticky_notes
-    requester_id?: string | null;     // For fantasies
-    assigned_to?: string | null;      // For vouchers (redeemer)
+    uploader_id?: string | null // For journals, photos, sticky_notes
+    requester_id?: string | null // For fantasies
+    assigned_to?: string | null // For vouchers (redeemer)
     // Challenge answers stored by user position (not viewer-relative)
-    user_one_id?: string | null;
-    user_one_answer?: string | null;
-    user_two_id?: string | null;
-    user_two_answer?: string | null;
+    user_one_id?: string | null
+    user_one_answer?: string | null
+    user_two_id?: string | null
+    user_two_answer?: string | null
     // Event color from calendar
-    event_color?: string | null;
-    challenge_type?: 'daily' | 'weekly' | 'monthly' | null;
-    is_competition?: boolean;
+    event_color?: string | null
+    challenge_type?: "daily" | "weekly" | "monthly" | null
+    is_competition?: boolean
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function ThrowbackTile() {
-    const { couple, currentUser, partner, userProfile } = useCoupleData();
-    const [item, setItem] = useState<MemoryItem | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [isExpanded, setIsExpanded] = useState(false);
+    const { couple, currentUser, partner, userProfile } = useCoupleData()
 
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [item, setItem] = useState<MemoryItem | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [isExpanded, setIsExpanded] = useState(false)
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         const fetchThrowback = async () => {
             if (!couple || !currentUser) {
@@ -52,7 +86,7 @@ export function ThrowbackTile() {
                 const today = new Date();
                 const month = today.getMonth() + 1; // 1-12
                 const day = today.getDate(); // 1-31
-                const seed = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
+                const seed = Math.floor(today.getTime() / URGENCY_THRESHOLDS.ONE_DAY);
 
 
 
@@ -90,7 +124,7 @@ export function ThrowbackTile() {
 
                     // 2. Fallback: "Throwback" via RPC
                     // Use a 2-day seed for rotation
-                    const twoDaySeed = Math.floor(today.getTime() / (1000 * 60 * 60 * 24 * 2));
+                    const twoDaySeed = Math.floor(today.getTime() / URGENCY_THRESHOLDS.TWO_DAYS);
                     // We need a float seed for the random function, normalize to 0-1
                     // Using a simple hash of the seed to get 0-1
                     const randomSeed = (Math.sin(twoDaySeed) + 1) / 2;
@@ -156,99 +190,105 @@ export function ThrowbackTile() {
                 }
 
             } catch (err) {
-                console.error('Error fetching On This Day:', err);
-                setItem(null);
+                logger.error("ThrowbackTile", "Error fetching On This Day", err)
+                setItem(null)
             } finally {
-                setLoading(false);
+                setLoading(false)
             }
-        };
+        }
 
-        fetchThrowback();
-    }, [couple?.id, currentUser?.id, userProfile?.timezone]);
+        fetchThrowback()
+    }, [couple?.id, currentUser?.id, userProfile?.timezone])
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (loading) {
         return (
             <div className="rounded-2xl bg-white p-6 shadow-sm flex items-center justify-center">
                 <Loader2 className="w-6 h-6 animate-spin text-rose-500" />
             </div>
-        );
+        )
     }
 
     if (!item) {
-        return null;
+        return null
     }
 
 
 
+    // ═══════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════
     const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    };
+        const date = new Date(dateString)
+        return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    }
 
     const getIcon = () => {
-        const iconClasses = "w-5 h-5 text-rose-500";
+        const iconClasses = "w-5 h-5 text-rose-500"
         switch (item.type) {
-            case 'photo': return <ImageIcon className={iconClasses} />;
-            case 'journal': return <Quote className={iconClasses} />;
-            case 'challenge': return <HelpCircle className={iconClasses} />;
-            case 'position': return <Heart className={iconClasses} />;
-            case 'fantasy': return <Sparkles className={iconClasses} />;
-            case 'voucher': return <Ticket className={iconClasses} />;
-            case 'sticky_note': return <StickyNote className={iconClasses} />;
-            case 'event': return <CalendarDays className={iconClasses} />;
-            case 'quiz': return <HelpCircle className={iconClasses} />;
-            default: return <Calendar className={iconClasses} />;
+            case "photo": return <ImageIcon className={iconClasses} />
+            case "journal": return <Quote className={iconClasses} />
+            case "challenge": return <HelpCircle className={iconClasses} />
+            case "position": return <Heart className={iconClasses} />
+            case "fantasy": return <Sparkles className={iconClasses} />
+            case "voucher": return <Ticket className={iconClasses} />
+            case "sticky_note": return <StickyNote className={iconClasses} />
+            case "event": return <CalendarDays className={iconClasses} />
+            case "quiz": return <HelpCircle className={iconClasses} />
+            default: return <Calendar className={iconClasses} />
         }
-    };
+    }
 
     const getCategoryBadge = () => {
-        const baseClasses = "ml-1 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase";
+        const baseClasses = "ml-1 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
 
         switch (item.type) {
-            case 'photo':
-                return <span className={`${baseClasses} bg-blue-100 text-blue-600`}>Photo Memory</span>;
-            case 'journal':
-                return <span className={`${baseClasses} bg-amber-100 text-amber-600`}>Journal</span>;
-            case 'challenge':
+            case "photo":
+                return <span className={`${baseClasses} bg-blue-100 text-blue-600`}>Photo Memory</span>
+            case "journal":
+                return <span className={`${baseClasses} bg-amber-100 text-amber-600`}>Journal</span>
+            case "challenge":
                 return (
                     <div className="flex items-center gap-1.5 ml-1">
                         <span className={`${baseClasses} bg-purple-100 text-purple-600`}>
                             Challenge
                         </span>
                     </div>
-                );
-            case 'sticky_note':
-                return <span className={`${baseClasses} bg-yellow-100 text-yellow-600`}>Note</span>;
-            case 'event':
-                return <span className={`${baseClasses} bg-indigo-100 text-indigo-600`}>Past Event</span>;
-            case 'position':
-                return <span className={`${baseClasses} bg-rose-100 text-rose-600`}>Position</span>;
-            case 'fantasy':
-                return <span className={`${baseClasses} bg-pink-100 text-pink-600`}>Fantasy</span>;
-            case 'voucher':
-                return <span className={`${baseClasses} bg-emerald-100 text-emerald-600`}>Voucher</span>;
-            case 'quiz':
-                return <span className={`${baseClasses} bg-rose-100 text-rose-600`}>Daily Question</span>;
+                )
+            case "sticky_note":
+                return <span className={`${baseClasses} bg-yellow-100 text-yellow-600`}>Note</span>
+            case "event":
+                return <span className={`${baseClasses} bg-indigo-100 text-indigo-600`}>Past Event</span>
+            case "position":
+                return <span className={`${baseClasses} bg-rose-100 text-rose-600`}>Position</span>
+            case "fantasy":
+                return <span className={`${baseClasses} bg-pink-100 text-pink-600`}>Fantasy</span>
+            case "voucher":
+                return <span className={`${baseClasses} bg-emerald-100 text-emerald-600`}>Voucher</span>
+            case "quiz":
+                return <span className={`${baseClasses} bg-rose-100 text-rose-600`}>Daily Question</span>
             default:
-                return null;
+                return null
         }
-    };
+    }
 
 
     // Fix: item.title contains position_id (slug) from RPC, so match against p.id
-    const position = item.type === 'position' ? positions.find(p => p.id === item.title) : null;
+    const position = item.type === "position" ? positions.find((p) => p.id === item.title) : null
 
     const getLabel = () => {
-        return "Throwback";
-    };
+        return "Throwback"
+    }
 
     // Helper for dynamic attribution labels
     const getAuthorLabel = (userId: string | null | undefined) =>
-        userId === currentUser?.id ? 'You' : (partner?.first_name || 'Partner');
+        userId === currentUser?.id ? "You" : (partner?.first_name || "Partner")
 
     // Compute challenge answers based on viewer
-    const myAnswer = item.user_one_id === currentUser?.id ? item.user_one_answer : item.user_two_answer;
-    const partnerAnswerText = item.user_one_id === currentUser?.id ? item.user_two_answer : item.user_one_answer;
+    const myAnswer = item.user_one_id === currentUser?.id ? item.user_one_answer : item.user_two_answer
+    const partnerAnswerText = item.user_one_id === currentUser?.id ? item.user_two_answer : item.user_one_answer
 
     // Logic for completion states
     // A challenge is fully completed if the current user has a memory (evident by item existence) AND proper answer OR partner_completed flag is true
@@ -256,8 +296,8 @@ export function ThrowbackTile() {
     // If 'item.uploader_id' is me, then I have completed it.
     // If 'item.uploader_id' is partner, then partner has completed it.
 
-    const uploaderIsMe = item.uploader_id === currentUser?.id;
-    const uploaderIsPartner = item.uploader_id === partner?.id;
+    const uploaderIsMe = item.uploader_id === currentUser?.id
+    const uploaderIsPartner = item.uploader_id === partner?.id
 
     const iHaveCompleted = uploaderIsMe || (!!myAnswer); // I uploaded it OR I have an answer recorded
     const partnerHasCompleted = uploaderIsPartner || (!!partnerAnswerText) || (item as any).partner_completed; // Partner uploaded it OR partner has answer OR flag is true
@@ -270,12 +310,15 @@ export function ThrowbackTile() {
     const coverImage = hasMedia ? item.media_urls![0] : null;
 
     const getUser = (userId: string | null | undefined) => {
-        if (!userId) return null;
-        if (userId === currentUser?.id) return userProfile;
-        if (userId === partner?.id) return partner;
-        return null;
-    };
+        if (!userId) return null
+        if (userId === currentUser?.id) return userProfile
+        if (userId === partner?.id) return partner
+        return null
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
             <motion.div
@@ -293,6 +336,8 @@ export function ThrowbackTile() {
                             src={coverImage}
                             alt="Memory"
                             className="h-full w-full object-cover transition-transform duration-700 md:group-hover:scale-105 group-active:scale-105"
+                            loading="lazy"
+                            decoding="async"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     </div>
@@ -675,6 +720,8 @@ export function ThrowbackTile() {
                                                         src={coverImage!}
                                                         alt="Memory"
                                                         className="h-full w-full object-cover"
+                                                        loading="lazy"
+                                                        decoding="async"
                                                     />
                                                 </div>
                                             </div>
@@ -1002,6 +1049,8 @@ export function ThrowbackTile() {
                                                                     src={url}
                                                                     alt={`Memory ${idx + 2}`}
                                                                     className="rounded-lg w-full h-32 object-cover"
+                                                                    loading="lazy"
+                                                                    decoding="async"
                                                                 />
                                                             ))}
                                                         </div>

@@ -1,188 +1,200 @@
-import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from "../ui/button";
-import { Loader2, FolderPlus, X, UploadCloud, Plus } from "lucide-react";
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { supabase } from '../../lib/supabase';
-import { Label } from '../ui/label';
-import { Input } from '../ui/input';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
+import { motion, AnimatePresence } from "framer-motion"
+import { Loader2, FolderPlus, X, UploadCloud, Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface CreateFolderOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSuccess: () => void; // Called after folder (and optional photos) created
-    onFocusChange?: (isFocused: boolean) => void;
+    isOpen: boolean
+    onClose: () => void
+    onSuccess: () => void // Called after folder (and optional photos) created
+    onFocusChange?: (isFocused: boolean) => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange }: CreateFolderOverlayProps) {
-    const { couple } = useCoupleData();
-    const [uploading, setUploading] = useState(false);
-    const [folderName, setFolderName] = useState('');
-    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+    useLockBodyScroll(isOpen)
+
+    const { couple } = useCoupleData()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [uploading, setUploading] = useState(false)
+    const [folderName, setFolderName] = useState("")
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+    const [previewUrls, setPreviewUrls] = useState<string[]>([])
+    const [error, setError] = useState<string | null>(null)
 
     // Mobile Viewport Logic
-    const overlayRef = useRef<HTMLDivElement>(null);
-    const [isFocused, setIsFocused] = useState(false);
-    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
+    const overlayRef = useRef<HTMLDivElement>(null)
+    const [isFocused, setIsFocused] = useState(false)
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined)
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     // Combined body lock + viewport resize handler
     useEffect(() => {
         if (!isOpen) {
             // Reset state
-            previewUrls.forEach(url => URL.revokeObjectURL(url));
-            setPreviewUrls([]);
-            setSelectedFiles([]);
-            setFolderName('');
-            return;
+            previewUrls.forEach((url) => URL.revokeObjectURL(url))
+            setPreviewUrls([])
+            setSelectedFiles([])
+            setFolderName("")
+            setError(null)
+            return
         }
-
-        // Robust Body Lock
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
 
         // Handle Visual Viewport for mobile keyboard
         const handleVisualResize = () => {
-            const activeEl = document.activeElement;
-            const isActiveInOverlay = overlayRef.current?.contains(activeEl);
-            const isTextInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
+            const activeEl = document.activeElement
+            const isActiveInOverlay = overlayRef.current?.contains(activeEl)
+            const isTextInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA"
 
-            if (!isActiveInOverlay || !isTextInput) return;
+            if (!isActiveInOverlay || !isTextInput) return
 
             if (window.visualViewport) {
                 setViewportStyle({
                     height: window.visualViewport.height,
                     top: window.visualViewport.offsetTop
-                });
+                })
             }
-        };
+        }
 
-        window.visualViewport?.addEventListener('resize', handleVisualResize);
-        window.visualViewport?.addEventListener('scroll', handleVisualResize);
-        handleVisualResize();
+        window.visualViewport?.addEventListener("resize", handleVisualResize)
+        window.visualViewport?.addEventListener("scroll", handleVisualResize)
+        handleVisualResize()
 
         return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-
-            window.visualViewport?.removeEventListener('resize', handleVisualResize);
-            window.visualViewport?.removeEventListener('scroll', handleVisualResize);
+            window.visualViewport?.removeEventListener("resize", handleVisualResize)
+            window.visualViewport?.removeEventListener("scroll", handleVisualResize)
 
             // Reset focus state on close
-            if (onFocusChange) onFocusChange(false);
-        };
-    }, [isOpen]);
+            if (onFocusChange) onFocusChange(false)
+        }
+    }, [isOpen, onFocusChange, previewUrls])
 
     const handleOverlayFocus = (e: React.FocusEvent) => {
-        const target = e.target as HTMLElement;
-        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-        if (!isTextInput) return;
+        const target = e.target as HTMLElement
+        const isTextInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
+        if (!isTextInput) return
 
-        setIsFocused(true);
-        if (onFocusChange) onFocusChange(true);
+        setIsFocused(true)
+        if (onFocusChange) onFocusChange(true)
 
         if (window.visualViewport) {
             requestAnimationFrame(() => {
                 setViewportStyle({
                     height: window.visualViewport!.height,
                     top: window.visualViewport!.offsetTop
-                });
-            });
+                })
+            })
         }
-    };
+    }
 
     const handleOverlayBlur = (e: React.FocusEvent) => {
-        if (overlayRef.current?.contains(e.relatedTarget as Node)) return;
-        setIsFocused(false);
-        if (onFocusChange) onFocusChange(false);
-        setViewportStyle(undefined);
-    };
+        if (overlayRef.current?.contains(e.relatedTarget as Node)) return
+        setIsFocused(false)
+        if (onFocusChange) onFocusChange(false)
+        setViewportStyle(undefined)
+    }
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const files = Array.from(e.target.files);
-            setSelectedFiles(prev => [...prev, ...files]);
-            const newPreviews = files.map(file => URL.createObjectURL(file));
-            setPreviewUrls(prev => [...prev, ...newPreviews]);
+            const files = Array.from(e.target.files)
+            setSelectedFiles((prev) => [...prev, ...files])
+            const newPreviews = files.map((file) => URL.createObjectURL(file))
+            setPreviewUrls((prev) => [...prev, ...newPreviews])
         }
-    };
+    }
 
     const removeFile = (index: number) => {
-        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+        setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
         setPreviewUrls(prev => {
-            URL.revokeObjectURL(prev[index]);
-            return prev.filter((_, i) => i !== index);
-        });
-    };
+            URL.revokeObjectURL(prev[index])
+            return prev.filter((_, i) => i !== index)
+        })
+    }
 
     const handleCreateFolder = async () => {
-        if (!couple || !folderName.trim()) return;
-        setUploading(true);
+        if (!couple || !folderName.trim()) return
+        setError(null)
+        setUploading(true)
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No user');
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error("No user")
 
             // 1. Create Folder
             const { data: folder, error } = await supabase
-                .from('folders')
+                .from("folders")
                 .insert({
                     couple_id: couple.id,
                     name: folderName.trim()
                 })
                 .select()
-                .single();
+                .single()
 
-            if (error) throw error;
+            if (error) throw error
 
             // 2. Upload photos to this folder if any
             if (selectedFiles.length > 0) {
                 for (const file of selectedFiles) {
-                    const fileExt = file.name.split('.').pop();
-                    const fileName = `${Math.random()}.${fileExt}`;
-                    const filePath = `${couple.id}/${fileName}`;
+                    const fileExt = file.name.split(".").pop()
+                    const fileName = `${Math.random()}.${fileExt}`
+                    const filePath = `${couple.id}/${fileName}`
 
                     const { error: uploadError } = await supabase.storage
-                        .from('memories')
-                        .upload(filePath, file);
+                        .from("memories")
+                        .upload(filePath, file)
 
-                    if (uploadError) throw uploadError;
+                    if (uploadError) throw uploadError
 
                     const { data: { publicUrl } } = supabase.storage
-                        .from('memories')
-                        .getPublicUrl(filePath);
+                        .from("memories")
+                        .getPublicUrl(filePath)
 
                     await supabase
-                        .from('memories')
+                        .from("memories")
                         .insert({
                             couple_id: couple.id,
                             uploader_id: user.id,
-                            type: 'photo',
+                            type: "photo",
                             media_url: publicUrl,
-                            caption: '', // No caption support for initial folder creation to keep it simple
+                            caption: "", // No caption support for initial folder creation to keep it simple
                             folder_id: folder.id
-                        });
+                        })
                 }
             }
 
-            onSuccess();
-            onClose();
+            onSuccess()
+            onClose()
 
         } catch (err) {
-            console.error('Error creating folder:', err);
-            alert('Failed to create folder. Please try again.');
+            logger.error("CreateFolderOverlay", "Error creating folder", err)
+            setError("Failed to create folder. Please try again.")
         } finally {
-            setUploading(false);
+            setUploading(false)
         }
-    };
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return createPortal(
         <AnimatePresence>
             {isOpen && (
@@ -275,6 +287,12 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
                                     />
                                 </div>
 
+                                {error && (
+                                    <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+                                        {error}
+                                    </div>
+                                )}
+
                                 {/* Conditional Upload UI (Tall Dropzone -> Grid + Plus Button) */}
                                 <div className="space-y-2">
                                     <Label className="text-gray-700 dark:text-gray-300">Add Photos (Optional)</Label>
@@ -284,7 +302,13 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
                                             {/* Existing Previews */}
                                             {previewUrls.map((url, idx) => (
                                                 <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden group shadow-sm bg-white border border-gray-100 dark:border-gray-800">
-                                                    <img src={url} alt="Preview" className="w-full h-full object-cover" />
+                                                    <img
+                                                        src={url}
+                                                        alt="Preview"
+                                                        className="w-full h-full object-cover"
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                    />
                                                     <button
                                                         onClick={() => removeFile(idx)}
                                                         className="absolute top-1 right-1 bg-black/50 rounded-full p-1 text-white opacity-100 transition-opacity"
@@ -357,5 +381,5 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
             )}
         </AnimatePresence>,
         document.body
-    );
+    )
 }

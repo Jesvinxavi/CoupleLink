@@ -1,16 +1,25 @@
-import { useState, useRef, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Button } from '../ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles } from 'lucide-react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useRef, useEffect, useCallback } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { motion, AnimatePresence } from "framer-motion"
+import { X, Sparkles } from "lucide-react"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface SpicyDiceModalProps {
-    isOpen: boolean;
-    onClose: () => void;
+    isOpen: boolean
+    onClose: () => void
 }
 
-const ACTIONS = ['Kiss', 'Massage', 'Tease', 'Nibble', 'Lick', 'Caress'];
-const BODY_PARTS = ['Neck', 'Inner Thigh', 'Ear', 'Lips', 'Chest', 'Back'];
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+const ACTIONS = ["Kiss", "Massage", "Tease", "Nibble", "Lick", "Caress"]
+const BODY_PARTS = ["Neck", "Inner Thigh", "Ear", "Lips", "Chest", "Back"]
 
 // Corrected face rotations - maps array index to the rotation needed to show that face
 // Face positions on dice cube:
@@ -27,73 +36,102 @@ const FACE_ROTATIONS = [
     { x: 0, y: -90 },     // Right (index 3)
     { x: -90, y: 0 },     // Bottom (index 4) - Fixed: rotateX(-90) brings bottom to front
     { x: 90, y: 0 }       // Top (index 5) - Fixed: rotateX(90) brings top to front
-];
+]
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function SpicyDiceModal({ isOpen, onClose }: SpicyDiceModalProps) {
-    const [isRolling, setIsRolling] = useState(false);
-    const [result, setResult] = useState<{ action: string; bodyPart: string } | null>(null);
-    const [showResult, setShowResult] = useState(false);
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [isRolling, setIsRolling] = useState(false)
+    const [result, setResult] = useState<{ action: string; bodyPart: string } | null>(null)
+    const [showResult, setShowResult] = useState(false)
 
-    // Reset state when modal opens
+    // ═══════════════════════════════════════
+    // REFS
+    // ═══════════════════════════════════════
+    const actionDiceRef = useRef<HTMLDivElement>(null)
+    const bodyDiceRef = useRef<HTMLDivElement>(null)
+    const rollTimeoutRef = useRef<number | null>(null)
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         if (isOpen) {
-            setResult(null);
-            setIsRolling(false);
-            setShowResult(false);
+            setResult(null)
+            setIsRolling(false)
+            setShowResult(false)
         }
-    }, [isOpen]);
 
-    const actionDiceRef = useRef<HTMLDivElement>(null);
-    const bodyDiceRef = useRef<HTMLDivElement>(null);
+        return () => {
+            if (rollTimeoutRef.current) {
+                window.clearTimeout(rollTimeoutRef.current)
+                rollTimeoutRef.current = null
+            }
+        }
+    }, [isOpen])
 
-    const handleRoll = () => {
-        if (isRolling) return;
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleRoll = useCallback(() => {
+        if (isRolling) return
 
-        setIsRolling(true);
-        setResult(null);
-        setShowResult(false);
+        setIsRolling(true)
+        setResult(null)
+        setShowResult(false)
 
         // Haptic feedback for start
-        if (navigator.vibrate) navigator.vibrate(50);
+        if (navigator.vibrate) navigator.vibrate(50)
 
         // Pick random results
-        const actionIndex = Math.floor(Math.random() * ACTIONS.length);
-        const bodyIndex = Math.floor(Math.random() * BODY_PARTS.length);
+        const actionIndex = Math.floor(Math.random() * ACTIONS.length)
+        const bodyIndex = Math.floor(Math.random() * BODY_PARTS.length)
 
-        const actionRot = FACE_ROTATIONS[actionIndex];
-        const bodyRot = FACE_ROTATIONS[bodyIndex];
+        const actionRot = FACE_ROTATIONS[actionIndex]
+        const bodyRot = FACE_ROTATIONS[bodyIndex]
 
         // Add extra full rotations for dramatic effect (4-6 full spins)
-        const extraSpins = 4 + Math.floor(Math.random() * 3);
-        const extraX = extraSpins * 360;
-        const extraY = extraSpins * 360;
+        const extraSpins = 4 + Math.floor(Math.random() * 3)
+        const extraX = extraSpins * 360
+        const extraY = extraSpins * 360
 
         // Different spin directions for variety
-        const directionX = Math.random() > 0.5 ? 1 : -1;
-        const directionY = Math.random() > 0.5 ? 1 : -1;
+        const directionX = Math.random() > 0.5 ? 1 : -1
+        const directionY = Math.random() > 0.5 ? 1 : -1
 
         if (actionDiceRef.current) {
-            actionDiceRef.current.style.transition = 'transform 2.5s cubic-bezier(0.15, 0.8, 0.2, 1)';
-            actionDiceRef.current.style.transform = `rotateX(${actionRot.x + extraX * directionX}deg) rotateY(${actionRot.y + extraY * directionY}deg)`;
+            actionDiceRef.current.style.transition = "transform 2.5s cubic-bezier(0.15, 0.8, 0.2, 1)"
+            actionDiceRef.current.style.transform = `rotateX(${actionRot.x + extraX * directionX}deg) rotateY(${actionRot.y + extraY * directionY}deg)`
         }
         if (bodyDiceRef.current) {
-            bodyDiceRef.current.style.transition = 'transform 2.5s cubic-bezier(0.15, 0.8, 0.2, 1)';
-            bodyDiceRef.current.style.transform = `rotateX(${bodyRot.x + extraX * -directionX}deg) rotateY(${bodyRot.y + extraY * -directionY}deg)`;
+            bodyDiceRef.current.style.transition = "transform 2.5s cubic-bezier(0.15, 0.8, 0.2, 1)"
+            bodyDiceRef.current.style.transform = `rotateX(${bodyRot.x + extraX * -directionX}deg) rotateY(${bodyRot.y + extraY * -directionY}deg)`
         }
 
-        setTimeout(() => {
+        if (rollTimeoutRef.current) {
+            window.clearTimeout(rollTimeoutRef.current)
+        }
+
+        rollTimeoutRef.current = window.setTimeout(() => {
             setResult({
                 action: ACTIONS[actionIndex],
                 bodyPart: BODY_PARTS[bodyIndex]
-            });
-            setIsRolling(false);
-            setShowResult(true);
+            })
+            setIsRolling(false)
+            setShowResult(true)
 
             // Success haptic
-            if (navigator.vibrate) navigator.vibrate([50, 30, 80]);
-        }, 2500);
-    };
+            if (navigator.vibrate) navigator.vibrate([50, 30, 80])
+        }, 2500)
+    }, [isRolling])
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent

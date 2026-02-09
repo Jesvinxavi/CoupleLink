@@ -1,29 +1,53 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { supabase } from "../lib/supabase"
-import { authConfig } from "../lib/authConfig"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
-import { Alert, AlertDescription } from "../components/ui/alert"
-import { useAuth } from "../context/AuthContext"
+import { supabase } from "@/lib/supabase"
+import { authConfig } from "@/lib/authConfig"
+import { logger } from "@/lib/logger"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/context/AuthContext"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
+type ResetMessage = {
+    type: "success" | "error"
+    text: string
+}
+
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function ResetPassword() {
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
     const [loading, setLoading] = useState(false)
-    const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+    const [message, setMessage] = useState<ResetMessage | null>(null)
     const [isValidSession, setIsValidSession] = useState(false)
     const [checkingSession, setCheckingSession] = useState(true)
     const navigate = useNavigate()
     const { completeRecovery } = useAuth() // Destructure completeRecovery from useAuth
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         // Check if user arrived here via a valid reset password link
         // Supabase automatically handles the token from the URL
         const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
+            const { data: { session }, error } = await supabase.auth.getSession()
+            if (error) {
+                logger.error('ResetPassword', 'Failed to get auth session', error)
+            }
 
             if (session) {
                 setIsValidSession(true)
@@ -39,6 +63,9 @@ export default function ResetPassword() {
         checkSession()
     }, [])
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
@@ -64,6 +91,7 @@ export default function ResetPassword() {
         })
 
         if (error) {
+            logger.error('ResetPassword', 'Failed to update password', error)
             setMessage({ type: "error", text: error.message })
         } else {
             setMessage({ type: "success", text: "Password updated successfully! Redirecting..." })
@@ -78,6 +106,9 @@ export default function ResetPassword() {
         setLoading(false)
     }
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (checkingSession) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -90,6 +121,9 @@ export default function ResetPassword() {
         )
     }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md">

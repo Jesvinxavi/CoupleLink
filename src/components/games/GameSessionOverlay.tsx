@@ -1,62 +1,76 @@
-import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useRef, useEffect, useCallback } from "react"
+import { createPortal } from "react-dom"
+import { motion } from "framer-motion"
+import { X, Users, Clock, Trophy } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { WouldYouRatherGame } from "@/components/games/WouldYouRatherGame"
+import { NeverHaveIEverGame } from "@/components/games/NeverHaveIEverGame"
+import { RapidFireGame } from "@/components/games/RapidFireGame"
+import { DrawAndGuessGame } from "@/components/games/DrawAndGuessGame"
+import { useGameSession, type GameSession } from "@/hooks/useGameSession"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import type { GameType } from "@/data/gameQuestions"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
-import { X, Users, Clock, Trophy } from 'lucide-react';
-import { Button } from '../ui/button';
-import type { GameSession } from '../../hooks/useGameSession';
-import { useGameSession } from '../../hooks/useGameSession';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { WouldYouRatherGame } from './WouldYouRatherGame';
-import { NeverHaveIEverGame } from './NeverHaveIEverGame';
-import { RapidFireGame } from './RapidFireGame';
-import { DrawAndGuessGame } from './DrawAndGuessGame';
-import type { GameType } from '../../data/gameQuestions';
-
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface GameSessionOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    session: GameSession | null;
-    onFocusChange?: (isFocused: boolean) => void;
+    isOpen: boolean
+    onClose: () => void
+    session: GameSession | null
+    onFocusChange?: (isFocused: boolean) => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: GameSessionOverlayProps) {
-    const { leaveSession, endSession, getGameLabel, partnerInSession, joinOrStartSession } = useGameSession();
-    const { partner } = useCoupleData();
+    useLockBodyScroll(isOpen)
 
+    const { leaveSession, endSession, getGameLabel, partnerInSession, joinOrStartSession } = useGameSession()
+    const { partner } = useCoupleData()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     // Track when we're starting a new game to prevent flash of complete screen
-    const [isStartingNewGame, setIsStartingNewGame] = useState(false);
+    const [isStartingNewGame, setIsStartingNewGame] = useState(false)
 
     // Mobile Overlay Logic
-    const overlayRef = useRef<HTMLDivElement>(null);
-    const [isFocused, setIsFocused] = useState(false);
-    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
+    const overlayRef = useRef<HTMLDivElement>(null)
+    const [isFocused, setIsFocused] = useState(false)
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined)
 
     // Generic Focus Handler (Measure-Lock-Animate)
-
-
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const handleOverlayFocus = (e: React.FocusEvent) => {
         // Filter out non-text inputs (like buttons in other games) which shouldn't trigger keyboard mode
-        const target = e.target as HTMLElement;
-        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-        if (!isTextInput) return;
+        const target = e.target as HTMLElement
+        const isTextInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
+        if (!isTextInput) return
 
         // If already focused, just ensure viewport style is tracking
-        if (isFocused) return;
+        if (isFocused) return
 
         if (overlayRef.current && window.visualViewport) {
             // 1. Measure current 'sheet' position
-            const rect = overlayRef.current.getBoundingClientRect();
+            const rect = overlayRef.current.getBoundingClientRect()
 
             // 2. Lock it immediately
             setViewportStyle({
                 height: rect.height,
                 top: rect.top
-            });
+            })
 
             // 3. Set focused state
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
 
             // 4. Animate to target visual viewport in next frame
             requestAnimationFrame(() => {
@@ -64,110 +78,103 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
                     setViewportStyle({
                         height: window.visualViewport.height,
                         top: window.visualViewport.offsetTop
-                    });
+                    })
                 }
-            });
+            })
         }
-    };
+    }
 
     const handleOverlayBlur = (e: React.FocusEvent) => {
         // Only blur if focus is leaving the overlay entirely
         if (!e.currentTarget.contains(e.relatedTarget)) {
-            setIsFocused(false);
-            if (onFocusChange) onFocusChange(false);
+            setIsFocused(false)
+            if (onFocusChange) onFocusChange(false)
         }
-    };
+    }
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
-        if (isOpen) {
-            // Robust Body Lock
-            const scrollY = window.scrollY;
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${scrollY}px`;
-            document.body.style.width = '100%';
-            document.body.style.overflow = 'hidden';
+        if (!isOpen) return
 
-            // Handle Visual Viewport for mobile keyboard
-            const handleResize = () => {
-                if (window.visualViewport && isFocused) {
-                    setViewportStyle({
-                        height: window.visualViewport.height,
-                        top: window.visualViewport.offsetTop
-                    });
-                }
-            };
-
-            window.visualViewport?.addEventListener('resize', handleResize);
-            window.visualViewport?.addEventListener('scroll', handleResize);
-
-            return () => {
-                const scrollY = document.body.style.top;
-                document.body.style.overflow = '';
-                document.body.style.position = '';
-                document.body.style.top = '';
-                document.body.style.width = '';
-
-                // Restore scroll position
-                window.scrollTo(0, parseInt(scrollY || '0') * -1);
-
-                window.visualViewport?.removeEventListener('resize', handleResize);
-                window.visualViewport?.removeEventListener('scroll', handleResize);
-            };
+        // Handle Visual Viewport for mobile keyboard
+        const handleResize = () => {
+            if (window.visualViewport && isFocused) {
+                setViewportStyle({
+                    height: window.visualViewport.height,
+                    top: window.visualViewport.offsetTop
+                })
+            }
         }
-    }, [isOpen, isFocused]);
+
+        window.visualViewport?.addEventListener("resize", handleResize)
+        window.visualViewport?.addEventListener("scroll", handleResize)
+
+        return () => {
+            window.visualViewport?.removeEventListener("resize", handleResize)
+            window.visualViewport?.removeEventListener("scroll", handleResize)
+        }
+    }, [isOpen, isFocused])
 
     // Reset focus state when round changes (e.g. going from guessing to drawing) to prevents sticky header
     useEffect(() => {
-        setIsFocused(false);
-        if (onFocusChange) onFocusChange(false);
-    }, [session?.current_round]);
+        setIsFocused(false)
+        if (onFocusChange) onFocusChange(false)
+    }, [session?.current_round, onFocusChange])
 
     // Check if game is complete (current_round > total_rounds)
-    const isGameComplete = session && session.current_round > session.total_rounds && !isStartingNewGame;
+    const isGameComplete = session && session.current_round > session.total_rounds && !isStartingNewGame
 
-    const handleLeave = async () => {
-        await leaveSession();
-        onClose();
-    };
+    const handleLeave = useCallback(async () => {
+        await leaveSession()
+        onClose()
+    }, [leaveSession, onClose])
 
-    const handlePlayAgain = async () => {
-        if (!session) return;
-        setIsStartingNewGame(true);
-        await endSession();
+    const handlePlayAgain = useCallback(async () => {
+        if (!session) return
+        setIsStartingNewGame(true)
+        await endSession()
         // joinOrStartSession will create a new waiting session
-        await joinOrStartSession(session.game_type);
-        setIsStartingNewGame(false);
-    };
+        await joinOrStartSession(session.game_type)
+        setIsStartingNewGame(false)
+    }, [endSession, joinOrStartSession, session])
 
+    // ═══════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════
     const renderGame = () => {
-        if (!session) return null;
+        if (!session) return null
         switch (session.game_type) {
 
-            case 'would_you_rather':
-                return <WouldYouRatherGame session={session} />;
-            case 'never_have_i_ever':
-                return <NeverHaveIEverGame session={session} />;
-            case 'rapid_fire':
-                return <RapidFireGame session={session} />;
-            case 'draw_and_guess':
-                return <DrawAndGuessGame session={session} />;
+            case "would_you_rather":
+                return <WouldYouRatherGame session={session} />
+            case "never_have_i_ever":
+                return <NeverHaveIEverGame session={session} />
+            case "rapid_fire":
+                return <RapidFireGame session={session} />
+            case "draw_and_guess":
+                return <DrawAndGuessGame session={session} />
 
 
             default:
-                return <div>Unknown game type</div>;
+                return <div>Unknown game type</div>
         }
-    };
+    }
 
     const getGameColor = (gameType: GameType): string => {
         switch (gameType) {
-            case 'draw_and_guess': return 'from-purple-500 to-purple-600';
-            case 'would_you_rather': return 'from-rose-500 to-rose-600';
-            case 'never_have_i_ever': return 'from-blue-500 to-blue-600';
-            case 'rapid_fire': return 'from-amber-500 to-amber-600';
-            default: return 'from-gray-500 to-gray-600';
+            case "draw_and_guess": return "from-purple-500 to-purple-600"
+            case "would_you_rather": return "from-rose-500 to-rose-600"
+            case "never_have_i_ever": return "from-blue-500 to-blue-600"
+            case "rapid_fire": return "from-amber-500 to-amber-600"
+            default: return "from-gray-500 to-gray-600"
         }
-    };
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return createPortal(
         <>
             {/* Backdrop */}
@@ -299,12 +306,15 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
             </motion.div>
         </>,
         document.body
-    );
+    )
 }
 
 
+// ═══════════════════════════════════════
+// SUBCOMPONENTS
+// ═══════════════════════════════════════
 // Waiting state component
-function WaitingForPartner({ gameLabel, partnerName }: { gameLabel: string; partnerName: string }) {
+function WaitingForPartner({ gameLabel, partnerName }: { gameLabel: string, partnerName: string }) {
     return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="relative mb-6">
@@ -337,28 +347,28 @@ function WaitingForPartner({ gameLabel, partnerName }: { gameLabel: string; part
                 Game session active
             </motion.div>
         </div>
-    );
+    )
 }
 
 // Join Session Banner (shown on Games Hub when partner has a session)
 interface JoinSessionBannerProps {
-    session: GameSession;
-    partnerName: string;
-    onJoin: () => void;
+    session: GameSession
+    partnerName: string
+    onJoin: () => void
 }
 
 export function JoinSessionBanner({ session, partnerName, onJoin }: JoinSessionBannerProps) {
-    const { getGameLabel } = useGameSession();
+    const { getGameLabel } = useGameSession()
 
     const getGameColor = (gameType: GameType): string => {
         switch (gameType) {
-            case 'draw_and_guess': return 'from-purple-500 to-purple-600';
-            case 'would_you_rather': return 'from-rose-500 to-rose-600';
-            case 'never_have_i_ever': return 'from-blue-500 to-blue-600';
-            case 'rapid_fire': return 'from-amber-500 to-amber-600';
-            default: return 'from-gray-500 to-gray-600';
+            case "draw_and_guess": return "from-purple-500 to-purple-600"
+            case "would_you_rather": return "from-rose-500 to-rose-600"
+            case "never_have_i_ever": return "from-blue-500 to-blue-600"
+            case "rapid_fire": return "from-amber-500 to-amber-600"
+            default: return "from-gray-500 to-gray-600"
         }
-    };
+    }
 
     return (
         <motion.div
@@ -389,6 +399,6 @@ export function JoinSessionBanner({ session, partnerName, onJoin }: JoinSessionB
                 </div>
             </div>
         </motion.div>
-    );
+    )
 }
 

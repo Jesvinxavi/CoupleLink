@@ -1,6 +1,12 @@
 import { addMonths, addYears } from 'date-fns';
 import type { CalendarEvent } from '@/types/calendar';
 
+// ═══════════════════════════════════════
+// FUNCTIONS
+// ═══════════════════════════════════════
+/**
+ * Expand recurring events into concrete instances within a view range.
+ */
 export function expandRecurringEvents(
     events: CalendarEvent[],
     viewStart: Date,

@@ -1,3 +1,10 @@
+// ═══════════════════════════════════════
+// FUNCTIONS
+// ═══════════════════════════════════════
+
+/**
+ * Format a duration in milliseconds into a compact string.
+ */
 export function formatTime(ms: number): string {
     if (ms < 0) return "00s";
     const days = Math.floor(ms / (1000 * 60 * 60 * 24));
@@ -10,6 +17,9 @@ export function formatTime(ms: number): string {
     return `${minutes}m ${seconds}s`;
 }
 
+/**
+ * Calculate ISO-like week number using UTC dates.
+ */
 export function getWeekNumber(d: Date): number {
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -18,6 +28,9 @@ export function getWeekNumber(d: Date): number {
     return weekNo;
 }
 
+/**
+ * Return ISO start/end ranges for a given period in UTC.
+ */
 export const getDateRange = (type: 'daily' | 'weekly' | 'monthly') => {
     const now = new Date();
     const start = new Date(now);
@@ -52,7 +65,7 @@ export const getDateRange = (type: 'daily' | 'weekly' | 'monthly') => {
 };
 
 /**
- * Generate a period key for challenge_history tracking
+ * Generate a period key for challenge_history tracking.
  * Daily: "2026-01-05", Weekly: "2026-W01", Monthly: "2026-01"
  */
 export function getPeriodKey(type: 'daily' | 'weekly' | 'monthly' | 'question', date: Date = new Date()): string {

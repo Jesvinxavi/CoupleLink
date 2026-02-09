@@ -1,21 +1,33 @@
-import { Card, CardContent } from '../ui/card';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { UserAvatar } from '../ui/UserAvatar';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { Card, CardContent } from "@/components/ui/card"
+import { UserAvatar } from "@/components/ui/UserAvatar"
+import { useCoupleData } from "@/hooks/useCoupleData"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface LeaderboardTileProps {
     stats: {
-        myScore: number;
-        partnerScore: number;
-        myWins: number;
-        partnerWins: number;
-        ties: number;
-    } | undefined;
-    loading: boolean;
+        myScore: number
+        partnerScore: number
+        myWins: number
+        partnerWins: number
+        ties: number
+    } | undefined
+    loading: boolean
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function LeaderboardTile({ stats, loading }: LeaderboardTileProps) {
-    const { userProfile, partner } = useCoupleData();
+    const { userProfile, partner } = useCoupleData()
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (loading) {
         return (
             <Card className="w-full h-48 animate-pulse bg-gray-100 dark:bg-gray-800 border-none rounded-3xl">
@@ -23,16 +35,19 @@ export function LeaderboardTile({ stats, loading }: LeaderboardTileProps) {
                     <span className="text-gray-400">Loading leaderboard...</span>
                 </CardContent>
             </Card>
-        );
+        )
     }
 
-    if (!stats) return null;
+    if (!stats) return null
 
-    const myScore = stats.myScore;
-    const partnerScore = stats.partnerScore;
-    const isMeWinning = myScore > partnerScore;
-    const isPartnerWinning = partnerScore > myScore;
+    const myScore = stats.myScore
+    const partnerScore = stats.partnerScore
+    const isMeWinning = myScore > partnerScore
+    const isPartnerWinning = partnerScore > myScore
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <Card className="w-full overflow-hidden border-none shadow-sm bg-white rounded-3xl h-full">
             <CardContent className="p-5 h-full flex flex-col">
@@ -104,5 +119,5 @@ export function LeaderboardTile({ stats, loading }: LeaderboardTileProps) {
                 </div>
             </CardContent>
         </Card>
-    );
+    )
 }

@@ -1,96 +1,158 @@
-import { useRef, useState, useEffect } from 'react';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { Card, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Plus, Book, MapPin, Pencil, Search } from 'lucide-react';
-import { DateBadge } from '../ui/DateBadge';
-import { ImageCarousel } from '../ui/ImageCarousel';
-import { AnimatePresence, motion } from 'framer-motion';
-import { UserAvatar } from '../ui/UserAvatar';
-import { useJournalModals } from '../../context/JournalModalContext';
-import { useJournalContext, type JournalEntry } from '../../context/JournalContext';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useRef, useState, useEffect, useMemo } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { Plus, Book, MapPin, Pencil, Search } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { DateBadge } from "@/components/ui/DateBadge"
+import { ImageCarousel } from "@/components/ui/ImageCarousel"
+import { UserAvatar } from "@/components/ui/UserAvatar"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { useJournalModals } from "@/context/JournalModalContext"
+import { useJournalContext, type JournalEntry } from "@/context/JournalContext"
+import { logger } from "@/lib/logger"
 
 // Export imported type for compatibility if needed elsewhere, or rely on Context export
 // export type { JournalEntry };
 
 
 
-const EMOJI_OPTIONS = ['❤️', '😂', '😮', '😢', '👏'];
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+const EMOJI_OPTIONS = ["❤️", "😂", "😮", "😢", "👏"]
+const PAGE_SIZE = 12
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function JournalFeed() {
-    const { currentUser } = useCoupleData();
-    const { openNewPost, openEditPost } = useJournalModals();
-    const { entries, loading, toggleReaction } = useJournalContext();
+    const { currentUser } = useCoupleData()
+    const { openNewPost, openEditPost } = useJournalModals()
+    const { entries, loading, toggleReaction } = useJournalContext()
 
-    const [searchQuery, setSearchQuery] = useState('');
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [searchQuery, setSearchQuery] = useState("")
+    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
     // Reaction State
-    const [longPressTimer, setLongPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
-    const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null); // Entry ID
-    const [showAllEmojis, setShowAllEmojis] = useState(false);
-    const pickerRef = useRef<HTMLDivElement>(null);
+    const [longPressTimer, setLongPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
+    const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null) // Entry ID
+    const [showAllEmojis, setShowAllEmojis] = useState(false)
+    const pickerRef = useRef<HTMLDivElement>(null)
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     // Close picker when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
-                setShowReactionPicker(null);
-                setShowAllEmojis(false);
+                setShowReactionPicker(null)
+                setShowAllEmojis(false)
             }
-        };
+        }
 
         // Temporarily disabled verbose logging to allow debugging
 
 
-        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener("mousedown", handleClickOutside)
         // window.addEventListener('resize', handleResize);
         // window.visualViewport?.addEventListener('resize', handleVisualResize);
         // window.visualViewport?.addEventListener('scroll', handleVisualResize);
 
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener("mousedown", handleClickOutside)
             // window.removeEventListener('resize', handleResize);
             // window.visualViewport?.removeEventListener('resize', handleVisualResize);
             // window.visualViewport?.removeEventListener('scroll', handleVisualResize);
-        };
-    }, []);
+        }
+    }, [])
+
+    useEffect(() => {
+        return () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer)
+            }
+        }
+    }, [longPressTimer])
+
+    // ═══════════════════════════════════════
+    // DERIVED DATA
+    // ═══════════════════════════════════════
+    const normalizedQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery])
+    const filteredEntries = useMemo(() => {
+        if (!normalizedQuery) return entries
+        return entries.filter((entry) =>
+            entry.title?.toLowerCase().includes(normalizedQuery)
+        )
+    }, [entries, normalizedQuery])
+
+    const visibleEntries = useMemo(() => {
+        return filteredEntries.slice(0, visibleCount)
+    }, [filteredEntries, visibleCount])
+
+    const canLoadMore = filteredEntries.length > visibleCount
+
+    useEffect(() => {
+        setVisibleCount(PAGE_SIZE)
+    }, [normalizedQuery, entries.length])
+
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
 
     const handleEdit = (entry: JournalEntry) => {
-        openEditPost(entry);
-        setShowReactionPicker(null);
-        setShowAllEmojis(false);
-    };
+        openEditPost(entry)
+        setShowReactionPicker(null)
+        setShowAllEmojis(false)
+    }
 
     const handleTouchStart = (entryId: string) => {
-        if (navigator.vibrate) navigator.vibrate(50);
+        if (navigator.vibrate) navigator.vibrate(50)
         const timer = setTimeout(() => {
-            setShowReactionPicker(entryId);
-            if (navigator.vibrate) navigator.vibrate(50);
-        }, 500); // 500ms long press
-        setLongPressTimer(timer);
-    };
+            setShowReactionPicker(entryId)
+            if (navigator.vibrate) navigator.vibrate(50)
+        }, 500) // 500ms long press
+        setLongPressTimer(timer)
+    }
 
     const handleTouchEnd = () => {
         if (longPressTimer) {
-            clearTimeout(longPressTimer);
-            setLongPressTimer(null);
+            clearTimeout(longPressTimer)
+            setLongPressTimer(null)
         }
-    };
+    }
 
     const handleReaction = async (entryId: string, emoji: string) => {
-        setShowReactionPicker(null);
-        setShowAllEmojis(false);
-        await toggleReaction(entryId, emoji);
-    };
+        setShowReactionPicker(null)
+        setShowAllEmojis(false)
+        try {
+            await toggleReaction(entryId, emoji)
+        } catch (error) {
+            logger.error("JournalFeed", "Failed to toggle reaction", error, { entryId, emoji })
+        }
+    }
 
     const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
         // Wait for keyboard to slide up to prevent layout jumps/overscroll
         setTimeout(() => {
-            e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }, 300);
-    };
+            e.target.scrollIntoView({ block: "center", behavior: "smooth" })
+        }, 300)
+    }
 
+    const handleLoadMore = () => {
+        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredEntries.length))
+    }
+
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="space-y-8">
             {/* Focus Mode Overlay */}
@@ -145,31 +207,31 @@ export function JournalFeed() {
                             </div>
                         ))}
                     </div>
-                ) : entries.length === 0 ? (
+                ) : filteredEntries.length === 0 ? (
                     <Card className="border-dashed border-2 border-gray-200 shadow-none">
                         <CardContent className="flex flex-col items-center justify-center h-64 text-center p-6">
                             <Book className="w-12 h-12 text-gray-300 mb-4" />
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">No journal entries yet</h3>
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                                {entries.length === 0 ? "No journal entries yet" : "No matches found"}
+                            </h3>
                             <p className="text-gray-500 max-w-xs mx-auto mt-2">
-                                Be the first to write something special for your partner.
+                                {entries.length === 0
+                                    ? "Be the first to write something special for your partner."
+                                    : "Try a different search term to find older entries."}
                             </p>
                         </CardContent>
                     </Card>
                 ) : (
                     <div className="space-y-4">
                         {(() => {
-                            const filteredEntries = entries.filter(entry =>
-                                !searchQuery || (entry.title?.toLowerCase().includes(searchQuery.toLowerCase()))
-                            );
+                            let lastMonthYear = ""
 
-                            let lastMonthYear = '';
-
-                            return filteredEntries.map((entry) => {
-                                const date = new Date(entry.created_at);
-                                const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-                                const showSeparator = monthYear !== lastMonthYear;
+                            return visibleEntries.map((entry) => {
+                                const date = new Date(entry.created_at)
+                                const monthYear = date.toLocaleString("default", { month: "long", year: "numeric" })
+                                const showSeparator = monthYear !== lastMonthYear
                                 if (showSeparator) {
-                                    lastMonthYear = monthYear;
+                                    lastMonthYear = monthYear
                                 }
 
                                 return (
@@ -333,6 +395,13 @@ export function JournalFeed() {
                                 );
                             });
                         })()}
+                        {canLoadMore && (
+                            <div className="flex justify-center pt-4">
+                                <Button variant="outline" onClick={handleLoadMore}>
+                                    Load more ({visibleEntries.length} of {filteredEntries.length})
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )
             }

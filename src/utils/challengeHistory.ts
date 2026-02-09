@@ -1,5 +1,10 @@
-import { supabase } from '../lib/supabase';
-import { getPeriodKey } from './dateUtils';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { getPeriodKey } from '@/utils/dateUtils';
+
+// ═══════════════════════════════════════
+// FUNCTIONS
+// ═══════════════════════════════════════
 
 /**
  * Checks for challenges that were shown but never completed, and marks them as expired.
@@ -51,7 +56,7 @@ export async function checkExpiredChallenges(coupleId: string): Promise<void> {
             .lt('period_key', today);
 
     } catch (error) {
-        console.error('[checkExpiredChallenges] Error:', error);
+        logger.error('checkExpiredChallenges', 'Error checking expired challenges', error);
     }
 }
 
@@ -66,7 +71,7 @@ export async function backfillChallengeHistoryFromMemories(coupleId: string): Pr
         // Check if we've already backfilled (look for any existing entries)
         const { count } = await supabase
             .from('challenge_history')
-            .select('*', { count: 'exact', head: true })
+            .select('id', { count: 'exact', head: true })
             .eq('couple_id', coupleId);
 
         if (count && count > 0) {
@@ -116,6 +121,6 @@ export async function backfillChallengeHistoryFromMemories(coupleId: string): Pr
         }
 
     } catch (error) {
-        console.error('[backfillChallengeHistoryFromMemories] Error:', error);
+        logger.error('backfillChallengeHistoryFromMemories', 'Error backfilling challenge history', error);
     }
 }

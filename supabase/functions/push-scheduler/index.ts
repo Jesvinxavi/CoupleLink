@@ -3,17 +3,41 @@
 // This enables autocomplete, go to definition, etc.
 
 // Setup type definitions for built-in Supabase Runtime APIs
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { format as formatZoned } from 'npm:date-fns-tz';
-import { addDays, addHours, differenceInHours } from 'npm:date-fns';
+import { format as formatZoned, utcToZonedTime } from 'npm:date-fns-tz';
+import { addDays, format as formatDate } from 'npm:date-fns';
 import webPush from 'npm:web-push';
 
+// Environment variables:
+// - SUPABASE_URL (auto-provided by Supabase)
+// - SUPABASE_SERVICE_ROLE_KEY (auto-provided by Supabase)
+// - VAPID_PUBLIC_KEY (manual)
+// - VAPID_PRIVATE_KEY (manual)
+
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const log = {
+    info: (message: string, data?: unknown) => console.log('[PushScheduler]', message, data ?? ''),
+    warn: (message: string, data?: unknown) => console.warn('[PushScheduler]', message, data ?? ''),
+    error: (message: string, data?: unknown) => console.error('[PushScheduler]', message, data ?? '')
+};
+
+const RETRY_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+const RETRY_BASE_DELAY_MS = 250;
+
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface NotificationPreferences {
     master_toggle: boolean;
     sections: Record<string, boolean>;
@@ -38,6 +62,7 @@ const SECTION_MAP: Record<string, string> = {
     monthly_expiry: 'challenges_streak',
     fantasies: 'sexploration_fun',
     coupons: 'sexploration_fun',
+    coupon_activation: 'sexploration_fun',
     calendar_events: 'dates_reminders',
     new_sticky_note: 'dates_reminders',
     new_journal_post: 'dates_reminders',
@@ -46,6 +71,9 @@ const SECTION_MAP: Record<string, string> = {
     anniversary: 'dates_reminders'
 };
 
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
 // Check if notification should be sent based on preferences
 function shouldNotify(prefs: NotificationPreferences | null, type: string): boolean {
     if (!prefs) return true;
@@ -63,26 +91,67 @@ function getDaysInMonth(date: Date): number {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
-// Check if two dates share the same month/day
-function isSameDayOfYear(date1: Date, date2: Date): boolean {
-    return date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
+function resolveTimezone(timezone?: string | null): string {
+    if (!timezone) return 'UTC';
+    try {
+        formatZoned(new Date(), 'H', { timeZone: timezone });
+        return timezone;
+    } catch {
+        return 'UTC';
+    }
 }
 
-// Add days to a date
-function addDays(date: Date, days: number): Date {
-    const result = new Date(date);
-    result.setDate(result.getDate() + days);
-    return result;
+function getMonthDayKeyFromDateString(value?: string | null): string | null {
+    if (!value) return null;
+    const datePart = value.split('T')[0];
+    const parts = datePart.split('-');
+    if (parts.length === 3) {
+        return `${parts[1]}-${parts[2]}`;
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return formatDate(parsed, 'MM-dd');
+}
+
+type VapidDetails = {
+    subject: string;
+    publicKey: string;
+    privateKey: string;
+};
+
+function wait(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function sendWithRetry(
+    pushSubscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+    payload: string,
+    vapidDetails: VapidDetails,
+    maxRetries = 1
+): Promise<void> {
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        try {
+            await webPush.sendNotification(pushSubscription, payload, { vapidDetails });
+            return;
+        } catch (error: any) {
+            const statusCode = error?.statusCode;
+            const shouldRetry = statusCode && RETRY_STATUS_CODES.has(statusCode);
+            if (!shouldRetry || attempt === maxRetries) {
+                throw error;
+            }
+            await wait(RETRY_BASE_DELAY_MS * (attempt + 1));
+        }
+    }
 }
 
 
 
 // Check idempotency - prevent duplicate sends for daily events
-async function checkIdempotency(supabase: any, userId: string, type: string, hours = 20): Promise<boolean> {
+async function checkIdempotency(supabase: any, userId: string, type: string, hours = 24): Promise<boolean> {
     const cutoff = new Date();
     cutoff.setHours(cutoff.getHours() - hours);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('push_notification_logs')
         .select('id')
         .eq('user_id', userId)
@@ -91,9 +160,35 @@ async function checkIdempotency(supabase: any, userId: string, type: string, hou
         .gte('created_at', cutoff.toISOString())
         .limit(1);
 
+    if (error) {
+        log.error('Idempotency check failed', { error, userId, type });
+        return false;
+    }
+
     return !data || data.length === 0;
 }
 
+async function cleanupExpiredSubscriptions(supabase: any, days = 30): Promise<number> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+
+    const { data, error } = await supabase
+        .from('push_subscriptions')
+        .delete()
+        .lt('last_used_at', cutoff.toISOString())
+        .select('id');
+
+    if (error) {
+        log.error('Error cleaning up expired subscriptions', error);
+        return 0;
+    }
+
+    return data?.length || 0;
+}
+
+// ═══════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════
 Deno.serve(async (req) => {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
@@ -112,11 +207,22 @@ Deno.serve(async (req) => {
             throw new Error('Missing Supabase configuration');
         }
         if (!vapidPublicKey || !vapidPrivateKey) {
-            console.error('Missing VAPID keys - push notifications will fail');
-            // We don't throw here to allow logic to run (e.g. for testing) but we log error
+            return new Response(
+                JSON.stringify({ success: false, error: 'Missing VAPID keys - push notifications disabled' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+            );
         }
 
+        const vapidDetails: VapidDetails = {
+            subject: 'mailto:support@couplelink.io',
+            publicKey: vapidPublicKey,
+            privateKey: vapidPrivateKey
+        };
+
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        // Clean up old subscriptions to keep table lean
+        await cleanupExpiredSubscriptions(supabase);
 
         const now = new Date();
         const utcHour = now.getUTCHours();
@@ -131,44 +237,45 @@ Deno.serve(async (req) => {
         // =============================================
 
         // Get all profiles with timezone info
-        const { data: profiles } = await supabase
+        const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
             .select('id, first_name, birth_date, timezone, couple_id, notification_preferences');
+
+        if (profilesError) {
+            log.error('Failed to fetch profiles for birthday checks', profilesError);
+        }
 
         if (profiles) {
             for (const profile of profiles) {
                 if (!profile.couple_id) continue;
 
-                const timezone = profile.timezone || 'UTC';
+                const timezone = resolveTimezone(profile.timezone);
                 const prefs = profile.notification_preferences as NotificationPreferences | null;
+                const localNow = utcToZonedTime(now, timezone);
+                const localHour = parseInt(formatDate(localNow, 'H'), 10);
+                if (Number.isNaN(localHour) || localHour < 8 || localHour > 10) continue; // Only check between 8-10 AM local time
 
-                // Check if it's 9 AM (+/- 1 hour) in user's timezone
-                let localHour: number;
-                try {
-                    const hourStr = formatZoned(now, 'H', { timeZone: timezone });
-                    localHour = parseInt(hourStr, 10);
-                } catch (e) {
-                    console.error(`Invalid timezone ${timezone}, falling back to UTC`);
-                    localHour = now.getUTCHours();
-                }
-
-                if (localHour < 8 || localHour > 10) continue; // Only check between 8-10 AM local time
+                const todayKey = formatDate(localNow, 'MM-dd');
+                const oneWeekKey = formatDate(addDays(localNow, 7), 'MM-dd');
 
                 // Get partner info
-                const { data: partner } = await supabase
+                const { data: partner, error: partnerError } = await supabase
                     .from('profiles')
                     .select('id, first_name, birth_date')
                     .eq('couple_id', profile.couple_id)
                     .neq('id', profile.id)
                     .single();
 
+                if (partnerError) {
+                    log.error('Failed to fetch partner profile', { error: partnerError, profileId: profile.id });
+                    continue;
+                }
+
                 if (partner && partner.birth_date) {
-                    const partnerBirthday = new Date(partner.birth_date);
-                    const today = new Date();
-                    const oneWeekFromNow = addDays(today, 7);
+                    const partnerBirthdayKey = getMonthDayKeyFromDateString(partner.birth_date);
 
                     // Partner birthday today
-                    if (isSameDayOfYear(partnerBirthday, today)) {
+                    if (partnerBirthdayKey && partnerBirthdayKey === todayKey) {
                         if (shouldNotify(prefs, 'partner_birthday')) {
                             const type = 'partner_birthday';
                             if (await checkIdempotency(supabase, profile.id, type)) {
@@ -183,9 +290,9 @@ Deno.serve(async (req) => {
                         }
                     }
                     // Partner birthday in 1 week
-                    else if (isSameDayOfYear(partnerBirthday, oneWeekFromNow)) {
+                    else if (partnerBirthdayKey && partnerBirthdayKey === oneWeekKey) {
                         if (shouldNotify(prefs, 'partner_birthday')) {
-                            const type = 'partner_birthday_reminder';
+                            const type = 'partner_birthday';
                             if (await checkIdempotency(supabase, profile.id, type)) {
                                 notifications.push({
                                     user_id: profile.id,
@@ -201,9 +308,8 @@ Deno.serve(async (req) => {
 
                 // My birthday today
                 if (profile.birth_date) {
-                    const myBirthday = new Date(profile.birth_date);
-                    const today = new Date();
-                    if (isSameDayOfYear(myBirthday, today)) {
+                    const myBirthdayKey = getMonthDayKeyFromDateString(profile.birth_date);
+                    if (myBirthdayKey && myBirthdayKey === todayKey) {
                         if (shouldNotify(prefs, 'my_birthday')) {
                             const type = 'my_birthday';
                             if (await checkIdempotency(supabase, profile.id, type)) {
@@ -220,19 +326,22 @@ Deno.serve(async (req) => {
                 }
 
                 // Anniversary check
-                const { data: coupleData } = await supabase
+                const { data: coupleData, error: coupleError } = await supabase
                     .from('couples')
-                    .select('anniversary')
+                    .select('anniversary_date')
                     .eq('id', profile.couple_id)
                     .single();
 
-                if (coupleData?.anniversary) {
-                    const anniversary = new Date(coupleData.anniversary);
-                    const today = new Date();
-                    const oneWeekFromNow = addDays(today, 7);
+                if (coupleError) {
+                    log.error('Failed to fetch couple data for anniversary check', { error: coupleError, coupleId: profile.couple_id });
+                    continue;
+                }
+
+                if (coupleData?.anniversary_date) {
+                    const anniversaryKey = getMonthDayKeyFromDateString(coupleData.anniversary_date);
 
                     // Anniversary today
-                    if (isSameDayOfYear(anniversary, today)) {
+                    if (anniversaryKey && anniversaryKey === todayKey) {
                         if (shouldNotify(prefs, 'anniversary')) {
                             const type = 'anniversary';
                             if (await checkIdempotency(supabase, profile.id, type)) {
@@ -247,9 +356,9 @@ Deno.serve(async (req) => {
                         }
                     }
                     // Anniversary in 1 week
-                    else if (isSameDayOfYear(anniversary, oneWeekFromNow)) {
+                    else if (anniversaryKey && anniversaryKey === oneWeekKey) {
                         if (shouldNotify(prefs, 'anniversary')) {
-                            const type = 'anniversary_reminder';
+                            const type = 'anniversary';
                             if (await checkIdempotency(supabase, profile.id, type)) {
                                 notifications.push({
                                     user_id: profile.id,
@@ -270,17 +379,26 @@ Deno.serve(async (req) => {
         // =============================================
         if (utcHour === 23) {
             // Get all couples
-            const { data: couples } = await supabase
+            const { data: couples, error: couplesError } = await supabase
                 .from('couples')
-                .select('id, streak_count');
+                .select('id, current_streak');
+
+            if (couplesError) {
+                log.error('Failed to fetch couples for daily expiry check', couplesError);
+            }
 
             if (couples) {
                 for (const couple of couples) {
                     // Get both users in the couple
-                    const { data: users } = await supabase
+                    const { data: users, error: usersError } = await supabase
                         .from('profiles')
                         .select('id, first_name, notification_preferences')
                         .eq('couple_id', couple.id);
+
+                    if (usersError) {
+                        log.error('Failed to fetch users for couple', { error: usersError, coupleId: couple.id });
+                        continue;
+                    }
 
                     if (!users || users.length !== 2) continue;
 
@@ -293,7 +411,7 @@ Deno.serve(async (req) => {
                         const prefs = user.notification_preferences as NotificationPreferences | null;
 
                         // Check if user has completed today's daily challenge
-                        const { data: userChallenges } = await supabase
+                        const { data: userChallenges, error: userChallengesError } = await supabase
                             .from('memories')
                             .select('id')
                             .eq('couple_id', couple.id)
@@ -302,10 +420,15 @@ Deno.serve(async (req) => {
                             .gte('created_at', todayStart.toISOString())
                             .limit(1);
 
+                        if (userChallengesError) {
+                            log.error('Failed to fetch user challenge completion', { error: userChallengesError, userId: user.id });
+                            continue;
+                        }
+
                         const userCompleted = userChallenges && userChallenges.length > 0;
 
                         // Check partner's completion
-                        const { data: partnerChallenges } = await supabase
+                        const { data: partnerChallenges, error: partnerChallengesError } = await supabase
                             .from('memories')
                             .select('id')
                             .eq('couple_id', couple.id)
@@ -313,6 +436,10 @@ Deno.serve(async (req) => {
                             .eq('type', 'challenge')
                             .gte('created_at', todayStart.toISOString())
                             .limit(1);
+
+                        if (partnerChallengesError) {
+                            log.error('Failed to fetch partner challenge completion', { error: partnerChallengesError, partnerId: partner?.id });
+                        }
 
                         const partnerCompleted = partnerChallenges && partnerChallenges.length > 0;
 
@@ -343,7 +470,7 @@ Deno.serve(async (req) => {
                         }
 
                         // Streak at risk notification
-                        if (couple.streak_count && couple.streak_count > 0 && !userCompleted) {
+                        if (couple.current_streak && couple.current_streak > 0 && !userCompleted) {
                             if (shouldNotify(prefs, 'streak_expiry')) {
                                 const type = 'streak_expiry';
                                 if (await checkIdempotency(supabase, user.id, type)) {
@@ -351,7 +478,7 @@ Deno.serve(async (req) => {
                                         user_id: user.id,
                                         type,
                                         title: '🔥 Streak At Risk!',
-                                        body: `Your ${couple.streak_count}-day streak expires in 1 hour!`,
+                                        body: `Your ${couple.current_streak}-day streak expires in 1 hour!`,
                                         url: '#/challenges'
                                     });
                                 }
@@ -366,16 +493,25 @@ Deno.serve(async (req) => {
         // SATURDAY 20:00 UTC CHECK: Weekly Challenge Expiry
         // =============================================
         if (utcDay === 6 && utcHour === 20) {
-            const { data: couples } = await supabase
+            const { data: couples, error: couplesError } = await supabase
                 .from('couples')
                 .select('id');
 
+            if (couplesError) {
+                log.error('Failed to fetch couples for weekly expiry check', couplesError);
+            }
+
             if (couples) {
                 for (const couple of couples) {
-                    const { data: users } = await supabase
+                    const { data: users, error: usersError } = await supabase
                         .from('profiles')
                         .select('id, first_name, notification_preferences')
                         .eq('couple_id', couple.id);
+
+                    if (usersError) {
+                        log.error('Failed to fetch users for weekly expiry check', { error: usersError, coupleId: couple.id });
+                        continue;
+                    }
 
                     if (!users) continue;
 
@@ -405,16 +541,25 @@ Deno.serve(async (req) => {
             const daysLeft = daysInMonth - utcDate + 1;
 
             if (daysLeft === 5) { // Exactly 5 days before end of month
-                const { data: couples } = await supabase
+                const { data: couples, error: couplesError } = await supabase
                     .from('couples')
                     .select('id');
 
+                if (couplesError) {
+                    log.error('Failed to fetch couples for monthly expiry check', couplesError);
+                }
+
                 if (couples) {
                     for (const couple of couples) {
-                        const { data: users } = await supabase
+                        const { data: users, error: usersError } = await supabase
                             .from('profiles')
                             .select('id, first_name, notification_preferences')
                             .eq('couple_id', couple.id);
+
+                        if (usersError) {
+                            log.error('Failed to fetch users for monthly expiry check', { error: usersError, coupleId: couple.id });
+                            continue;
+                        }
 
                         if (!users) continue;
 
@@ -447,13 +592,28 @@ Deno.serve(async (req) => {
 
         for (const notification of notifications) {
             // Get user's push subscriptions
-            const { data: subscriptions } = await supabase
+            const { data: subscriptions, error: subscriptionsError } = await supabase
                 .from('push_subscriptions')
-                .select('*')
+                .select('id, endpoint, keys_p256dh, keys_auth')
                 .eq('user_id', notification.user_id);
 
+            if (subscriptionsError) {
+                log.error('Failed to fetch push subscriptions', { error: subscriptionsError, userId: notification.user_id });
+                failed++;
+                continue;
+            }
+
             if (!subscriptions || subscriptions.length === 0) {
-                console.log(`No subscription for user ${notification.user_id}`);
+                log.warn(`No subscription for user ${notification.user_id}`);
+                const { error: logError } = await supabase.from('push_notification_logs').insert({
+                    user_id: notification.user_id,
+                    notification_type: notification.type,
+                    status: 'failed',
+                    error_message: 'No push subscriptions found'
+                });
+                if (logError) {
+                    log.error('Failed to log missing subscription', { error: logError, userId: notification.user_id });
+                }
                 failed++;
                 continue;
             }
@@ -462,17 +622,10 @@ Deno.serve(async (req) => {
                 title: notification.title,
                 body: notification.body,
                 url: notification.url,
-                icon: '/pwa-192x192.png',
-                badge: '/pwa-192x192.png'
+                icon: '/pwa-icon.svg',
+                badge: '/pwa-icon.svg'
             });
-
-            // Log the notification attempt (only once per user, even if multiple devices)
-            await supabase.from('push_notification_logs').insert({
-                user_id: notification.user_id,
-                notification_type: notification.type,
-                status: 'sent',
-                error_message: null
-            });
+            let loggedSuccess = false;
 
             for (const sub of subscriptions) {
                 try {
@@ -486,28 +639,58 @@ Deno.serve(async (req) => {
                         }
                     };
 
-                    await webPush.sendNotification(pushSubscription, payload, {
-                        vapidDetails: {
-                            subject: 'mailto:support@couplelink.io', // Replace with real email
-                            publicKey: Deno.env.get('VAPID_PUBLIC_KEY')!,
-                            privateKey: Deno.env.get('VAPID_PRIVATE_KEY')!
+                    await sendWithRetry(pushSubscription, payload, vapidDetails);
+
+                    if (!loggedSuccess) {
+                        const { error: logError } = await supabase.from('push_notification_logs').insert({
+                            user_id: notification.user_id,
+                            notification_type: notification.type,
+                            status: 'sent',
+                            error_message: null
+                        });
+                        if (logError) {
+                            log.error('Failed to log push success', { error: logError, userId: notification.user_id });
                         }
-                    });
+                        loggedSuccess = true;
+                    }
+
+                    const { error: updateError } = await supabase
+                        .from('push_subscriptions')
+                        .update({ last_used_at: now.toISOString() })
+                        .eq('id', sub.id);
+                    if (updateError) {
+                        log.error('Failed to update subscription last_used_at', { error: updateError, subscriptionId: sub.id });
+                    }
 
                     // Log success
-                    console.log(`[PUSH SUCCESS] To: ${notification.user_id} | Title: ${notification.title}`);
+                    log.info(`Push success for ${notification.user_id}`, { title: notification.title });
                     sent++;
                 } catch (error: any) {
-                    console.error(`Push failed for ${sub.endpoint}:`, error);
+                    log.error(`Push failed for ${sub.endpoint}`, error);
+                    failed++;
+
+                    const { error: logError } = await supabase.from('push_notification_logs').insert({
+                        user_id: notification.user_id,
+                        notification_type: notification.type,
+                        status: 'failed',
+                        error_message: error?.message || String(error)
+                    });
+                    if (logError) {
+                        log.error('Failed to log push failure', { error: logError, userId: notification.user_id });
+                    }
 
                     // Handle 410 Gone / 404 Not Found (Subscription expired)
                     if (error.statusCode === 410 || error.statusCode === 404) {
-                        console.log(`Removing expired subscription for user ${notification.user_id}`);
-                        await supabase
+                        log.warn(`Removing expired subscription for user ${notification.user_id}`);
+                        const { error: deleteError } = await supabase
                             .from('push_subscriptions')
                             .delete()
                             .eq('endpoint', sub.endpoint);
-                        removed++;
+                        if (deleteError) {
+                            log.error('Failed to remove expired subscription', { error: deleteError, endpoint: sub.endpoint });
+                        } else {
+                            removed++;
+                        }
                     }
                 }
             }
@@ -528,7 +711,7 @@ Deno.serve(async (req) => {
         );
 
     } catch (error) {
-        console.error('Push scheduler error:', error);
+        log.error('Push scheduler error', error);
         return new Response(
             JSON.stringify({ success: false, error: (error as Error).message }),
             {

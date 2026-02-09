@@ -1,39 +1,34 @@
-import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
-import { DateIdeaCard } from "../components/datenight/DateIdeaCard";
-import { DateIdeaModal, type DateIdeaItem } from "../components/datenight/DateIdeaModal";
-import { AddDateIdeaOverlay } from "../components/datenight/AddDateIdeaOverlay";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Button } from "../components/ui/button";
-import { motion } from "framer-motion";
-import { useCoupleData } from "../hooks/useCoupleData";
-import { supabase } from "../lib/supabase";
-import { Plus, Loader2 } from "lucide-react";
-
-interface DateIdea {
-    title: string;
-    description: string;
-    imageUrl: string;
-    duration: string;
-    cost: string;
-    categories: string[];
-    link?: string;
-    type: 'simple' | 'modal';
-    modalItems?: DateIdeaItem[];
-    buttonText?: string;
-    showExternalIcon?: boolean;
-}
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { motion } from "framer-motion"
+import { Plus, Loader2 } from "lucide-react"
+import Sidebar from "@/components/Sidebar"
+import { DateIdeaCard } from "@/components/datenight/DateIdeaCard"
+import { DateIdeaModal } from "@/components/datenight/DateIdeaModal"
+import { AddDateIdeaOverlay } from "@/components/datenight/AddDateIdeaOverlay"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { DATE_IDEAS } from "@/data/dateNightIdeas"
+import type { DateIdea, DateIdeaItem } from "@/types/datenight"
 
 interface UserDate {
-    id: string;
-    title: string;
-    description: string;
-    image_url: string | null;
-    duration: string;
-    cost: string;
-    checklist: string[];
+    id: string
+    title: string
+    description: string
+    image_url: string | null
+    duration: string
+    cost: string
+    checklist: string[]
 }
 
+// ═══════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════
 const container = {
     hidden: { opacity: 0 },
     show: {
@@ -49,233 +44,110 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
+const USER_DATES_PAGE_SIZE = 9
+
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function DateNightPage() {
-    const { couple } = useCoupleData();
-    const [activeTab, setActiveTab] = useState("suggested");
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isOverlayFocused, setIsOverlayFocused] = useState(false);
-    const [modalTitle, setModalTitle] = useState("");
-    const [modalDescription, setModalDescription] = useState("");
-    const [modalItems, setModalItems] = useState<DateIdeaItem[]>([]);
+    const { couple } = useCoupleData()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [activeTab, setActiveTab] = useState("suggested")
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+    const [isOverlayFocused, setIsOverlayFocused] = useState(false)
+    const [modalTitle, setModalTitle] = useState("")
+    const [modalDescription, setModalDescription] = useState("")
+    const [modalItems, setModalItems] = useState<DateIdeaItem[]>([])
+    const [editingDate, setEditingDate] = useState<DateIdeaItem | null>(null)
 
     // User Dates State
-    const [userDates, setUserDates] = useState<UserDate[]>([]);
-    const [loadingUserDates, setLoadingUserDates] = useState(false);
+    const [userDates, setUserDates] = useState<UserDate[]>([])
+    const [loadingUserDates, setLoadingUserDates] = useState(false)
+    const [visibleUserDatesCount, setVisibleUserDatesCount] = useState(USER_DATES_PAGE_SIZE)
 
-    const fetchUserDates = async () => {
-        if (!couple?.id) return;
+    const fetchUserDates = useCallback(async () => {
+        if (!couple?.id) return
 
         try {
-            setLoadingUserDates(true);
+            setLoadingUserDates(true)
             const { data, error } = await supabase
-                .from('user_dates')
-                .select('*')
-                .eq('couple_id', couple.id)
-                .order('created_at', { ascending: false });
+                .from("user_dates")
+                .select("id, title, description, image_url, duration, cost, checklist, created_at, is_completed, completed_at, couple_id")
+                .eq("couple_id", couple.id)
+                .order("created_at", { ascending: false })
 
-            if (error) throw error;
+            if (error) throw error
 
             const transformedData: UserDate[] = (data || []).map(item => ({
                 ...item,
                 checklist: item.checklist || [] // Ensure checklist is string[] not null
-            }));
+            }))
 
-            setUserDates(transformedData);
+            setUserDates(transformedData)
         } catch (error) {
-            console.error('Error fetching user dates:', error);
+            logger.error("DateNightPage", "Error fetching user dates", error)
         } finally {
-            setLoadingUserDates(false);
+            setLoadingUserDates(false)
         }
-    };
+    }, [couple?.id])
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         if (couple?.id) {
-            fetchUserDates();
+            fetchUserDates()
         }
-    }, [couple?.id]);
+    }, [couple?.id, fetchUserDates])
 
-    const museumTours: DateIdeaItem[] = [
-        {
-            title: "The Louvre",
-            description: "Explore the world's largest art museum and a historic monument in Paris, France. See the Mona Lisa and the Venus de Milo.",
-            imageUrl: "https://images.unsplash.com/photo-1655573293252-740f354a6756?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            duration: "1-2 Hours",
-            link: "https://www.louvre.fr/en/online-tours",
-            buttonText: "Visit Museum"
-        },
-        {
-            title: "Musée d'Orsay",
-            description: "Walk through the former Gare d'Orsay railway station and see masterpieces by Monet, Manet, Degas, Renoir, Cézanne, and Van Gogh.",
-            imageUrl: "https://images.unsplash.com/photo-1580137189272-c9379f8864fd?auto=format&fit=crop&q=80&w=800",
-            duration: "1.5 Hours",
-            link: "https://artsandculture.google.com/partner/musee-dorsay-paris",
-            buttonText: "Visit Museum"
-        },
-        {
-            title: "Vatican Museums",
-            description: "Discover the immense collection amassed by the Popes throughout the centuries including the Sistine Chapel.",
-            imageUrl: "https://images.unsplash.com/photo-1542820229-081e0c12af0b?auto=format&fit=crop&q=80&w=800",
-            duration: "2 Hours",
-            link: "https://www.museivaticani.va/content/museivaticani/en/collezioni/musei/tour-virtuali-elenco.html",
-            buttonText: "Visit Museum"
-        },
-        {
-            title: "Van Gogh Museum",
-            description: "Step into Van Gogh's world. Explore the largest collection of artworks by Vincent van Gogh.",
-            imageUrl: "https://images.unsplash.com/photo-1584727638096-042c45049ebe?auto=format&fit=crop&q=80&w=800",
-            duration: "1 Hour",
-            link: "https://artsandculture.google.com/partner/van-gogh-museum",
-            buttonText: "Visit Museum"
-        },
-        {
-            title: "Uffizi Gallery",
-            description: "Wander the halls of one of the most famous museums in the world, located in Florence, Italy.",
-            imageUrl: "https://images.unsplash.com/photo-1541963463532-d68292c34b19?auto=format&fit=crop&q=80&w=800",
-            duration: "1.5 Hours",
-            link: "https://artsandculture.google.com/partner/uffizi-gallery",
-            buttonText: "Visit Museum"
-        }
-    ];
+    useEffect(() => {
+        setVisibleUserDatesCount(USER_DATES_PAGE_SIZE)
+    }, [userDates.length])
 
-    const cookAlongRecipes: DateIdeaItem[] = [
-        {
-            title: "Homemade Pasta",
-            description: "Learn to make fresh pasta from scratch. A fun, hands-on activity that ends with a delicious meal.",
-            imageUrl: "https://images.unsplash.com/photo-1611270629569-8b357cb88da9?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            duration: "1.5 Hours",
-            cost: "$$",
-            link: "https://www.youtube.com/results?search_query=romantic+pasta+dinner+for+two",
-            buttonText: "Start Cooking"
-        },
-        {
-            title: "Sushi Night",
-            description: "Roll your own sushi! It's easier than you think and perfect for a date night challenge.",
-            imageUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&q=80&w=800",
-            duration: "2 Hours",
-            cost: "$$$",
-            link: "https://www.youtube.com/results?search_query=how+to+make+sushi+at+home+for+beginners",
-            buttonText: "Start Cooking"
-        },
-        {
-            title: "Homemade Pizza",
-            description: "Toss some dough and get creative with toppings. The perfect casual and fun dinner date.",
-            imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=800",
-            duration: "1 Hour",
-            cost: "$",
-            link: "https://www.youtube.com/results?search_query=homemade+pizza+date+night",
-            buttonText: "Start Cooking"
-        }
-    ];
+    const visibleUserDates = useMemo(() => {
+        return userDates.slice(0, visibleUserDatesCount)
+    }, [userDates, visibleUserDatesCount])
 
-    const dateIdeas: DateIdea[] = [
-        {
-            title: "Virtual Museum Tour",
-            description: "Walk through world-class museums together and discuss art from the comfort of your sofa.",
-            imageUrl: "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?q=80&w=1160&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            duration: "1-2 Hours",
-            cost: "Free",
-            categories: ["Culture", "Chill", "Long Distance"],
-            type: 'modal',
-            modalItems: museumTours,
-            buttonText: "Explore Options",
-            showExternalIcon: false
-        },
-        {
-            title: "Cook-Along Dinner",
-            description: "Pick a recipe, buy the ingredients, and cook 'together' over video call.",
-            imageUrl: "https://images.unsplash.com/photo-1507048331197-7d4ac70811cf?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            duration: "2 Hours",
-            cost: "$$",
-            categories: ["Food", "Active", "Long Distance"],
-            type: 'modal',
-            modalItems: cookAlongRecipes,
-            buttonText: "Explore Options",
-            showExternalIcon: false
-        },
-        {
-            title: "Watch Party",
-            description: "Sync up a movie or show and react in real-time using Teleparty or just hitting play together.",
-            imageUrl: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800",
-            duration: "2+ Hours",
-            cost: "$",
-            categories: ["Entertainment", "Chill", "Long Distance"],
-            type: 'simple',
-            link: "https://www.teleparty.com/"
-        },
-        {
-            title: "World Exploration",
-            description: "Use Google Earth to show each other your childhood homes, dream destinations, or random cool spots.",
-            imageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800",
-            duration: "1 Hour",
-            cost: "Free",
-            categories: ["Adventure", "Chill", "Long Distance"],
-            type: 'simple',
-            link: "https://earth.google.com/"
-        },
-        {
-            title: "Virtual Escape Room",
-            description: "Solve puzzles and riddles together to escape before time runs out!",
-            imageUrl: "https://plus.unsplash.com/premium_photo-1692063696055-5f8df260b7c1?q=80&w=1032&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-            duration: "1-1.5 Hours",
-            cost: "$$",
-            categories: ["Adventure", "Active", "Long Distance"],
-            type: 'simple',
-            link: "https://theescapegame.com/remote-adventures/"
-        },
-        {
-            title: "Dream Home Hunting",
-            description: "Browse Zillow or Rightmove in a random city and pick out your dream home (or the weirdest one).",
-            imageUrl: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800",
-            duration: "1 Hour",
-            cost: "Free",
-            categories: ["Chill", "Long Distance"],
-            type: 'simple',
-            link: "https://www.zillow.com/"
-        },
-        {
-            title: "Online Gaming",
-            description: "Play a co-op game like Worldguesser and 8 Ball Pool",
-            imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800",
-            duration: "2+ Hours",
-            cost: "$",
-            categories: ["Entertainment", "Active", "Long Distance"],
-            type: 'simple',
-            link: "https://www.crazygames.com/multiplayer?tab=with-friends"
-        },
-        {
-            title: "Spotify Jam Session",
-            description: "Start a Spotify Jam and take turns DJing or listening to a shared playlist.",
-            imageUrl: "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?auto=format&fit=crop&q=80&w=800",
-            duration: "1+ Hours",
-            cost: "Free",
-            categories: ["Music", "Chill", "Long Distance"],
-            type: 'simple',
-            link: "https://www.spotify.com/"
-        }
-    ];
+    const canLoadMoreUserDates = userDates.length > visibleUserDatesCount
 
+    const handleLoadMoreUserDates = useCallback(() => {
+        setVisibleUserDatesCount((prev) => Math.min(prev + USER_DATES_PAGE_SIZE, userDates.length))
+    }, [userDates.length])
+
+    // ═══════════════════════════════════════
+    // STATIC IDEA DATA
+    // ═══════════════════════════════════════
+    const dateIdeas = DATE_IDEAS
+
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const handleStartDate = (idea: DateIdea) => {
-        if (idea.type === 'modal' && idea.modalItems) {
-            setModalTitle(idea.title);
-            setModalDescription(idea.description);
-            setModalItems(idea.modalItems);
-            setIsModalOpen(true);
+        if (idea.type === "modal" && idea.modalItems) {
+            setModalTitle(idea.title)
+            setModalDescription(idea.description)
+            setModalItems(idea.modalItems)
+            setIsModalOpen(true)
         } else if (idea.link) {
-            window.open(idea.link, '_blank');
+            window.open(idea.link, "_blank")
         }
-    };
-
-    const [editingDate, setEditingDate] = useState<DateIdeaItem | null>(null);
+    }
 
     const handleEditDate = (item: DateIdeaItem) => {
-        setEditingDate(item);
-        setIsAddModalOpen(true);
-    };
+        setEditingDate(item)
+        setIsAddModalOpen(true)
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <>
-            <div style={{ display: isOverlayFocused ? 'none' : 'contents' }}>
+            <div style={{ display: isOverlayFocused ? "none" : "contents" }}>
                 <Sidebar />
                 <div className="pt-14 md:ml-[250px] md:pt-0 min-h-screen dark:bg-gray-900">
                     <main className="p-4 md:p-8">
@@ -356,7 +228,7 @@ export default function DateNightPage() {
                                         ) : (
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                 {userDates.length > 0 ? (
-                                                    userDates.map((date) => (
+                                                    visibleUserDates.map((date) => (
                                                         <DateIdeaCard
                                                             key={date.id}
                                                             title={date.title}
@@ -399,6 +271,14 @@ export default function DateNightPage() {
                                                         </Button>
                                                     </div>
                                                 )}
+
+                                                {canLoadMoreUserDates && (
+                                                    <div className="col-span-full flex justify-center pt-4">
+                                                        <Button variant="outline" onClick={handleLoadMoreUserDates}>
+                                                            Load more ({visibleUserDates.length} of {userDates.length})
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </TabsContent>
@@ -431,5 +311,5 @@ export default function DateNightPage() {
                 onFocusChange={setIsOverlayFocused}
             />
         </>
-    );
+    )
 }

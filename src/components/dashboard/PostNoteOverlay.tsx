@@ -1,126 +1,135 @@
-import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from "../ui/button";
-import { Loader2, Send, X, StickyNote } from "lucide-react";
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { usePartnerNotes } from '../../hooks/usePartnerNotes';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
+import { motion, AnimatePresence } from "framer-motion"
+import { Loader2, Send, X, StickyNote } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { usePartnerNotes } from "@/hooks/usePartnerNotes"
+import { logger } from "@/lib/logger"
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface PostNoteOverlayProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onFocusChange?: (isFocused: boolean) => void;
+    isOpen: boolean
+    onClose: () => void
+    onFocusChange?: (isFocused: boolean) => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function PostNoteOverlay({ isOpen, onClose, onFocusChange }: PostNoteOverlayProps) {
-    const { couple, partner } = useCoupleData();
-    const { sendNote } = usePartnerNotes();
-    const [note, setNote] = useState("");
-    const [sending, setSending] = useState(false);
+    useLockBodyScroll(isOpen)
+
+    const { couple, partner } = useCoupleData()
+    const { sendNote } = usePartnerNotes()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [note, setNote] = useState("")
+    const [sending, setSending] = useState(false)
 
     // Mobile Viewport Logic
-    const overlayRef = useRef<HTMLDivElement>(null);
-    const [isFocused, setIsFocused] = useState(false);
-    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined);
+    const overlayRef = useRef<HTMLDivElement>(null)
+    const [isFocused, setIsFocused] = useState(false)
+    const [viewportStyle, setViewportStyle] = useState<{ height: number; top: number } | undefined>(undefined)
 
-    // Combined body lock + viewport resize handler
+    // Viewport resize handler
     useEffect(() => {
-        if (!isOpen) return;
-
-        // Robust Body Lock
-        const scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
-        document.body.style.overflow = 'hidden';
+        if (!isOpen) return
 
         // Handle Visual Viewport for mobile keyboard
         const handleVisualResize = () => {
             // Only update if focus is within this overlay
-            const activeEl = document.activeElement;
-            const isActiveInOverlay = overlayRef.current?.contains(activeEl);
-            const isTextInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
+            const activeEl = document.activeElement
+            const isActiveInOverlay = overlayRef.current?.contains(activeEl)
+            const isTextInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA"
 
             // Only update if a keyboard-triggering text input in our overlay is focused
             if (!isActiveInOverlay || !isTextInput) {
-                return;
+                return
             }
 
             if (window.visualViewport) {
                 setViewportStyle({
                     height: window.visualViewport.height,
                     top: window.visualViewport.offsetTop
-                });
+                })
             }
-        };
+        }
 
-        window.visualViewport?.addEventListener('resize', handleVisualResize);
-        window.visualViewport?.addEventListener('scroll', handleVisualResize);
-        handleVisualResize();
+        window.visualViewport?.addEventListener("resize", handleVisualResize)
+        window.visualViewport?.addEventListener("scroll", handleVisualResize)
+        handleVisualResize()
 
         return () => {
-            const topStyle = document.body.style.top;
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, parseInt(topStyle || '0') * -1);
-
-            window.visualViewport?.removeEventListener('resize', handleVisualResize);
-            window.visualViewport?.removeEventListener('scroll', handleVisualResize);
+            window.visualViewport?.removeEventListener("resize", handleVisualResize)
+            window.visualViewport?.removeEventListener("scroll", handleVisualResize)
 
             // Reset focus state on close
-            if (onFocusChange) onFocusChange(false);
-        };
-    }, [isOpen]);
+            if (onFocusChange) onFocusChange(false)
+        }
+    }, [isOpen, onFocusChange])
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const handleOverlayFocus = (e: React.FocusEvent) => {
-        const target = e.target as HTMLElement;
-        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-        if (!isTextInput) return;
+        const target = e.target as HTMLElement
+        const isTextInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
+        if (!isTextInput) return
 
         if (overlayRef.current && window.visualViewport) {
             // Measure-Lock-Animate pattern
-            const rect = overlayRef.current.getBoundingClientRect();
-            setViewportStyle({ height: rect.height, top: rect.top });
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            const rect = overlayRef.current.getBoundingClientRect()
+            setViewportStyle({ height: rect.height, top: rect.top })
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
 
             requestAnimationFrame(() => {
                 setViewportStyle({
                     height: window.visualViewport!.height,
                     top: window.visualViewport!.offsetTop
-                });
-            });
+                })
+            })
         } else {
             // Fallback for environments without visualViewport (or desktop testing)
-            setIsFocused(true);
-            if (onFocusChange) onFocusChange(true);
+            setIsFocused(true)
+            if (onFocusChange) onFocusChange(true)
         }
-    };
+    }
 
     const handleOverlayBlur = (e: React.FocusEvent) => {
-        if (overlayRef.current?.contains(e.relatedTarget as Node)) return;
-        setIsFocused(false);
-        if (onFocusChange) onFocusChange(false);
-        setViewportStyle(undefined);
-    };
+        if (overlayRef.current?.contains(e.relatedTarget as Node)) return
+        setIsFocused(false)
+        if (onFocusChange) onFocusChange(false)
+        setViewportStyle(undefined)
+    }
 
     const handleSend = async () => {
-        if (!note.trim() || !couple) return;
+        if (!note.trim() || !couple) return
 
-        setSending(true);
+        setSending(true)
         try {
-            await sendNote(note);
-            setNote("");
-            onClose();
+            await sendNote(note)
+            setNote("")
+            onClose()
         } catch (error) {
-            console.error("Error sending note:", error);
+            logger.error("PostNoteOverlay", "Error sending note", error)
         } finally {
-            setSending(false);
+            setSending(false)
         }
-    };
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return createPortal(
         <AnimatePresence>
             {isOpen && (
@@ -245,5 +254,5 @@ export function PostNoteOverlay({ isOpen, onClose, onFocusChange }: PostNoteOver
             )}
         </AnimatePresence>,
         document.body
-    );
+    )
 }

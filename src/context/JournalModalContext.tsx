@@ -1,9 +1,13 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useCoupleData } from '../hooks/useCoupleData';
+import { useCoupleData } from '@/hooks/useCoupleData';
+import { logger } from '@/lib/logger';
 import { useJournalContext, type JournalEntry } from './JournalContext';
-import { CreateJournalOverlay } from '../components/journal/CreateJournalOverlay';
+import { CreateJournalOverlay } from '@/components/journal/CreateJournalOverlay';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface JournalModalContextType {
     openNewPost: () => void;
     openEditPost: (entry: JournalEntry) => void;
@@ -11,8 +15,14 @@ interface JournalModalContextType {
     isOverlayFocused: boolean;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const JournalModalContext = createContext<JournalModalContextType | null>(null);
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export function useJournalModals() {
     const context = useContext(JournalModalContext);
     if (!context) {
@@ -25,6 +35,9 @@ interface JournalModalProviderProps {
     children: ReactNode;
 }
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export function JournalModalProvider({ children }: JournalModalProviderProps) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -38,7 +51,7 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     // Open modal and navigate to journal
-    const openWithNavigation = (openFn: () => void) => {
+    const openWithNavigation = useCallback((openFn: () => void) => {
         openFn();
         // Navigate after modal opens
         setTimeout(() => {
@@ -46,58 +59,60 @@ export function JournalModalProvider({ children }: JournalModalProviderProps) {
                 navigate('/journal', { replace: true });
             }
         }, 100);
-    };
+    }, [location.pathname, navigate]);
 
-    const openNewPost = () => {
+    const openNewPost = useCallback(() => {
         setEditingEntry(null);
         openWithNavigation(() => setIsDialogOpen(true));
-    };
+    }, [openWithNavigation]);
 
-    const openEditPost = (entry: JournalEntry) => {
+    const openEditPost = useCallback((entry: JournalEntry) => {
         setEditingEntry(entry);
         setIsDialogOpen(true);
-    };
+    }, []);
 
-    const handleClose = () => {
+    const handleClose = useCallback(() => {
         setIsDialogOpen(false);
         setEditingEntry(null);
-    };
+    }, []);
 
-    const handleSubmit = async (data: any) => {
+    const handleSubmit = useCallback(async (data: any) => {
         if (!couple) return;
         setIsSubmitting(true);
         try {
             await saveEntry(data, editingEntry?.id);
             handleClose();
         } catch (error) {
-            console.error('Error saving journal entry:', error);
+            logger.error('JournalModalContext', 'Error saving journal entry', error);
             alert('Failed to save post. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
-    };
+    }, [couple, saveEntry, editingEntry?.id, handleClose]);
 
-    const handleDelete = async () => {
+    const handleDelete = useCallback(async () => {
         if (!editingEntry) return;
         setIsDeleting(true);
         try {
             await deleteEntry(editingEntry.id);
             handleClose();
         } catch (error) {
-            console.error('Error deleting journal entry:', error);
+            logger.error('JournalModalContext', 'Error deleting journal entry', error);
             alert('Failed to delete post. Please try again.');
         } finally {
             setIsDeleting(false);
         }
-    };
+    }, [editingEntry, deleteEntry, handleClose]);
+
+    const contextValue = useMemo(() => ({
+        openNewPost,
+        openEditPost,
+        isOverlayOpen: isDialogOpen,
+        isOverlayFocused
+    }), [openNewPost, openEditPost, isDialogOpen, isOverlayFocused]);
 
     return (
-        <JournalModalContext.Provider value={{
-            openNewPost,
-            openEditPost,
-            isOverlayOpen: isDialogOpen,
-            isOverlayFocused
-        }}>
+        <JournalModalContext.Provider value={contextValue}>
             {children}
             <CreateJournalOverlay
                 isOpen={isDialogOpen}

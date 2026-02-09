@@ -1,18 +1,24 @@
-import { useState, useEffect, useMemo } from 'react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState, useEffect, useMemo } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { MessageCircle, ThumbsUp, ThumbsDown, Clock, Trophy } from "lucide-react"
+import { useGameSession, type GameSession } from "@/hooks/useGameSession"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { supabase } from "@/lib/supabase"
+import { neverHaveIEverQuestions } from "@/data/gameQuestions"
 
-
-import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, ThumbsUp, ThumbsDown, Clock, Trophy } from 'lucide-react';
-import type { GameSession } from '../../hooks/useGameSession';
-import { useGameSession } from '../../hooks/useGameSession';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { supabase } from '../../lib/supabase';
-import { neverHaveIEverQuestions } from '../../data/gameQuestions';
-
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface NeverHaveIEverGameProps {
-    session: GameSession;
+    session: GameSession
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function NeverHaveIEverGame({ session }: NeverHaveIEverGameProps) {
     const { updateGameState, nextRound, isPlayerOne } = useGameSession();
     const { partner, currentUser } = useCoupleData();

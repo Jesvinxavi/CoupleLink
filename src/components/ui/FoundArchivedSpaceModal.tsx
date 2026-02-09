@@ -1,25 +1,37 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./dialog"
 import { Button } from "./button"
 import { History, Image as ImageIcon, BookHeart, Clock, AlertTriangle } from "lucide-react"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface FoundArchivedSpaceModalProps {
     isOpen: boolean
     stats: {
         photo_count: number
         journal_count: number
         duration_days: number
+        expires_at?: string | null
     } | null
     onRestore: () => void
     onDismiss: () => void
     loading: boolean
+    error?: string | null
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function FoundArchivedSpaceModal({
     isOpen,
     stats,
     onRestore,
     onDismiss,
-    loading
+    loading,
+    error
 }: FoundArchivedSpaceModalProps) {
     if (!stats) {
         return null;
@@ -60,15 +72,18 @@ export function FoundArchivedSpaceModal({
                     <AlertTriangle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
                     <div className="text-sm text-yellow-800">
                         <p className="font-medium">Warning</p>
-                        <p>{
-                            // @ts-ignore
-                            stats.expires_at
-                                // @ts-ignore
-                                ? `This history will be permanently deleted in ${Math.max(0, Math.ceil((new Date(stats.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days if not restored.`
-                                : "This history will be permanently deleted in 7 days if not restored."
+                        <p>{stats.expires_at
+                            ? `This history will be permanently deleted in ${Math.max(0, Math.ceil((new Date(stats.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days if not restored.`
+                            : "This history will be permanently deleted in 7 days if not restored."
                         }</p>
                     </div>
                 </div>
+
+                {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                        {error}
+                    </div>
+                )}
 
                 <DialogFooter className="flex-col gap-2 sm:gap-0">
                     <div className="flex flex-col sm:flex-row gap-2 w-full justify-end">

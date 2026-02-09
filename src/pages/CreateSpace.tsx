@@ -1,25 +1,45 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useState, useEffect, useRef } from "react"
 import { Copy, Share2, Check } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { supabase } from "../lib/supabase"
-import { useAuth } from "../context/AuthContext"
-import { useCoupleData } from "../hooks/useCoupleData"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
-import { Button } from "../components/ui/button"
-import { Alert, AlertDescription } from "../components/ui/alert"
+import { supabase } from "@/lib/supabase"
+import { logger } from "@/lib/logger"
+import { useAuth } from "@/context/AuthContext"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import type { CreateCoupleResult } from "@/types/rpc"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function CreateSpace() {
     const { user } = useAuth()
     const { refreshCoupleData } = useCoupleData()
     const navigate = useNavigate()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [inviteCode, setInviteCode] = useState("")
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-
     const [coupleId, setCoupleId] = useState<string | null>(null)
+    const [copied, setCopied] = useState(false)
+    const [isSharing, setIsSharing] = useState(false)
+
+    // ═══════════════════════════════════════
+    // REFS
+    // ═══════════════════════════════════════
     const generatingRef = useRef(false)
     const mountedRef = useRef(true)
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         mountedRef.current = true
         return () => { mountedRef.current = false }
@@ -35,7 +55,11 @@ export default function CreateSpace() {
 
 
                 if (profile?.couple_id) {
-                    const { data: existingCouple } = await supabase.from("couples").select("*").eq("id", profile.couple_id).single()
+                    const { data: existingCouple } = await supabase
+                        .from("couples")
+                        .select("id, invite_code, user_two_id")
+                        .eq("id", profile.couple_id)
+                        .single()
 
                     if (existingCouple) {
                         if (existingCouple.user_two_id) {
@@ -52,31 +76,27 @@ export default function CreateSpace() {
                     }
                 }
 
-                const code = Math.random().toString(36).substring(2, 8).toUpperCase()
+                const { data: createData, error: createError } = await supabase
+                    .rpc("create_couple_with_invite")
 
-                const { data: couple, error: coupleError } = await supabase
-                    .from("couples")
-                    .insert({ invite_code: code, user_one_id: user!.id }).select().single()
+                if (createError) throw createError
 
-                if (coupleError) throw coupleError
+                const result = createData as unknown as CreateCoupleResult
 
-                const { error: profileError } = await supabase
-                    .from("profiles").update({ couple_id: couple.id }).eq("id", user!.id)
-
-                if (profileError) throw profileError
-
-                if (profileError) throw profileError
+                if (!result?.success || !result.couple_id || !result.invite_code) {
+                    throw new Error(result?.message || "Failed to create space")
+                }
 
                 await refreshCoupleData()
 
                 if (mountedRef.current) {
-                    setInviteCode(code)
-                    setCoupleId(couple.id) // Trigger subscription
+                    setInviteCode(result.invite_code)
+                    setCoupleId(result.couple_id) // Trigger subscription
                     setLoading(false)
                 }
 
             } catch (err: any) {
-                console.error('Error in generateSpace', err)
+                logger.error('CreateSpace', 'Error generating space', err)
                 if (mountedRef.current) {
                     setError(err.message)
                     setLoading(false)
@@ -88,7 +108,10 @@ export default function CreateSpace() {
     }, [user, navigate, refreshCoupleData]) // Added refreshCoupleData to deps
 
     useEffect(() => {
-        if (!coupleId) return
+        if (!coupleId || !user) return
+
+        const stopPerf = logger.perf("CreateSpace", "Realtime subscription setup")
+        let perfLogged = false
 
         const channel = supabase
             .channel(`couple:${coupleId}`)
@@ -100,90 +123,59 @@ export default function CreateSpace() {
                         .update({ onboarding_completed: true })
                         .eq('id', user!.id)
 
-                    if (profileError) console.error('Error setting onboarding_completed', profileError)
+                    if (profileError) {
+                        logger.error('CreateSpace', 'Error setting onboarding_completed', profileError)
+                    }
 
                     navigate("/")
                 }
             })
-            .subscribe()
+            .subscribe((status) => {
+                if (!perfLogged && status === "SUBSCRIBED") {
+                    perfLogged = true
+                    stopPerf()
+                }
+            })
 
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [coupleId, navigate, refreshCoupleData])
+    }, [coupleId, navigate, user])
 
     // Reset copied state if the code changes
     useEffect(() => {
         setCopied(false)
     }, [inviteCode])
 
-    const [copied, setCopied] = useState(false)
-    const [isSharing, setIsSharing] = useState(false)
-
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const copyToClipboard = async () => {
-        console.log("----------------------------------------")
-        console.log("[CreateSpace] Copy Button Clicked")
-        console.log("[CreateSpace] Invite Code:", inviteCode)
-        console.log("[CreateSpace] Secure Context:", window.isSecureContext)
-        console.log("[CreateSpace] navigator.clipboard:", navigator.clipboard)
-
         if (!inviteCode) {
-            console.error("[CreateSpace] Abort: No invite code")
-            return
+            logger.warn("CreateSpace", "Copy aborted: no invite code");
+            return;
+        }
+
+        if (!navigator.clipboard) {
+            logger.warn("CreateSpace", "Clipboard API unavailable");
+            setError("Clipboard is unavailable in this browser. Please copy the code manually.");
+            return;
         }
 
         try {
-            if (!navigator.clipboard) {
-                console.error("[CreateSpace] navigator.clipboard API missing. Check HTTPS/Localhost.")
-                // Fallback using execCommand for older mobile browsers/http
-                const textArea = document.createElement("textarea")
-                textArea.value = inviteCode
-
-                // Avoid scrolling to bottom
-                textArea.style.top = "0"
-                textArea.style.left = "0"
-                textArea.style.position = "fixed"
-
-                document.body.appendChild(textArea)
-                textArea.focus()
-                textArea.select()
-
-                try {
-                    const successful = document.execCommand('copy')
-                    const msg = successful ? 'successful' : 'unsuccessful'
-                    console.log('[CreateSpace] Fallback execCommand was ' + msg)
-                    if (successful) {
-                        setCopied(true)
-                        // Persistent success state as requested
-                    } else {
-                        throw new Error("execCommand returned false")
-                    }
-                } catch (err) {
-                    console.error('[CreateSpace] Fallback execCommand error', err)
-                }
-
-                document.body.removeChild(textArea)
-                return
-            }
-
-            console.log("[CreateSpace] Attempting navigator.clipboard.writeText...")
-            await navigator.clipboard.writeText(inviteCode)
-            console.log("[CreateSpace] WriteText Promise Resolved - Success")
-
-            setCopied(true)
-            // Persistent success state as requested
-
+            await navigator.clipboard.writeText(inviteCode);
+            setCopied(true);
         } catch (err) {
-            console.error('[CreateSpace] Failed to copy token:', err)
-            // Try fallback if writeText fails (e.g. mobile permissions)
+            logger.error("CreateSpace", "Failed to copy invite code", err);
+            setError("Failed to copy the invite code. Please try again.");
         }
     }
 
     const shareCode = async () => {
-        console.log("----------------------------------------")
-        console.log("[CreateSpace] Share Button Clicked")
-        console.log("[CreateSpace] navigator.share supported:", !!navigator.share)
-        console.log("[CreateSpace] navigator.canShare supported:", !!navigator.canShare)
+        if (!inviteCode) {
+            logger.warn("CreateSpace", "Share aborted: no invite code");
+            return;
+        }
 
         const shareData = {
             title: "Join me on CoupleLink!",
@@ -191,35 +183,31 @@ export default function CreateSpace() {
             url: window.location.origin
         }
 
-        console.log("[CreateSpace] Data to share:", shareData)
-
         if (!navigator.share) {
-            console.warn("[CreateSpace] navigator.share missing")
-            const isSecure = window.isSecureContext
-            const protocol = window.location.protocol
-            alert(`Sharing unavailable.\n\nDebug Info:\nSecure Context: ${isSecure}\nProtocol: ${protocol}\nNavigator.share: ${!!navigator.share}\n\nNote: iOS/Chrome requires HTTPS for sharing.`)
-            return
+            logger.warn("CreateSpace", "Share API unavailable");
+            setError("Sharing is not supported on this device.");
+            return;
         }
 
         if (navigator.canShare && !navigator.canShare(shareData)) {
-            console.warn("[CreateSpace] navigator.canShare returned false for data")
-            alert("This device doesn't support sharing this specific data.")
-            return
+            logger.warn("CreateSpace", "Share payload not supported");
+            setError("This device doesn't support sharing this data.");
+            return;
         }
 
         setIsSharing(true)
         try {
-            console.log("[CreateSpace] Calling navigator.share()...")
             await navigator.share(shareData)
-            console.log("[CreateSpace] navigator.share() completed successfully")
         } catch (err) {
-            console.error("[CreateSpace] Error sharing:", err)
-            // Don't fallback to copy on error (like user cancellation)
+            logger.error("CreateSpace", "Error sharing invite code", err)
         } finally {
             setIsSharing(false)
         }
     }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     if (loading) {
         return (
             <div className="flex min-h-screen items-center justify-center">

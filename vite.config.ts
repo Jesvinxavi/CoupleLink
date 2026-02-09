@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // GitHub Pages requires the repository name as the base path.
   base: '/CoupleLink/',
   plugins: [
     react(),
@@ -16,7 +17,7 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
       },
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['pwa-icon.svg'],
       manifest: {
         name: 'CoupleLink',
         short_name: 'CoupleLink',
@@ -46,4 +47,21 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    port: 5173,
+    host: '0.0.0.0', // Allows access from network (for phone)
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (!id.includes('node_modules')) return
+          if (id.includes('react')) return 'react'
+          if (id.includes('@supabase')) return 'supabase'
+          if (id.includes('recharts')) return 'charts'
+          return 'vendor'
+        }
+      }
+    }
+  }
 })

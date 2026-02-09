@@ -1,19 +1,28 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Button } from '../ui/button';
-import { motion } from 'framer-motion';
-import { POSITION_CATEGORIES } from '../../data/positionsData';
-import type { Position } from '../../data/positionsData';
-import { PositionSVG } from './PositionSVG';
-import { ArrowLeft } from 'lucide-react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { motion } from "framer-motion"
+import { ArrowLeft } from "lucide-react"
+import { POSITION_CATEGORIES } from "@/data/positionsData"
+import type { Position } from "@/data/positionsData"
+import { PositionSVG } from "@/components/sexploration/PositionSVG"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface PositionDetailModalProps {
-    position: Position | null;
-    isOpen: boolean;
-    onClose: () => void;
-    isCompleted: boolean;
-    onToggleComplete: () => void;
+    position: Position | null
+    isOpen: boolean
+    onClose: () => void
+    isCompleted: boolean
+    onToggleComplete: () => void
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function PositionDetailModal({
     position,
     isOpen,
@@ -21,10 +30,16 @@ export function PositionDetailModal({
     isCompleted,
     onToggleComplete,
 }: PositionDetailModalProps) {
-    if (!position) return null;
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
+    if (!position) return null
 
-    const category = POSITION_CATEGORIES[position.category];
+    const category = POSITION_CATEGORIES[position.category]
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-md rounded-xl overflow-hidden bg-rose-50 dark:bg-gray-900 border-none [&>button]:hidden" hideClose={true}>
@@ -69,8 +84,8 @@ export function PositionDetailModal({
                         <Button
                             onClick={onToggleComplete}
                             className={`w-full py-6 text-lg font-semibold rounded-xl transition-all ${isCompleted
-                                ? 'bg-green-500 hover:bg-green-600 text-white'
-                                : 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white'
+                                ? "bg-green-500 hover:bg-green-600 text-white"
+                                : "bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
                                 }`}
                         >
                             {isCompleted ? (
@@ -94,5 +109,5 @@ export function PositionDetailModal({
                 </div>
             </DialogContent>
         </Dialog>
-    );
+    )
 }

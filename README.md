@@ -2,6 +2,24 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Environment Variables
+
+Frontend (Vite):
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase public anon key
+- `VITE_AUTH_TESTING_MODE` - Optional (`true`/`false`) to bypass auth requirements in dev
+- `VITE_VAPID_PUBLIC_KEY` - VAPID public key for web push subscriptions
+
+Edge Function (`supabase/functions/push-scheduler`):
+- `SUPABASE_URL` - Auto-provided by Supabase
+- `SUPABASE_SERVICE_ROLE_KEY` - Auto-provided by Supabase
+- `VAPID_PUBLIC_KEY` - Manually configured
+- `VAPID_PRIVATE_KEY` - Manually configured
+
+Scripts (`scripts/sync_content.js`):
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Preferred for writes (falls back to `VITE_SUPABASE_ANON_KEY`)
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh

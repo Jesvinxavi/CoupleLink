@@ -1,12 +1,21 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface ImageCarouselProps {
     images: string[];
     className?: string;
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function ImageCarousel({ images, className }: ImageCarouselProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -34,6 +43,8 @@ export function ImageCarousel({ images, className }: ImageCarouselProps) {
                             src={src}
                             alt={`Slide ${index + 1}`}
                             className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                         />
                     </div>
                 ))}

@@ -1,10 +1,15 @@
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface StreakStatsTileProps {
-    currentStreak: number;
-    longestStreak: number;
+    currentStreak: number
+    longestStreak: number
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function StreakStatsTile({ currentStreak, longestStreak }: StreakStatsTileProps) {
-
     return (
         <div className="rounded-2xl bg-white p-4 shadow-sm h-full flex flex-col justify-between">
             <div className="flex items-center justify-between">
@@ -27,5 +32,5 @@ export function StreakStatsTile({ currentStreak, longestStreak }: StreakStatsTil
                 </div>
             </div>
         </div>
-    );
+    )
 }

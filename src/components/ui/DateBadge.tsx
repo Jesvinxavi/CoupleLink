@@ -1,10 +1,19 @@
-import { cn } from "../../lib/utils";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { cn } from "@/lib/utils";
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface DateBadgeProps {
     date: Date;
     className?: string;
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function DateBadge({ date, className }: DateBadgeProps) {
     const dayName = date.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase();
     const dayNumber = date.getDate();

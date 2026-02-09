@@ -1,19 +1,29 @@
-import { Card, CardContent } from "../ui/card";
-import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { memo, type ReactNode } from "react"
+import { ArrowRight } from "lucide-react"
+import { Link } from "react-router-dom"
+import { Card, CardContent } from "@/components/ui/card"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface GameCardProps {
-    title: string;
-    description: string;
-    icon: React.ReactNode;
-    color: string;
-    href: string;
-    locked?: boolean;
+    title: string
+    description: string
+    icon: ReactNode
+    color: string
+    href: string
+    locked?: boolean
 }
 
-export function GameCard({ title, description, icon, color, href, locked = false }: GameCardProps) {
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+const GameCard = memo(function GameCard({ title, description, icon, color, href, locked = false }: GameCardProps) {
     const Content = (
-        <Card className={`overflow-hidden border-none shadow-sm hover:shadow-md transition-all group cursor-pointer ${locked ? 'opacity-70' : ''}`}>
+        <Card className={`overflow-hidden border-none shadow-sm hover:shadow-md transition-all group cursor-pointer ${locked ? "opacity-70" : ""}`}>
             <CardContent className="p-0">
                 <div className={`h-24 ${color} flex items-center justify-center`}>
                     <div className="text-white transform group-hover:scale-110 transition-transform duration-300">
@@ -29,19 +39,21 @@ export function GameCard({ title, description, icon, color, href, locked = false
                         {description}
                     </p>
                     <div className="flex items-center text-xs font-medium text-gray-900 dark:text-white group-hover:translate-x-1 transition-transform">
-                        {locked ? 'Unlock to Play' : 'Play Now'}
+                        {locked ? "Unlock to Play" : "Play Now"}
                         <ArrowRight className="w-3 h-3 ml-1" />
                     </div>
                 </div>
             </CardContent>
         </Card>
-    );
+    )
 
-    if (locked) return Content;
+    if (locked) return Content
 
     return (
         <Link to={href} className="block">
             {Content}
         </Link>
-    );
-}
+    )
+})
+
+export { GameCard }

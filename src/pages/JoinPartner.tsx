@@ -1,31 +1,44 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import confetti from "canvas-confetti"
-import { supabase } from "../lib/supabase"
-import { useAuth } from "../context/AuthContext"
-import { useCoupleData } from "../hooks/useCoupleData"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { Alert, AlertDescription } from "../components/ui/alert"
+import { supabase } from "@/lib/supabase"
+import { LIMITS } from "@/lib/constants"
+import { logger } from "@/lib/logger"
+import { useAuth } from "@/context/AuthContext"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
-import { PaywallModal } from "../components/ui/PaywallModal"
-import type { JoinCoupleResult } from "../types/rpc"
+import { PaywallModal } from "@/components/ui/PaywallModal"
+import type { JoinCoupleResult } from "@/types/rpc"
 
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export default function JoinPartner() {
     const { user } = useAuth()
     const { refreshCoupleData, userProfile } = useCoupleData()
     const navigate = useNavigate()
     const location = useLocation()
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
     const [code, setCode] = useState("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-
-
     const [showPaywall, setShowPaywall] = useState(false)
 
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     // Auto-redirect if we become paired (e.g. partner restored via email)
     useEffect(() => {
         if (userProfile?.couple_id) {
@@ -35,6 +48,9 @@ export default function JoinPartner() {
         }
     }, [userProfile?.couple_id, navigate]);
 
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
     const handleJoin = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!user) return
@@ -48,14 +64,18 @@ export default function JoinPartner() {
             })
 
             if (error) {
-                console.error('RPC error', error)
+                logger.error('JoinPartner', 'RPC error', error)
                 throw error
             }
 
             const result = data as unknown as JoinCoupleResult;
             if (!result?.success) {
-                // Legacy check removed. Standard error handling.
-                throw new Error(result?.message || 'Failed to join')
+                const message = result?.message || 'Failed to join'
+                if (message.toLowerCase().includes("premium") || message.toLowerCase().includes("upgrade")) {
+                    setShowPaywall(true)
+                    return
+                }
+                throw new Error(message)
             }
             // Refresh couple data to ensure context is updated before redirect
             await refreshCoupleData()
@@ -66,8 +86,7 @@ export default function JoinPartner() {
                 .eq('id', user.id)
 
             if (profileError) {
-                console.error('Error setting onboarding_completed', profileError);
-                console.error('Error details:', profileError.details, profileError.message, profileError.hint);
+                logger.error('JoinPartner', 'Error setting onboarding_completed', profileError);
             }
 
             // Success! Trigger confetti and navigate
@@ -87,15 +106,21 @@ export default function JoinPartner() {
             }, 1000)
 
         } catch (err: any) {
-            console.error('Error during join:', err)
-            setError(err.message || "Invalid code. Please check and try again.")
+            logger.error('JoinPartner', 'Error during join', err)
+            const message = err?.message || "Invalid code. Please check and try again."
+            if (message.toLowerCase().includes("premium") || message.toLowerCase().includes("upgrade")) {
+                setShowPaywall(true)
+                return
+            }
+            setError(message)
         } finally {
             setLoading(false)
         }
     }
 
-
-
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md relative overflow-hidden">
@@ -123,7 +148,7 @@ export default function JoinPartner() {
                                 value={code}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCode(e.target.value)}
                                 placeholder="LOVE8X"
-                                maxLength={6}
+                                maxLength={LIMITS.MAX_INVITE_CODE_LENGTH}
                                 className="text-center text-2xl tracking-widest uppercase"
                                 required
                             />
@@ -132,7 +157,7 @@ export default function JoinPartner() {
                             </p>
                         </div>
 
-                        <Button type="submit" className="w-full" size="lg" disabled={loading || code.length !== 6}>
+                        <Button type="submit" className="w-full" size="lg" disabled={loading || code.length !== LIMITS.MAX_INVITE_CODE_LENGTH}>
                             {loading ? "Connecting..." : "Connect"}
                         </Button>
 

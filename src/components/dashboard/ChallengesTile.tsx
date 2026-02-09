@@ -1,12 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion, useAnimation } from 'framer-motion';
-import confetti from 'canvas-confetti';
-import { type ChallengeStatus } from '../../hooks/useChallenges';
-import { useChallengePoints } from '../../hooks/useChallengePoints';
-import { ChallengeOverlay } from './ChallengeOverlay';
-import { PaywallModal } from '../ui/PaywallModal';
-import { type PoolStatus } from '../../context/ChallengeContext';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect, useRef, useState } from "react"
+import { motion, useAnimation } from "framer-motion"
+import confetti from "canvas-confetti"
+import { type ChallengeStatus } from "@/hooks/useChallenges"
+import { useChallengePoints } from "@/hooks/useChallengePoints"
+import { ChallengeOverlay } from "@/components/dashboard/ChallengeOverlay"
+import { PaywallModal } from "@/components/ui/PaywallModal"
+import { type PoolStatus } from "@/context/ChallengeContext"
 
+// ═══════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════
 const container = {
     hidden: { opacity: 0 },
     show: {
@@ -22,7 +28,10 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
-type ChallengeFrequency = 'daily' | 'weekly' | 'monthly';
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
+type ChallengeFrequency = "daily" | "weekly" | "monthly"
 
 interface ChallengesTileProps {
     daily: any; weekly: any; monthly: any;
@@ -45,6 +54,9 @@ interface ChallengesTileProps {
     animateIn?: boolean;
 }
 
+// ═══════════════════════════════════════
+// SUBCOMPONENTS
+// ═══════════════════════════════════════
 function ChallengeFrequencyCard({
     type,
     title,
@@ -58,17 +70,17 @@ function ChallengeFrequencyCard({
     onOpen,
     allShown
 }: {
-    type: ChallengeFrequency;
-    title: string;
-    challenge: any;
-    timeLeft: string;
-    isUrgent: boolean;
-    status: ChallengeStatus;
-    myMemory: any;
-    partnerMemory: any;
-    agreement: 'agreed' | 'disagreed' | 'pending' | 'none';
-    onOpen: (t: ChallengeFrequency) => void;
-    allShown?: boolean;
+    type: ChallengeFrequency
+    title: string
+    challenge: any
+    timeLeft: string
+    isUrgent: boolean
+    status: ChallengeStatus
+    myMemory: any
+    partnerMemory: any
+    agreement: "agreed" | "disagreed" | "pending" | "none"
+    onOpen: (t: ChallengeFrequency) => void
+    allShown?: boolean
 }) {
 
 
@@ -227,6 +239,9 @@ function ChallengeFrequencyCard({
     );
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function ChallengesTile({
     daily, weekly, monthly,
     dailyTimeLeft, weeklyTimeLeft, monthlyTimeLeft,

@@ -1,37 +1,51 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { type Coupon as CouponType } from '../../hooks/useCoupons';
-import { Coupon } from './Coupon';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { motion, AnimatePresence } from "framer-motion"
+import { type Coupon as CouponType } from "@/hooks/useCoupons"
+import { Coupon } from "@/components/sexploration/Coupon"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface GiftReceivedModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    coupon: CouponType;
-    onAccept?: () => void;
-    onSelectCoupon?: () => void; // For Free Reign gifts
+    isOpen: boolean
+    onClose: () => void
+    coupon: CouponType
+    onAccept?: () => void
+    onSelectCoupon?: () => void // For Free Reign gifts
 }
 
-export const GiftReceivedModal: React.FC<GiftReceivedModalProps> = ({
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+export function GiftReceivedModal({
     isOpen,
     onClose,
     coupon,
     onAccept,
     onSelectCoupon
-}) => {
-    if (!isOpen || !coupon) return null;
+}: GiftReceivedModalProps) {
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
+    if (!isOpen || !coupon) return null
 
-    const isFreeReign = coupon.title === 'Free Reign' || coupon.title === 'Free Reign Coupon';
+    const isFreeReign = coupon.title === "Free Reign" || coupon.title === "Free Reign Coupon"
 
     const handleAction = () => {
         if (isFreeReign && onSelectCoupon) {
-            onSelectCoupon();
+            onSelectCoupon()
         } else if (onAccept) {
-            onAccept();
+            onAccept()
         } else {
-            onClose();
+            onClose()
         }
-    };
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <AnimatePresence>
             <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4">
@@ -75,10 +89,10 @@ export const GiftReceivedModal: React.FC<GiftReceivedModalProps> = ({
                         onClick={handleAction}
                         className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold py-4 px-10 rounded-full shadow-lg shadow-pink-500/40 transform transition-all hover:scale-105 active:scale-95 text-lg"
                     >
-                        {isFreeReign ? 'Select Coupon' : 'Add to Wallet'}
+                        {isFreeReign ? "Select Coupon" : "Add to Wallet"}
                     </button>
                 </motion.div>
             </div>
         </AnimatePresence>
-    );
-};
+    )
+}

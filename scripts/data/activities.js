@@ -1,7 +1,9 @@
+// ═══════════════════════════════════════
+// ACTIVITIES DATA
+// ═══════════════════════════════════════
 // This file holds the master list of activities.
 // Add new challenges/questions here.
-
-const activities = [
+export const activities = [
     // EXAMPLE ONLY - Replace/Append with your actual consolidated list if you want to manage EVERYTHING here.
     // Or just add NEW items here.
 
@@ -17,5 +19,3 @@ const activities = [
     //   }
     // },
 ];
-
-module.exports = { activities };

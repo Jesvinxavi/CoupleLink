@@ -1,78 +1,98 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useCoupons, type CouponTemplate } from '../../hooks/useCoupons';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Button } from '../ui/button';
-import { Gift, Loader2, CheckCircle, Send } from 'lucide-react';
-import { Coupon } from './Coupon';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useEffect, useState, useMemo, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Gift, Loader2, CheckCircle, Send } from "lucide-react"
+import { useCoupons, type CouponTemplate } from "@/hooks/useCoupons"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Coupon } from "@/components/sexploration/Coupon"
+import { logger } from "@/lib/logger"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface CouponCollectionModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onClaimSuccess: () => void;
-    mode?: 'claim' | 'convert';
-    targetCouponId?: string;
+    isOpen: boolean
+    onClose: () => void
+    onClaimSuccess: () => void
+    mode?: "claim" | "convert"
+    targetCouponId?: string
 }
 
-export const CouponCollectionModal: React.FC<CouponCollectionModalProps> = ({
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+export function CouponCollectionModal({
     isOpen,
     onClose,
     onClaimSuccess,
-    mode = 'claim',
+    mode = "claim",
     targetCouponId
-}) => {
-    const { templates, coupons, fetchTemplates, claimCoupon, updateCoupon } = useCoupons();
-    const [selectedTemplate, setSelectedTemplate] = useState<CouponTemplate | null>(null);
-    const [isClaiming, setIsClaiming] = useState(false);
+}: CouponCollectionModalProps) {
+    const { templates, coupons, fetchTemplates, claimCoupon, updateCoupon } = useCoupons()
+    const [selectedTemplate, setSelectedTemplate] = useState<CouponTemplate | null>(null)
+    const [isClaiming, setIsClaiming] = useState(false)
+    const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
     useEffect(() => {
         if (isOpen) {
-            fetchTemplates();
-            setSelectedTemplate(null);
+            fetchTemplates()
+            setSelectedTemplate(null)
+            setErrorMessage(null)
         }
-    }, [isOpen]);
+    }, [fetchTemplates, isOpen])
 
     // Filter out coupons already in the user's wallet
     // Filter out coupons already in the user's wallet
-    let availableTemplates = templates.filter(t => {
-        const hasCoupon = coupons.some(c => c.template_id === t.id && c.id !== targetCouponId);
-        return !hasCoupon;
-    });
+    const availableTemplates = useMemo(() => {
+        const filtered = templates.filter(t => {
+            const hasCoupon = coupons.some(c => c.template_id === t.id && c.id !== targetCouponId)
+            return !hasCoupon
+        })
 
-    // If the user has collected ALL coupons (availableTemplates is empty), 
-    // reset the list to show ALL templates so they can pick duplicates/refill.
-    if (availableTemplates.length === 0 && templates.length > 0) {
-        availableTemplates = templates;
-    }
+        // If the user has collected ALL coupons (filtered is empty),
+        // reset the list to show ALL templates so they can pick duplicates/refill.
+        return filtered.length === 0 && templates.length > 0 ? templates : filtered
+    }, [coupons, targetCouponId, templates])
 
-    const handleTemplateSelect = (template: CouponTemplate) => {
-        setSelectedTemplate(template);
-    };
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleTemplateSelect = useCallback((template: CouponTemplate) => {
+        setSelectedTemplate(template)
+    }, [])
 
-    const handleAction = async () => {
-        if (!selectedTemplate) return;
+    const handleAction = useCallback(async () => {
+        if (!selectedTemplate) return
 
-        setIsClaiming(true);
+        setIsClaiming(true)
+        setErrorMessage(null)
         try {
-            if (mode === 'convert' && targetCouponId) {
+            if (mode === "convert" && targetCouponId) {
                 await updateCoupon(targetCouponId, {
                     title: selectedTemplate.title,
                     description: selectedTemplate.description,
                     template_id: selectedTemplate.id
-                });
+                })
             } else {
-                await claimCoupon(selectedTemplate);
+                await claimCoupon(selectedTemplate)
             }
-            onClaimSuccess();
-            onClose();
-            setSelectedTemplate(null);
+            onClaimSuccess()
+            onClose()
+            setSelectedTemplate(null)
         } catch (error) {
-            console.error(error);
+            logger.error("CouponCollectionModal", "Failed to claim coupon", error)
+            setErrorMessage("Failed to add coupon. Please try again.")
         } finally {
-            setIsClaiming(false);
+            setIsClaiming(false)
         }
-    };
+    }, [claimCoupon, mode, onClaimSuccess, onClose, selectedTemplate, targetCouponId, updateCoupon])
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-md rounded-3xl overflow-hidden flex flex-col max-h-[85vh] p-0 gap-0 bg-rose-50 dark:bg-gray-900 border-none">
@@ -140,14 +160,19 @@ export const CouponCollectionModal: React.FC<CouponCollectionModalProps> = ({
 
                 {/* Footer with Send Button */}
                 <div className="p-5 pt-2 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shrink-0">
+                    {errorMessage && (
+                        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+                            {errorMessage}
+                        </div>
+                    )}
                     <Button
                         disabled={isClaiming || !selectedTemplate}
                         onClick={handleAction}
-                        className={`w-full h-14 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-2xl font-bold shadow-lg shadow-pink-500/25 text-lg transition-all active:scale-[0.98] ${!selectedTemplate ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`w-full h-14 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-2xl font-bold shadow-lg shadow-pink-500/25 text-lg transition-all active:scale-[0.98] ${!selectedTemplate ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                         {isClaiming ? <Loader2 className="animate-spin" /> : (
                             <span className="flex items-center gap-2">
-                                {mode === 'convert' ? 'Convert Coupon' : 'Add to Wallet'}
+                                {mode === "convert" ? "Convert Coupon" : "Add to Wallet"}
                                 <Send className="w-5 h-5" />
                             </span>
                         )}
@@ -156,5 +181,5 @@ export const CouponCollectionModal: React.FC<CouponCollectionModalProps> = ({
 
             </DialogContent>
         </Dialog>
-    );
-};
+    )
+}

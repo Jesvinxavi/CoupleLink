@@ -1,9 +1,14 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import { useCoupleData } from '../hooks/useCoupleData';
-import type { Challenge } from '../types/challenge';
-import { formatTime, getWeekNumber, getDateRange, getPeriodKey } from '../utils/dateUtils';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+import { useCoupleData } from '@/hooks/useCoupleData';
+import type { Challenge } from '@/types/challenge';
+import { formatTime, getWeekNumber, getDateRange, getPeriodKey } from '@/utils/dateUtils';
+
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 
 export type ChallengeStatus = 'locked' | 'active' | 'completed' | 'skipped' | 'waiting_for_partner' | 'pending_agreement';
 
@@ -70,8 +75,14 @@ export interface ChallengeState {
     isUndoing: boolean;
 }
 
+// ═══════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════
 const ChallengeContext = createContext<ChallengeState | null>(null);
 
+// ═══════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════
 export const useChallengeContext = () => {
     const context = useContext(ChallengeContext);
     if (!context) {
@@ -84,6 +95,9 @@ interface ChallengeProviderProps {
     children: ReactNode;
 }
 
+// ═══════════════════════════════════════
+// PROVIDER
+// ═══════════════════════════════════════
 export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
     // Raw State
     const [myMemories, setMyMemories] = useState<any[]>([]);
@@ -153,6 +167,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         if (!couple || !currentUser) return;
 
         const fetchChallenges = async () => {
+            const stopPerf = logger.perf("ChallengeContext", "fetchChallenges")
             try {
                 // Parallel fetch for active challenges
                 const [dailyRes, weeklyRes, monthlyRes] = await Promise.all([
@@ -213,9 +228,10 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                 }
 
             } catch (error) {
-                console.error('Error fetching active challenges:', error);
+                logger.error('ChallengeContext', 'Error fetching active challenges', error);
             } finally {
                 setLoadingChallenges(false);
+                stopPerf()
             }
         };
 
@@ -440,7 +456,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
             }
 
         } catch (err) {
-            console.error('Error checking partner completion:', err);
+            logger.error('ChallengeContext', 'Error checking partner completion', err);
         } finally {
             setLoadingPartner(false);
         }
@@ -579,7 +595,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                 .eq('id', couple.id);
 
         } catch (e) {
-            console.error('Error marking confetti seen:', e);
+            logger.error('ChallengeContext', 'Error marking confetti seen', e);
         }
     }, [couple?.id, userProfile?.id]);
 
@@ -709,7 +725,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                 }
             }
         } catch (error) {
-            console.error('Error saving challenge:', error);
+            logger.error('ChallengeContext', 'Error saving challenge', error);
             // Rollback optimistic update
             // Ideally we'd remove the temp memory here if it was a new insert
             checkPartnerCompletion(); // Force re-sync
@@ -800,7 +816,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                 setTimeout(checkPartnerCompletion, 500);
 
             } catch (error) {
-                console.error('Error undoing challenge:', error);
+                logger.error('ChallengeContext', 'Error undoing challenge', error);
                 // On error, we should probably re-fetch to restore state if it failed
                 checkPartnerCompletion();
             } finally {
@@ -844,52 +860,54 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
             });
 
         } catch (error) {
-            console.error('Error skipping:', error);
+            logger.error('ChallengeContext', 'Error skipping challenge', error);
             checkPartnerCompletion();
         }
     };
 
     // Reset challenge cycle (clears cooloff for a frequency)
     const resetCycle = async (type: 'daily' | 'weekly' | 'monthly') => {
-        console.log('[resetCycle] Starting reset for:', type);
+        logger.debug('ChallengeContext', 'resetCycle started', { type });
         if (!couple) {
-            console.error('[resetCycle] No couple found, aborting');
+            logger.error('ChallengeContext', 'resetCycle aborted: no couple found');
             return;
         }
 
         try {
-            console.log('[resetCycle] Calling RPC reset_challenge_cycle...');
+            logger.debug('ChallengeContext', 'Calling reset_challenge_cycle RPC');
             const { data, error } = await (supabase.rpc as any)('reset_challenge_cycle', {
                 couple_id_input: couple.id,
                 frequency_input: type
             });
 
             if (error) {
-                console.error('[resetCycle] RPC Error:', error);
+                logger.error('ChallengeContext', 'resetCycle RPC error', error);
             }
 
-            console.log('[resetCycle] RPC Response:', data);
+            logger.debug('ChallengeContext', 'resetCycle RPC response', data);
 
             if (data?.success) {
-                console.log('[resetCycle] Reset successful. Fetching new pool status...');
+                logger.debug('ChallengeContext', 'resetCycle succeeded. Fetching pool status');
                 // Refetch pool status
                 const { data: poolData, error: poolError } = await (supabase.rpc as any)('get_challenge_pool_status', { couple_id_input: couple.id });
 
-                if (poolError) console.error('[resetCycle] Pool Status Error:', poolError);
-                console.log('[resetCycle] New Pool Status:', poolData);
+                if (poolError) {
+                    logger.error('ChallengeContext', 'resetCycle pool status error', poolError);
+                }
+                logger.debug('ChallengeContext', 'resetCycle new pool status', poolData);
 
                 if (poolData?.success && poolData.data) {
                     setPoolStatus(poolData.data as PoolStatus);
                 }
                 // Trigger refetch of challenges by refreshing couple data
-                console.log('[resetCycle] Refreshing couple data to get new challenges...');
+                logger.debug('ChallengeContext', 'resetCycle refreshing couple data');
                 await refreshCoupleData();
-                console.log('[resetCycle] Refresh complete.');
+                logger.debug('ChallengeContext', 'resetCycle refresh complete');
             } else {
-                console.warn('[resetCycle] Backend reported failure:', data);
+                logger.warn('ChallengeContext', 'resetCycle backend reported failure', data);
             }
         } catch (error) {
-            console.error('[resetCycle] Exception during reset:', error);
+            logger.error('ChallengeContext', 'resetCycle exception', error);
         }
     };
 
@@ -921,27 +939,73 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         return () => clearInterval(timer);
     }, []);
 
-    const value = {
+    const value = useMemo(() => ({
         daily,
         weekly,
         monthly,
-        dailyTimeLeft: timeLeft.daily, weeklyTimeLeft: timeLeft.weekly, monthlyTimeLeft: timeLeft.monthly,
-        dailyTimeUrgent: timeLeft.dailyUrgent, weeklyTimeUrgent: timeLeft.weeklyUrgent, monthlyTimeUrgent: timeLeft.monthlyUrgent,
-
-        dailyStatus, weeklyStatus, monthlyStatus,
-
-        myDailyMemory, myWeeklyMemory, myMonthlyMemory,
-        partnerDailyMemory, partnerWeeklyMemory, partnerMonthlyMemory,
-
+        dailyTimeLeft: timeLeft.daily,
+        weeklyTimeLeft: timeLeft.weekly,
+        monthlyTimeLeft: timeLeft.monthly,
+        dailyTimeUrgent: timeLeft.dailyUrgent,
+        weeklyTimeUrgent: timeLeft.weeklyUrgent,
+        monthlyTimeUrgent: timeLeft.monthlyUrgent,
+        dailyStatus,
+        weeklyStatus,
+        monthlyStatus,
+        myDailyMemory,
+        myWeeklyMemory,
+        myMonthlyMemory,
+        partnerDailyMemory,
+        partnerWeeklyMemory,
+        partnerMonthlyMemory,
         history,
-        completeChallenge, undoChallenge, skipChallenge,
-        loadingPartner, winnerAgreement,
+        completeChallenge,
+        undoChallenge,
+        skipChallenge,
+        loadingPartner,
+        winnerAgreement,
         markChallengeConfettiSeen,
-        couple, refreshCoupleData,
+        couple,
+        refreshCoupleData,
         loadingChallenges,
-        poolStatus, resetCycle,
-        isCompleting, isUndoing
-    };
+        poolStatus,
+        resetCycle,
+        isCompleting,
+        isUndoing
+    }), [
+        daily,
+        weekly,
+        monthly,
+        timeLeft.daily,
+        timeLeft.weekly,
+        timeLeft.monthly,
+        timeLeft.dailyUrgent,
+        timeLeft.weeklyUrgent,
+        timeLeft.monthlyUrgent,
+        dailyStatus,
+        weeklyStatus,
+        monthlyStatus,
+        myDailyMemory,
+        myWeeklyMemory,
+        myMonthlyMemory,
+        partnerDailyMemory,
+        partnerWeeklyMemory,
+        partnerMonthlyMemory,
+        history,
+        completeChallenge,
+        undoChallenge,
+        skipChallenge,
+        loadingPartner,
+        winnerAgreement,
+        markChallengeConfettiSeen,
+        couple,
+        refreshCoupleData,
+        loadingChallenges,
+        poolStatus,
+        resetCycle,
+        isCompleting,
+        isUndoing
+    ]);
 
     return (
         <ChallengeContext.Provider value={value}>

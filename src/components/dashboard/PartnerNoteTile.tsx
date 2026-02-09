@@ -1,28 +1,45 @@
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
 import { useEffect, useState, memo } from "react"
+import { format, addMilliseconds, differenceInMinutes } from "date-fns"
 import type { Database } from "@/lib/database.types"
-import { format, addHours, differenceInMinutes } from "date-fns"
 import { usePartnerNotes } from "@/hooks/usePartnerNotes"
+import { INTERVALS, URGENCY_THRESHOLDS } from "@/lib/constants"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 
 interface PartnerNoteTileProps {
     partner: Profile | null
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export const PartnerNoteTile = memo(function PartnerNoteTile({ partner }: PartnerNoteTileProps) {
-    const { partnerLastNote, markAsSeen } = usePartnerNotes();
-    const [timeLeft, setTimeLeft] = useState<string>("");
-    const [isVisible, setIsVisible] = useState(false);
+    const { partnerLastNote, markAsSeen } = usePartnerNotes()
 
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [timeLeft, setTimeLeft] = useState<string>("")
+    const [isVisible, setIsVisible] = useState(false)
+
+    // ═══════════════════════════════════════
+    // EFFECTS
+    // ═══════════════════════════════════════
     useEffect(() => {
         if (!partnerLastNote) {
-            setIsVisible(false);
-            return;
+            setIsVisible(false)
+            return
         }
 
         // 1. Mark as seen if not seen
         if (!partnerLastNote.metadata?.seen_at) {
-            markAsSeen(partnerLastNote);
+            markAsSeen(partnerLastNote)
             // Don't show yet until we have a seen_at time (which happens via optimistic update in hook) or immediately if we want
             // Actually, for the timer to start, we need a seen_at. 
             // The hook optimistically updates, so partnerLastNote will have seen_at quickly.
@@ -33,33 +50,36 @@ export const PartnerNoteTile = memo(function PartnerNoteTile({ partner }: Partne
             if (!partnerLastNote.metadata?.seen_at) {
                 // If not seen yet (and we just called markAsSeen), show it tentatively or wait? 
                 // Let's show it. 
-                setIsVisible(true);
-                setTimeLeft("24h 00m");
-                return;
+                setIsVisible(true)
+                setTimeLeft("24h 00m")
+                return
             }
 
-            const seenAt = new Date(partnerLastNote.metadata.seen_at);
-            const expiresAt = addHours(seenAt, 24);
-            const now = new Date();
+            const seenAt = new Date(partnerLastNote.metadata.seen_at)
+            const expiresAt = addMilliseconds(seenAt, URGENCY_THRESHOLDS.ONE_DAY)
+            const now = new Date()
 
             if (now > expiresAt) {
-                setIsVisible(false);
+                setIsVisible(false)
             } else {
-                setIsVisible(true);
-                const diffMins = differenceInMinutes(expiresAt, now);
-                const hours = Math.floor(diffMins / 60);
-                const mins = diffMins % 60;
-                setTimeLeft(`${hours}h ${mins}m`);
+                setIsVisible(true)
+                const diffMins = differenceInMinutes(expiresAt, now)
+                const hours = Math.floor(diffMins / 60)
+                const mins = diffMins % 60
+                setTimeLeft(`${hours}h ${mins}m`)
             }
-        };
+        }
 
-        checkStatus();
-        const timer = setInterval(checkStatus, 60000); // Update every minute
+        checkStatus()
+        const timer = setInterval(checkStatus, INTERVALS.ONE_MINUTE) // Update every minute
 
-        return () => clearInterval(timer);
+        return () => clearInterval(timer)
 
-    }, [partnerLastNote, markAsSeen]);
+    }, [partnerLastNote, markAsSeen])
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     if (!partner || !partnerLastNote || !isVisible) return null
 
     return (

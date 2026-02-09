@@ -1,51 +1,70 @@
-import { useState } from 'react';
-import { useCoupleData } from '../../hooks/useCoupleData';
-import { Card, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '../ui/dialog';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Calendar } from '../ui/calendar';
-import { Plus, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { useCalendarContext } from '../../context/CalendarContext';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState } from "react"
+import { format } from "date-fns"
+import { Plus, Calendar as CalendarIcon, Loader2 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Calendar } from "@/components/ui/calendar"
+import { useCoupleData } from "@/hooks/useCoupleData"
+import { useCalendarContext } from "@/context/CalendarContext"
+import { logger } from "@/lib/logger"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function SharedCalendar() {
-    const { couple } = useCoupleData();
-    const { events, loading, saveEvent } = useCalendarContext();
-    const [date, setDate] = useState<Date | undefined>(new Date());
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [newEventTitle, setNewEventTitle] = useState('');
-    const [newEventCategory, setNewEventCategory] = useState('Date Night');
-    const [submitting, setSubmitting] = useState(false);
+    const { couple } = useCoupleData()
+    const { events, loading, saveEvent } = useCalendarContext()
+
+    // Lightweight, Memories-specific view (full calendar lives in CalendarView)
+
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    const [date, setDate] = useState<Date | undefined>(new Date())
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [newEventTitle, setNewEventTitle] = useState("")
+    const [newEventCategory, setNewEventCategory] = useState("Date Night")
+    const [submitting, setSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleAddEvent = async () => {
-        if (!couple || !date || !newEventTitle.trim()) return;
+        if (!couple || !date || !newEventTitle.trim()) return
 
-        setSubmitting(true);
+        setError(null)
+        setSubmitting(true)
         try {
             await saveEvent({
                 title: newEventTitle,
-                event_date: format(date, 'yyyy-MM-dd'),
+                event_date: format(date, "yyyy-MM-dd"),
                 category: newEventCategory,
-                color: '#e11d48', // Default color
+                color: "#e11d48", // Default color
                 id: undefined, // Type safety
-            });
+            })
 
-            setNewEventTitle('');
-            setIsDialogOpen(false);
+            setNewEventTitle("")
+            setIsDialogOpen(false)
         } catch (err) {
-            console.error('Error adding event:', err);
+            logger.error("SharedCalendar", "Error adding event", err)
+            setError("Failed to add event. Please try again.")
         } finally {
-            setSubmitting(false);
+            setSubmitting(false)
         }
-    };
+    }
 
     // Filter events for selected date
     const selectedDateEvents = events.filter(event =>
-        date && event.event_date === format(date, 'yyyy-MM-dd')
-    );
+        date && event.event_date === format(date, "yyyy-MM-dd")
+    )
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             {/* Calendar View */}
@@ -112,6 +131,11 @@ export function SharedCalendar() {
                                         <option value="Other">Other</option>
                                     </select>
                                 </div>
+                                {error && (
+                                    <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+                                        {error}
+                                    </div>
+                                )}
                                 <div className="flex justify-end">
                                     <Button
                                         onClick={handleAddEvent}
@@ -123,7 +147,7 @@ export function SharedCalendar() {
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                                 Saving...
                                             </>
-                                        ) : 'Save Event'}
+                                        ) : "Save Event"}
                                     </Button>
                                 </div>
                             </div>
@@ -154,5 +178,5 @@ export function SharedCalendar() {
                 </div>
             </div>
         </div>
-    );
+    )
 }

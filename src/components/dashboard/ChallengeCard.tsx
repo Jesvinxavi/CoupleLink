@@ -1,29 +1,38 @@
-import React, { useState } from 'react';
-import confetti from 'canvas-confetti';
-import { Card, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Lock } from 'lucide-react';
-import type { Database } from '@/lib/database.types';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { memo, useEffect, useState, type FormEvent } from "react"
+import confetti from "canvas-confetti"
+import { Lock } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import type { Database } from "@/lib/database.types"
 
-type Activity = Database['public']['Tables']['activities']['Row'];
-type UserAnswer = Database['public']['Tables']['user_answers']['Row'];
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
+type Activity = Database["public"]["Tables"]["activities"]["Row"]
+type UserAnswer = Database["public"]["Tables"]["user_answers"]["Row"]
 
 interface ChallengeCardProps {
-    activity: Activity | null;
-    userAnswer: UserAnswer | null;
-    partnerAnswer: UserAnswer | null;
-    onSubmit: (answer: string) => Promise<any>;
-    onMarkSeen?: () => Promise<void>;
-    isNewAnswer?: boolean;
-    loading: boolean;
+    activity: Activity | null
+    userAnswer: UserAnswer | null
+    partnerAnswer: UserAnswer | null
+    onSubmit: (answer: string) => Promise<any>
+    onMarkSeen?: () => Promise<void>
+    isNewAnswer?: boolean
+    loading: boolean
 }
 
 interface ChallengeContent {
-    question: string;
-    options?: string[];
+    question: string
+    options?: string[]
 }
 
-export function ChallengeCard({
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
+const ChallengeCard = memo(function ChallengeCard({
     activity,
     userAnswer,
     partnerAnswer,
@@ -33,17 +42,20 @@ export function ChallengeCard({
     loading,
     partnerName = "Partner"
 }: ChallengeCardProps & { partnerName?: string }) {
-    const [answer, setAnswer] = useState('');
-    const [submitting, setSubmitting] = useState(false);
+    const [answer, setAnswer] = useState("")
+    const [submitting, setSubmitting] = useState(false)
 
     // Effect to mark as seen when revealed
-    React.useEffect(() => {
+    useEffect(() => {
         if (userAnswer && partnerAnswer && isNewAnswer && onMarkSeen) {
             // If both answered, it's revealed. If it's new, mark it seen!
-            onMarkSeen();
+            onMarkSeen()
         }
-    }, [userAnswer, partnerAnswer, isNewAnswer, onMarkSeen]);
+    }, [userAnswer, partnerAnswer, isNewAnswer, onMarkSeen])
 
+    // ═══════════════════════════════════════
+    // EARLY RETURNS
+    // ═══════════════════════════════════════
     if (loading) {
         // ... (rest of the file)
         return (
@@ -52,7 +64,7 @@ export function ChallengeCard({
                     <span className="text-gray-400">Loading challenge...</span>
                 </CardContent>
             </Card>
-        );
+        )
     }
 
     if (!activity) {
@@ -62,35 +74,41 @@ export function ChallengeCard({
                     <span className="text-gray-500">No active challenge for today.</span>
                 </CardContent>
             </Card>
-        );
+        )
     }
 
-    const content = activity.content as unknown as ChallengeContent;
-    const hasUserAnswered = !!userAnswer;
-    const hasPartnerAnswered = !!partnerAnswer;
-    const isRevealed = hasUserAnswered && hasPartnerAnswered;
+    const content = activity.content as unknown as ChallengeContent
+    const hasUserAnswered = !!userAnswer
+    const hasPartnerAnswered = !!partnerAnswer
+    const isRevealed = hasUserAnswered && hasPartnerAnswered
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!answer.trim()) return;
+    // ═══════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault()
+        if (!answer.trim()) return
 
-        setSubmitting(true);
+        setSubmitting(true)
         try {
-            await onSubmit(answer);
+            await onSubmit(answer)
             // If partner has already answered, this submission unlocks the card!
             if (partnerAnswer) {
                 confetti({
                     particleCount: 150,
                     spread: 80,
                     origin: { y: 0.6 },
-                    colors: ['#FF69B4', '#FFD700', '#FF4500'] // Celebration colors
-                });
+                    colors: ["#FF69B4", "#FFD700", "#FF4500"] // Celebration colors
+                })
             }
         } finally {
-            setSubmitting(false);
+            setSubmitting(false)
         }
-    };
+    }
 
+    // ═══════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════
     return (
         <Card className="w-full overflow-hidden border-none shadow-sm bg-white rounded-3xl h-full">
             <CardContent className="p-6">
@@ -130,7 +148,7 @@ export function ChallengeCard({
                                             className="bg-rose-500 md:hover:bg-rose-600 text-white rounded-full px-3 h-7 text-[10px] font-bold"
                                             disabled={submitting || !answer.trim()}
                                         >
-                                            {submitting ? '...' : 'Send'}
+                                            {submitting ? "..." : "Send"}
                                         </Button>
                                     </div>
                                 </form>
@@ -169,5 +187,7 @@ export function ChallengeCard({
                 </div>
             </CardContent>
         </Card>
-    );
-}
+    )
+})
+
+export { ChallengeCard }

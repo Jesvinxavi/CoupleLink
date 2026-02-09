@@ -1,27 +1,36 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Lock, Unlock } from 'lucide-react';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { useState } from "react"
+import { Lock, Unlock } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
+// ═══════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════
 interface QuizGameProps {
-    title: string;
-    question: string;
-    options?: string[];
-    onAnswer: (answer: string) => void;
-    myAnswer?: string;
-    partnerAnswer?: string;
+    title: string
+    question: string
+    options?: string[]
+    onAnswer: (answer: string) => void
+    myAnswer?: string
+    partnerAnswer?: string
 }
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function QuizGame({ title, question, options, onAnswer, myAnswer, partnerAnswer }: QuizGameProps) {
-    const [selectedOption, setSelectedOption] = useState<string | null>(null);
+    const [selectedOption, setSelectedOption] = useState<string | null>(null)
 
     const handleSubmit = () => {
         if (selectedOption) {
-            onAnswer(selectedOption);
+            onAnswer(selectedOption)
         }
-    };
+    }
 
-    const isRevealed = !!myAnswer && !!partnerAnswer;
+    const isRevealed = !!myAnswer && !!partnerAnswer
 
     return (
         <Card className="w-full max-w-md mx-auto border-none shadow-md bg-white overflow-hidden">
@@ -42,8 +51,8 @@ export function QuizGame({ title, question, options, onAnswer, myAnswer, partner
                                     key={option}
                                     onClick={() => setSelectedOption(option)}
                                     className={`w-full p-4 rounded-xl border-2 text-left transition-all ${selectedOption === option
-                                        ? 'border-rose-500 bg-rose-50 text-rose-700'
-                                        : 'border-gray-200 hover:border-rose-200'
+                                        ? "border-rose-500 bg-rose-50 text-rose-700"
+                                        : "border-gray-200 hover:border-rose-200"
                                         }`}
                                 >
                                     {option}
@@ -73,7 +82,7 @@ export function QuizGame({ title, question, options, onAnswer, myAnswer, partner
                         </div>
 
                         {/* Partner Answer */}
-                        <div className={`p-4 rounded-xl border transition-all ${isRevealed ? 'bg-rose-50 border-rose-100' : 'bg-gray-100 border-gray-200'}`}>
+                        <div className={`p-4 rounded-xl border transition-all ${isRevealed ? "bg-rose-50 border-rose-100" : "bg-gray-100 border-gray-200"}`}>
                             <p className="text-xs font-bold text-gray-400 uppercase mb-1">Partner Answered</p>
                             {isRevealed ? (
                                 <div className="flex items-start gap-2">
@@ -84,7 +93,7 @@ export function QuizGame({ title, question, options, onAnswer, myAnswer, partner
                                 <div className="flex items-center justify-center py-4 text-gray-400 gap-2">
                                     <Lock className="w-5 h-5" />
                                     <span className="text-sm font-medium">
-                                        {partnerAnswer ? 'Locked until you answer' : 'Waiting for partner...'}
+                                        {partnerAnswer ? "Locked until you answer" : "Waiting for partner..."}
                                     </span>
                                 </div>
                             )}
@@ -93,5 +102,5 @@ export function QuizGame({ title, question, options, onAnswer, myAnswer, partner
                 )}
             </CardContent>
         </Card>
-    );
+    )
 }

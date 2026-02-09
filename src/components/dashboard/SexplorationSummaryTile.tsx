@@ -1,33 +1,39 @@
-import { motion } from 'framer-motion';
-import { useFantasyBucketList } from '../../hooks/useFantasyBucketList';
-import { useCoupons } from '../../hooks/useCoupons';
-import { getPositionOfTheWeek } from '../../data/positionsData';
-import { PositionSVG } from '../sexploration/PositionSVG';
-import { Ticket } from 'lucide-react';
-import { useSexplorationModals } from '@/context/SexplorationModalContext';
+// ═══════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════
+import { motion } from "framer-motion"
+import { Ticket } from "lucide-react"
+import { useFantasyBucketList } from "@/hooks/useFantasyBucketList"
+import { useCoupons } from "@/hooks/useCoupons"
+import { getPositionOfTheWeek } from "@/data/positionsData"
+import { PositionSVG } from "@/components/sexploration/PositionSVG"
+import { useSexplorationModals } from "@/context/SexplorationModalContext"
 
+// ═══════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════
 export function SexplorationSummaryTile() {
-    const { openWallet, openPositions, openFantasies, lastSeenFantasyPending, lastSeenFantasyApproved, lastSeenFantasyCompleted, lastSeenCoupons } = useSexplorationModals();
-    const { approvedCount, pendingCount, completedCount, fantasies } = useFantasyBucketList();
-    const { coupons } = useCoupons();
-    const positionOfTheWeek = getPositionOfTheWeek();
+    const { openWallet, openPositions, openFantasies, lastSeenFantasyPending, lastSeenFantasyApproved, lastSeenFantasyCompleted, lastSeenCoupons } = useSexplorationModals()
+    const { approvedCount, pendingCount, completedCount, fantasies } = useFantasyBucketList()
+    const { coupons } = useCoupons()
+    const positionOfTheWeek = getPositionOfTheWeek()
 
     // Check for unseen items
-    const hasUnseenPending = fantasies.some(f => f.status === 'pending' && new Date(f.created_at || 0).getTime() > lastSeenFantasyPending);
+    const hasUnseenPending = fantasies.some((f) => f.status === "pending" && new Date(f.created_at || 0).getTime() > lastSeenFantasyPending)
     // For approved/completed, we might want to check updated_at or completed_at
-    const hasUnseenApproved = fantasies.some(f => f.status === 'approved' && new Date(f.responded_at || f.created_at || 0).getTime() > lastSeenFantasyApproved);
-    const hasUnseenCompleted = fantasies.some(f => f.status === 'completed' && new Date(f.completed_at || 0).getTime() > lastSeenFantasyCompleted);
+    const hasUnseenApproved = fantasies.some((f) => f.status === "approved" && new Date(f.responded_at || f.created_at || 0).getTime() > lastSeenFantasyApproved)
+    const hasUnseenCompleted = fantasies.some((f) => f.status === "completed" && new Date(f.completed_at || 0).getTime() > lastSeenFantasyCompleted)
 
     // For coupons (vouchers available)
-    const hasUnseenVouchers = coupons.some(c =>
-        ((c.status === 'active' || !c.status) && !c.redeemed_at) &&
+    const hasUnseenVouchers = coupons.some((c) =>
+        ((c.status === "active" || !c.status) && !c.redeemed_at) &&
         new Date(c.created_at).getTime() > lastSeenCoupons
-    );
+    )
 
     // Count active (available) coupons
-    const availableVouchers = coupons.filter(c =>
-        (c.status === 'active' || !c.status) && !c.redeemed_at
-    ).length;
+    const availableVouchers = coupons.filter((c) =>
+        (c.status === "active" || !c.status) && !c.redeemed_at
+    ).length
 
     return (
         <motion.div
@@ -170,5 +176,5 @@ export function SexplorationSummaryTile() {
                 </button>
             </div>
         </motion.div>
-    );
+    )
 }
