@@ -162,7 +162,7 @@ export default function Challenges() {
 
                             {/* Overlay spinner - doesn't cause unmount */}
                             {spinnerActive && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
+                                <div className="absolute inset-0 flex items-start justify-center pt-32 bg-background z-10">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
                                 </div>
                             )}

@@ -49,18 +49,8 @@ export default function Sexploration() {
         }
     }, [couple, loading, navigate])
 
-    // ═══════════════════════════════════════
-    // EARLY RETURNS
-    // ═══════════════════════════════════════
-    if (loading) {
-        return <div className="flex h-screen items-center justify-center">Loading...</div>
-    }
+    if (!couple?.spicy_mode && !loading) return null
 
-    if (!couple?.spicy_mode) return null
-
-    // ═══════════════════════════════════════
-    // RENDER
-    // ═══════════════════════════════════════
     return (
         <>
             <div style={{ display: isFantasyFocused ? "none" : "contents" }}>
@@ -87,38 +77,51 @@ export default function Sexploration() {
                                 </div>
                             </motion.header>
 
-                            {/* Tiles Grid */}
-                            <motion.div
-                                variants={container}
-                                initial="hidden"
-                                animate="show"
-                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                            >
-                                {/* Sex Counter Tile */}
-                                <motion.div variants={item} className="md:col-span-1">
-                                    <SexCounterTile />
+                            {/* Tiles Grid Section */}
+                            <div className="relative min-h-[400px]">
+                                <motion.div
+                                    variants={container}
+                                    initial="hidden"
+                                    animate={loading ? "hidden" : "show"}
+                                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                                    style={{
+                                        visibility: loading ? "hidden" : "visible",
+                                        pointerEvents: loading ? "none" : "auto"
+                                    }}
+                                >
+                                    {/* Sex Counter Tile */}
+                                    <motion.div variants={item} className="md:col-span-1">
+                                        <SexCounterTile />
+                                    </motion.div>
+
+                                    {/* Position Tracker Tile */}
+                                    <motion.div variants={item} className="md:col-span-1">
+                                        <PositionTrackerTile />
+                                    </motion.div>
+
+                                    {/* Pleasure Coupons Tile */}
+                                    <motion.div variants={item} className="md:col-span-1">
+                                        <PleasureCouponsTile />
+                                    </motion.div>
+
+                                    {/* Fantasy Bucket List Tile */}
+                                    <motion.div variants={item} className="md:col-span-1">
+                                        <FantasyBucketListTile />
+                                    </motion.div>
+
+                                    {/* Spicy Dice Tile */}
+                                    <motion.div variants={item} className="md:col-span-1">
+                                        <SpicyDiceTile />
+                                    </motion.div>
                                 </motion.div>
 
-                                {/* Position Tracker Tile */}
-                                <motion.div variants={item} className="md:col-span-1">
-                                    <PositionTrackerTile />
-                                </motion.div>
-
-                                {/* Pleasure Coupons Tile */}
-                                <motion.div variants={item} className="md:col-span-1">
-                                    <PleasureCouponsTile />
-                                </motion.div>
-
-                                {/* Fantasy Bucket List Tile */}
-                                <motion.div variants={item} className="md:col-span-1">
-                                    <FantasyBucketListTile />
-                                </motion.div>
-
-                                {/* Spicy Dice Tile */}
-                                <motion.div variants={item} className="md:col-span-1">
-                                    <SpicyDiceTile />
-                                </motion.div>
-                            </motion.div>
+                                {/* Overlay spinner */}
+                                {loading && (
+                                    <div className="absolute inset-0 flex items-start justify-center pt-32 bg-background z-10">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </main>
                 </div>
