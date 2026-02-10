@@ -9,7 +9,7 @@ export type StatusType = "todays_question" | "daily" | "weekly" | "monthly"
 
 const getStatusStyle = (
     type: StatusType,
-    poolStatus: Record<string, { allShown: boolean }>,
+    poolStatus: Record<string, { allShown: boolean }> | null,
     daily: Challenge | null,
     weekly: Challenge | null,
     monthly: Challenge | null,
