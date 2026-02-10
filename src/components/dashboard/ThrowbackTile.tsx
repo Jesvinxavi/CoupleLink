@@ -166,7 +166,7 @@ export function ThrowbackTile() {
                         };
                     }
 
-                    setItem({
+                    const constructedItem = {
                         id: selectedItem.id,
                         type: selectedItem.type as any,
                         content: selectedItem.content,
@@ -184,7 +184,9 @@ export function ThrowbackTile() {
                         is_competition: !!selectedItem.extra_data?.is_competition,
                         partner_completed: !!selectedItem.extra_data?.partner_completed,
                         ...challengeAnswers
-                    });
+                    };
+
+                    setItem(constructedItem);
                 } else {
                     setItem(null);
                 }
@@ -291,20 +293,25 @@ export function ThrowbackTile() {
     const partnerAnswerText = item.user_one_id === currentUser?.id ? item.user_two_answer : item.user_one_answer
 
     // Logic for completion states
-    // A challenge is fully completed if the current user has a memory (evident by item existence) AND proper answer OR partner_completed flag is true
-    // However, this 'item' IS the current user's memory (usually). 
-    // If 'item.uploader_id' is me, then I have completed it.
-    // If 'item.uploader_id' is partner, then partner has completed it.
+    // IMPORTANT: partner_completed from RPC means "the NON-UPLOADER also completed the challenge".
+    // So its meaning flips depending on who is viewing:
+    //   - If I am the uploader → partner_completed means my PARTNER completed it
+    //   - If partner is the uploader → partner_completed means I completed it
 
     const uploaderIsMe = item.uploader_id === currentUser?.id
     const uploaderIsPartner = item.uploader_id === partner?.id
+    const rpcPartnerCompleted = !!(item as any).partner_completed; // "non-uploader completed"
 
-    const iHaveCompleted = uploaderIsMe || (!!myAnswer); // I uploaded it OR I have an answer recorded
-    const partnerHasCompleted = uploaderIsPartner || (!!partnerAnswerText) || (item as any).partner_completed; // Partner uploaded it OR partner has answer OR flag is true
+    // When I am the uploader: I completed (obviously), partner_completed tells if partner did
+    // When partner is the uploader: partner completed (obviously), partner_completed tells if I did
+    const iHaveCompleted = uploaderIsMe || (!!myAnswer) || (uploaderIsPartner && rpcPartnerCompleted);
+    const partnerHasCompleted = uploaderIsPartner || (!!partnerAnswerText) || (uploaderIsMe && rpcPartnerCompleted);
 
     const isFullyCompleted = iHaveCompleted && partnerHasCompleted;
     const isPartiallyCompleted = !isFullyCompleted && (iHaveCompleted || partnerHasCompleted);
     const hasAnswers = !!myAnswer || !!partnerAnswerText;
+
+
 
     const hasMedia = item.media_urls && item.media_urls.length > 0;
     const coverImage = hasMedia ? item.media_urls![0] : null;
