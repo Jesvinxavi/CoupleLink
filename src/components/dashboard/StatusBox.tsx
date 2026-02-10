@@ -1,6 +1,7 @@
 import type { NavigateFunction } from "react-router-dom"
 import { ROUTES } from "@/lib/constants"
 import type { Challenge, UserAnswer } from "@/types/challenge"
+import type { PoolStatus } from "@/context/ChallengeContext"
 
 // ═══════════════════════════════════════
 // TYPES & HELPERS
@@ -9,7 +10,7 @@ export type StatusType = "todays_question" | "daily" | "weekly" | "monthly"
 
 const getStatusStyle = (
     type: StatusType,
-    poolStatus: Record<string, { allShown: boolean }> | null,
+    poolStatus: PoolStatus | null,
     daily: Challenge | null,
     weekly: Challenge | null,
     monthly: Challenge | null,
@@ -66,7 +67,7 @@ interface StatusBoxProps {
     dailyTimeLeft: string
     weeklyTimeLeft: string
     monthlyTimeLeft: string
-    poolStatus: Record<string, { allShown: boolean }> | null
+    poolStatus: PoolStatus | null
     daily: Challenge | null
     weekly: Challenge | null
     monthly: Challenge | null
