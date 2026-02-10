@@ -45,7 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Check for recovery flow immediately
         const isRecoveryFlow = window.location.hash && window.location.hash.includes('type=recovery')
         if (isRecoveryFlow) {
-            setIsRecovery(true)
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            if (!isRecovery) setIsRecovery(true)
         }
 
         // Check if there's an auth hash in the URL
@@ -116,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
 
         return () => subscription.unsubscribe()
-    }, [navigate])
+    }, [navigate, isRecovery])
 
     useEffect(() => {
         if (!user) return

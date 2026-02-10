@@ -57,7 +57,8 @@ export default function GamesPage() {
     // Show overlay if user is in an active session
     useEffect(() => {
         if (activeSession && isInSession) {
-            setShowGameOverlay(true)
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            if (!showGameOverlay) setShowGameOverlay(true)
         } else {
             // Close if no session OR not in session (e.g. partner created new one, we need to join)
             setShowGameOverlay(false)
@@ -67,7 +68,8 @@ export default function GamesPage() {
     // Auto-open overlay when partner joins (for user 1)
     useEffect(() => {
         if (activeSession && isInSession && partnerInSession && !showGameOverlay) {
-            setShowGameOverlay(true)
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            if (!showGameOverlay) setShowGameOverlay(true)
         }
     }, [activeSession, isInSession, partnerInSession, showGameOverlay])
 

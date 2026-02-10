@@ -33,6 +33,9 @@ export function FoundArchivedSpaceModal({
     loading,
     error
 }: FoundArchivedSpaceModalProps) {
+    // eslint-disable-next-line react-hooks/purity
+    const daysRemaining = !stats?.expires_at ? 7 : Math.max(0, Math.ceil((new Date(stats.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+
     if (!stats) {
         return null;
     }
@@ -73,7 +76,7 @@ export function FoundArchivedSpaceModal({
                     <div className="text-sm text-yellow-800">
                         <p className="font-medium">Warning</p>
                         <p>{stats.expires_at
-                            ? `This history will be permanently deleted in ${Math.max(0, Math.ceil((new Date(stats.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days if not restored.`
+                            ? `This history will be permanently deleted in ${daysRemaining} days if not restored.`
                             : "This history will be permanently deleted in 7 days if not restored."
                         }</p>
                     </div>

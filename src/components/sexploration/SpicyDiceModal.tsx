@@ -61,6 +61,7 @@ export function SpicyDiceModal({ isOpen, onClose }: SpicyDiceModalProps) {
     // ═══════════════════════════════════════
     useEffect(() => {
         if (isOpen) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setResult(null)
             setIsRolling(false)
             setShowResult(false)

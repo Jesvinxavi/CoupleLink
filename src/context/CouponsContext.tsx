@@ -279,7 +279,7 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
         if (!couple?.id || !userProfile?.id) return;
 
         try {
-            let couponPayload: any = {
+            const couponPayload: any = {
                 couple_id: couple.id,
                 assigned_to: recipientId,
                 gifted_by: userProfile.id,

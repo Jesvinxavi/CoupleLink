@@ -104,7 +104,7 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
             logger.error("PartnerTile", "Error fetching anniversary events", error)
         }
 
-        let anniversaryDateStr = events?.[0]?.event_date || couple.anniversary_date
+        const anniversaryDateStr = events?.[0]?.event_date || couple.anniversary_date
 
         if (anniversaryDateStr) {
             const todayStart = startOfDay(new Date())

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
@@ -77,6 +78,14 @@ const GAME_SESSION_FIELDS = [
     'total_rounds'
 ].join(', ');
 
+// Define Question interface locally or import if available
+interface Question {
+    id: string;
+    isSpicy: boolean;
+}
+
+
+
 // Helper to generate unique questions for a session
 const generateSessionQuestions = async (gameType: string, coupleId: string, count: number, spicyMode: boolean) => {
     // 1. Fetch all completed sessions for this game type and couple
@@ -91,26 +100,26 @@ const generateSessionQuestions = async (gameType: string, coupleId: string, coun
     const seenQuestionIds = new Set<string>();
 
     previousSessions?.forEach(session => {
-        const state = session.game_state as any;
+        const state = session.game_state as Record<string, any>;
         if (state?.question_ids) {
-            state.question_ids.forEach((id: string) => seenQuestionIds.add(id));
+            (state.question_ids as string[]).forEach((id: string) => seenQuestionIds.add(id));
         }
     });
 
     // 3. Get all available questions for this game type
-    let allQuestions: any[] = [];
+    let allQuestions: Question[] = [];
     switch (gameType) {
         case 'would_you_rather':
-            allQuestions = wouldYouRatherQuestions; // Get ALL questions initially
+            allQuestions = wouldYouRatherQuestions as Question[];
             break;
         case 'never_have_i_ever':
-            allQuestions = neverHaveIEverQuestions;
+            allQuestions = neverHaveIEverQuestions as Question[];
             break;
         case 'rapid_fire':
-            allQuestions = rapidFireQuestions;
+            allQuestions = rapidFireQuestions as Question[];
             break;
         case 'draw_and_guess':
-            allQuestions = drawPrompts;
+            allQuestions = drawPrompts as Question[];
             break;
     }
 
@@ -123,14 +132,14 @@ const generateSessionQuestions = async (gameType: string, coupleId: string, coun
     const seenRegular = allQuestions.filter(q => !q.isSpicy && seenQuestionIds.has(q.id));
 
     // 5. Select Questions Logic
-    let selectedQuestions: any[] = [];
+    let selectedQuestions: Question[] = [];
 
     // Determine counts
     const spicyTarget = spicyMode ? 3 : 0; // Max 3 spicy if mode is on
     // const regularTarget = count - spicyTarget; // Unused, calculated later as finalRegularTarget
 
     // --- Select Spicy ---
-    let chosenSpicy: any[] = [];
+    let chosenSpicy: Question[] = [];
     if (spicyTarget > 0) {
         if (availableSpicy.length >= spicyTarget) {
             chosenSpicy = getRandomQuestions(availableSpicy, spicyTarget);
@@ -145,7 +154,7 @@ const generateSessionQuestions = async (gameType: string, coupleId: string, coun
     }
 
     // --- Select Regular ---
-    let chosenRegular: any[] = [];
+    let chosenRegular: Question[] = [];
     // Adjust regular target if we didn't get enough spicy
     const actualSpicyCount = chosenSpicy.length;
     const finalRegularTarget = count - actualSpicyCount;
@@ -178,8 +187,8 @@ const generateSessionQuestions = async (gameType: string, coupleId: string, coun
             const validIndices = [];
             // We can insert at index 0 to length
             for (let i = 0; i <= result.length; i++) {
-                const prevIsSpicy = i > 0 && (result[i - 1] as any).isSpicy;
-                const nextIsSpicy = i < result.length && (result[i] as any).isSpicy;
+                const prevIsSpicy = i > 0 && result[i - 1].isSpicy;
+                const nextIsSpicy = i < result.length && result[i].isSpicy;
 
                 if (!prevIsSpicy && !nextIsSpicy) {
                     validIndices.push(i);
@@ -250,9 +259,9 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
             if (fetchError) throw fetchError;
             setActiveSession(data as GameSession | null);
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('GameSessionContext', 'Error fetching game session', err);
-            setError(err?.message || 'Failed to fetch game session');
+            setError((err as Error)?.message || 'Failed to fetch game session');
         } finally {
             setIsLoading(false);
         }
@@ -383,9 +392,9 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
             setActiveSession(data as GameSession);
             return data as GameSession;
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('GameSessionContext', 'Error creating game session', err);
-            setError(err?.message || 'Failed to create game session');
+            setError((err as Error)?.message || 'Failed to create game session');
             return null;
         }
     }, [couple?.id, currentUser?.id, generateSessionQuestions]); // Added generateSessionQuestions to dependencies
@@ -416,9 +425,9 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
             setActiveSession(data as GameSession);
             return true;
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('GameSessionContext', 'Error joining game session', err);
-            setError(err?.message || 'Failed to join game session');
+            setError((err as Error)?.message || 'Failed to join game session');
             return false;
         }
     }, [currentUser?.id]);
@@ -497,9 +506,9 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
                 .eq('id', session.id);
 
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('GameSessionContext', 'Error leaving game session', err);
-            setError(err?.message || 'Failed to leave game session');
+            setError((err as Error)?.message || 'Failed to leave game session');
         }
     }, [activeSession, currentUser?.id]);
 
@@ -523,9 +532,9 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
                 .eq('id', sessionId);
 
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('GameSessionContext', 'Error ending game session', err);
-            setError(err?.message || 'Failed to end game session');
+            setError((err as Error)?.message || 'Failed to end game session');
         }
     }, [activeSession]);
 
@@ -547,7 +556,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
             // Merge the new state with the LATEST stored state
             const currentGameState = latestSession?.game_state || {};
-            let finalState: Record<string, any> = { ...(currentGameState as object) };
+            const finalState: Record<string, any> = { ...(currentGameState as object) };
 
             for (const key in newState) {
                 if (key === 'round_answers' && typeof newState[key] === 'object' && currentGameState && typeof currentGameState === 'object' && (currentGameState as any)[key]) {
@@ -576,9 +585,9 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
             // Let's simpler: Set local state to what we just sent.
 
             setActiveSession(prev => prev ? { ...prev, game_state: finalState } : null);
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('GameSessionContext', 'Error updating game state', err);
-            setError(err?.message || 'Failed to update game state');
+            setError((err as Error)?.message || 'Failed to update game state');
         }
     }, [activeSession]);
 
@@ -619,11 +628,11 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
 
             setActiveSession(prev => prev ? { ...prev, current_round: newRound, game_state: nextGameState } : null);
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('GameSessionContext', 'Error advancing round', err);
-            setError(err?.message || 'Failed to advance round');
+            setError((err as Error)?.message || 'Failed to advance round');
         }
-    }, [activeSession, endSession]);
+    }, [activeSession]);
 
     // Helper to get game type label
     const getGameLabel = useCallback((gameType: GameType): string => {
@@ -651,7 +660,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
                 return session;
             }
             return await createSession(gameType);
-        } catch (err) {
+        } catch (err: unknown) {
             logger.error('GameSessionContext', 'Error in joinOrStartSession', err);
             return null;
         }

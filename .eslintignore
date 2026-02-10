@@ -1,0 +1,4 @@
+supabase/
+dist/
+node_modules/
+.agent/

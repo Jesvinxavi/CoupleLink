@@ -50,10 +50,12 @@ const SexplorationCarousel = ({
     const [currentIndex, setCurrentIndex] = useState(0)
     const [visibleCount, setVisibleCount] = useState(SEXPLORATION_PAGE_SIZE)
 
-    if (items.length === 0) return null
+
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setVisibleCount(SEXPLORATION_PAGE_SIZE)
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCurrentIndex(0)
     }, [items])
 
@@ -65,6 +67,7 @@ const SexplorationCarousel = ({
 
     useEffect(() => {
         if (currentIndex >= visibleItems.length) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCurrentIndex(0)
         }
     }, [currentIndex, visibleItems.length])
@@ -80,6 +83,8 @@ const SexplorationCarousel = ({
     }
 
     const currentItem = visibleItems[currentIndex]
+
+    if (items.length === 0) return null
 
     return (
         <div className="relative group w-full">

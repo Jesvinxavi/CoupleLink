@@ -170,7 +170,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         if (!text.trim() || !title.trim() || !date) return;
 
         try {
-            let uploadedUrls: string[] = [];
+            const uploadedUrls: string[] = [];
 
             // Upload new images
             if (selectedFiles.length > 0) {

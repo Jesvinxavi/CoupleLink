@@ -39,6 +39,18 @@ interface GroupedHistory {
     }
 }
 
+interface ActivityContent {
+    question?: string
+    [key: string]: unknown
+}
+
+interface ChallengeMetadata {
+    frequency?: "daily" | "weekly" | "monthly"
+    completed_count?: number
+    skipped?: boolean
+    [key: string]: unknown
+}
+
 const CHALLENGE_PAGE_SIZE = 8
 
 // ═══════════════════════════════════════
@@ -48,24 +60,12 @@ const ChallengeCarousel = ({ items, onOpenDetails }: { items: HistoryItem[]; onO
     const [currentIndex, setCurrentIndex] = useState(0)
     const [visibleCount, setVisibleCount] = useState(CHALLENGE_PAGE_SIZE)
 
-    if (items.length === 0) return null
-
-    useEffect(() => {
-        setVisibleCount(CHALLENGE_PAGE_SIZE)
-        setCurrentIndex(0)
-    }, [items])
 
     const visibleItems = useMemo(() => {
         return items.slice(0, visibleCount)
     }, [items, visibleCount])
 
     const canLoadMore = items.length > visibleCount
-
-    useEffect(() => {
-        if (currentIndex >= visibleItems.length) {
-            setCurrentIndex(0)
-        }
-    }, [currentIndex, visibleItems.length])
 
     const next = (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -76,6 +76,8 @@ const ChallengeCarousel = ({ items, onOpenDetails }: { items: HistoryItem[]; onO
         e.stopPropagation()
         setCurrentIndex((prev) => (prev - 1 + visibleItems.length) % visibleItems.length)
     }
+
+    if (items.length === 0) return null
 
     const currentItem = visibleItems[currentIndex]
 
@@ -299,15 +301,25 @@ export function ChallengeHistory() {
             let questionItems: HistoryItem[] = []
             if (!answersError && answers) {
                 const grouped = new Map<string, HistoryItem>()
-                answers.forEach((ans: any) => {
+                answers.forEach((ans: {
+                    activity_id: string | null
+                    created_at: string | null
+                    user_id: string | null
+                    answer_text: string | null
+                    activities: {
+                        content: unknown
+                        category: string | null
+                    } | null
+                }) => {
                     const activityId = ans.activity_id
                     if (!activityId) return
 
                     if (!grouped.has(activityId)) {
+                        const content = ans.activities?.content as ActivityContent | null
                         grouped.set(activityId, {
                             id: activityId,
-                            title: ans.activities?.content?.question || "Daily Question",
-                            date: ans.created_at,
+                            title: content?.question || "Daily Question",
+                            date: ans.created_at || new Date().toISOString(),
                             type: "question",
                             category: ans.activities?.category || "fun",
                             myAnswer: null,
@@ -327,25 +339,34 @@ export function ChallengeHistory() {
             if (!memoriesError && memories) {
                 // Group memories by title + date (approx) to avoid duplicates if both partners completed
                 const chalGrouped = new Map<string, HistoryItem>()
-                memories.forEach((mem: any) => {
+                memories.forEach((mem: {
+                    id: string
+                    title: string | null
+                    caption: string | null
+                    created_at: string | null
+                    metadata: unknown
+                    media_urls: string[] | null
+                }) => {
                     const title = mem.title || mem.caption || "Challenge"
+                    // Cast metadata safely
+                    const metadata = mem.metadata as ChallengeMetadata | null
                     // Use a key that combines title and frequency (since same title could repeat across weeks/months, though unlikely)
-                    const key = `${title}-${mem.metadata?.frequency || 'daily'}`
+                    const key = `${title}-${metadata?.frequency || 'daily'}`
 
                     if (!chalGrouped.has(key)) {
                         chalGrouped.set(key, {
                             id: mem.id,
                             title: title,
-                            date: mem.created_at,
-                            type: mem.metadata?.frequency || "daily",
-                            description: mem.caption,
+                            date: mem.created_at || new Date().toISOString(),
+                            type: metadata?.frequency || "daily",
+                            description: mem.caption || undefined,
                             photos: mem.media_urls || [],
-                            completedCount: mem.metadata?.completed_count ?? 1
+                            completedCount: metadata?.completed_count ?? 1
                         })
                     } else {
                         // If we have a duplicate, ensure we take the highest completedCount
                         const item = chalGrouped.get(key)!
-                        item.completedCount = Math.max(item.completedCount || 0, mem.metadata?.completed_count || 1)
+                        item.completedCount = Math.max(item.completedCount || 0, metadata?.completed_count || 1)
                         if (mem.media_urls?.length) {
                             item.photos = [...(item.photos || []), ...mem.media_urls]
                         }
@@ -578,7 +599,11 @@ export function ChallengeHistory() {
 
                                     <TabsContent value="daily" className="space-y-4">
                                         {categories.daily.length > 0 ? (
-                                            <ChallengeCarousel items={categories.daily} onOpenDetails={setSelectedItem} />
+                                            <ChallengeCarousel
+                                                key={categories.daily.map(i => i.id).join(',')}
+                                                items={categories.daily}
+                                                onOpenDetails={setSelectedItem}
+                                            />
                                         ) : (
                                             <p className="text-center text-gray-500 py-8">No daily challenges completed this month.</p>
                                         )}
@@ -586,7 +611,11 @@ export function ChallengeHistory() {
 
                                     <TabsContent value="weekly" className="space-y-4">
                                         {categories.weekly.length > 0 ? (
-                                            <ChallengeCarousel items={categories.weekly} onOpenDetails={setSelectedItem} />
+                                            <ChallengeCarousel
+                                                key={categories.weekly.map(i => i.id).join(',')}
+                                                items={categories.weekly}
+                                                onOpenDetails={setSelectedItem}
+                                            />
                                         ) : (
                                             <p className="text-center text-gray-500 py-8">No weekly challenges completed this month.</p>
                                         )}

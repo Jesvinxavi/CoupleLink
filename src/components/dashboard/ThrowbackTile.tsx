@@ -33,6 +33,15 @@ import { URGENCY_THRESHOLDS } from "@/lib/constants"
 // ═══════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════
+interface ThrowbackExtraData {
+    result?: string
+    winner?: string
+    completed_at?: string
+    partner_completed?: boolean
+    my_answer?: string
+    partner_answer?: string
+}
+
 interface MemoryItem {
     id: string
     type: "journal" | "photo" | "challenge" | "position" | "fantasy" | "voucher" | "sticky_note" | "event" | "quiz"
@@ -57,6 +66,7 @@ interface MemoryItem {
     challenge_type?: "daily" | "weekly" | "monthly" | null
     is_competition?: boolean
     partner_completed?: boolean
+    extra_data?: ThrowbackExtraData | null
 }
 
 type ThrowbackType = "journal" | "photo" | "challenge" | "position" | "fantasy" | "voucher" | "sticky_note" | "event" | "quiz";

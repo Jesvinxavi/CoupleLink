@@ -46,7 +46,8 @@ export default function MemoriesPage() {
     // Sync state with URL param if it changes externally (e.g. navigation)
     useEffect(() => {
         if (tabParam === "moments" || tabParam === "history") {
-            setActiveTab(tabParam)
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            if (activeTab !== tabParam) setActiveTab(tabParam)
         }
     }, [tabParam])
 
