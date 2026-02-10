@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
@@ -107,9 +108,10 @@ export function PartnerNotesProvider({ children }: { children: ReactNode }) {
                     filter: `couple_id=eq.${couple.id}`
                 },
                 (payload) => {
-                    const record = payload.new as any;
+                    const record = payload.new as Record<string, unknown>;
+                    const old = payload.old as Record<string, unknown>;
                     // Only care about sticky_notes updates or deletes
-                    if (record?.type === 'sticky_note' || (payload.old as any)?.type === 'sticky_note') {
+                    if (record?.type === 'sticky_note' || old?.type === 'sticky_note') {
                         fetchNotes();
                     }
                 }

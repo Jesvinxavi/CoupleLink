@@ -63,7 +63,7 @@ export default function GamesPage() {
             // Close if no session OR not in session (e.g. partner created new one, we need to join)
             setShowGameOverlay(false)
         }
-    }, [activeSession, isInSession])
+    }, [activeSession, isInSession, showGameOverlay])
 
     // Auto-open overlay when partner joins (for user 1)
     useEffect(() => {

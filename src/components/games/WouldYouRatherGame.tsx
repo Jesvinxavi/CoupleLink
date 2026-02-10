@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // IMPORTS
 // ═══════════════════════════════════════
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Heart, Check, Clock, Trophy } from "lucide-react"
 import { useGameSession, type GameSession } from "@/hooks/useGameSession"
@@ -61,35 +61,7 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
 
     const [isAdvancing, setIsAdvancing] = useState(false)
 
-    // Auto-advance when both answered
-    useEffect(() => {
-        if (bothAnswered && !gameComplete && isPlayerOne && !isAdvancing) {
-            const timer = setTimeout(() => {
-                handleNextRound()
-            }, 1500) // 1.5s delay before moving to next round
-            return () => clearTimeout(timer)
-        }
-    }, [bothAnswered, gameComplete, isPlayerOne, isAdvancing])
-
-    // Check if game is complete
-    useEffect(() => {
-        if (session.current_round > session.total_rounds) {
-            setGameComplete(true)
-        }
-    }, [session.current_round, session.total_rounds])
-
-    const handleSelectOption = async (optionIndex: 0 | 1) => {
-        if (myAnswer !== undefined || !myId) return
-
-        await updateGameState({
-            round_answers: {
-                ...roundAnswers,
-                [myId]: optionIndex
-            }
-        })
-    }
-
-    const handleNextRound = async () => {
+    const handleNextRound = useCallback(async () => {
         if (isAdvancing) return
         setIsAdvancing(true)
 
@@ -146,6 +118,34 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
         } finally {
             setIsAdvancing(false)
         }
+    }, [isAdvancing, session.id, session.current_round, session.total_rounds, myId, partnerId, currentQuestion, updateGameState, nextRound])
+
+    // Auto-advance when both answered
+    useEffect(() => {
+        if (bothAnswered && !gameComplete && isPlayerOne && !isAdvancing) {
+            const timer = setTimeout(() => {
+                handleNextRound()
+            }, 1500) // 1.5s delay before moving to next round
+            return () => clearTimeout(timer)
+        }
+    }, [bothAnswered, gameComplete, isPlayerOne, isAdvancing, handleNextRound])
+
+    // Check if game is complete
+    useEffect(() => {
+        if (session.current_round > session.total_rounds) {
+            setGameComplete(true)
+        }
+    }, [session.current_round, session.total_rounds])
+
+    const handleSelectOption = async (optionIndex: 0 | 1) => {
+        if (myAnswer !== undefined || !myId) return
+
+        await updateGameState({
+            round_answers: {
+                ...roundAnswers,
+                [myId]: optionIndex
+            }
+        })
     }
 
 

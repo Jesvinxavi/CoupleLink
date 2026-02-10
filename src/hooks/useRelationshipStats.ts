@@ -7,6 +7,41 @@ import { useCoupleData } from '@/hooks/useCoupleData'
 // TYPES
 // ═══════════════════════════════════════
 
+interface JournalEntry {
+    uploader_id: string;
+    created_at: string;
+}
+
+interface UserAnswer {
+    activity_id: string;
+    created_at: string;
+    user_id: string;
+}
+
+interface ChallengeMemory {
+    metadata: {
+        challenge_type?: 'daily' | 'weekly' | 'monthly' | 'question';
+        skipped?: boolean;
+        winner_selection?: 'me' | 'partner' | 'tie';
+    } | null;
+    created_at: string;
+    uploader_id: string;
+    title: string;
+}
+
+interface ChallengeHistoryEntry {
+    challenge_type: string;
+    status: string;
+    shown_at: string;
+}
+
+interface LocationData {
+    id: string;
+    location: string | null;
+    country: string | null;
+    event_date?: string;
+}
+
 export interface RelationshipStats {
     daysTogether: number
     currentStreak: number
@@ -119,11 +154,11 @@ export function useRelationshipStats() {
                 supabase
                     .from('memories')
                     .select('id, location, country')
-                    .eq('couple_id', couple.id) as any,
+                    .eq('couple_id', couple.id),
                 supabase
                     .from('calendar_events')
                     .select('id, location, country, event_date')
-                    .eq('couple_id', couple.id) as any,
+                    .eq('couple_id', couple.id),
                 supabase
                     .from('memories')
                     .select('id')
@@ -147,19 +182,19 @@ export function useRelationshipStats() {
             if (stickyNotesRes.error) throw stickyNotesRes.error
             if (totalMemoriesRes.error) throw totalMemoriesRes.error
 
-            const journalEntries = journalRes.data
-            const userAnswers = answersRes.data
-            const challengeMemories = challengeRes.data
+            const journalEntries = journalRes.data as JournalEntry[] | null
+            const userAnswers = answersRes.data as UserAnswer[] | null
+            const challengeMemories = challengeRes.data as ChallengeMemory[] | null
             const positionsCompletedCount = positionsRes.count || 0
             const fantasiesCompletedCount = fantasiesRes.count || 0
-            const challengeHistory = historyRes.data
-            const memories = memoriesRes.data
-            const events = eventsRes.data
+            const challengeHistory = historyRes.data as ChallengeHistoryEntry[] | null
+            const memories = memoriesRes.data as LocationData[] | null
+            const events = eventsRes.data as LocationData[] | null
             const stickyNotes = stickyNotesRes.data
             const totalMemories = totalMemoriesRes.count || 0
 
-            const myJournalCount = journalEntries?.filter((e: any) => e.uploader_id === userProfile.id).length || 0
-            const partnerJournalCount = journalEntries?.filter((e: any) => e.uploader_id !== userProfile.id).length || 0
+            const myJournalCount = journalEntries?.filter(e => e.uploader_id === userProfile.id).length || 0
+            const partnerJournalCount = journalEntries?.filter(e => e.uploader_id !== userProfile.id).length || 0
 
             const journalByPerson = [
                 { name: 'You', value: myJournalCount, avatar_url: userProfile.avatar_url },
@@ -168,12 +203,12 @@ export function useRelationshipStats() {
 
             // Calculate Active Days (days with any answer or challenge memory)
             const activeDates = new Set<string>()
-            userAnswers?.forEach((a: any) => activeDates.add(new Date(a.created_at).toDateString()))
-            challengeMemories?.forEach((m: any) => activeDates.add(new Date(m.created_at).toDateString()))
+            userAnswers?.forEach(a => activeDates.add(new Date(a.created_at).toDateString()))
+            challengeMemories?.forEach(m => activeDates.add(new Date(m.created_at).toDateString()))
             const activeDaysCount = Math.max(1, activeDates.size)
 
             // Count unique questions answered
-            const uniqueQuestionsAnswered = new Set(userAnswers?.map((a: any) => a.activity_id)).size
+            const uniqueQuestionsAnswered = new Set(userAnswers?.map(a => a.activity_id)).size
             const possibleQuestions = activeDaysCount // Using active days as proxy for seen questions
 
             let completedDaily = 0
@@ -191,8 +226,8 @@ export function useRelationshipStats() {
 
             // Re-calculate unique questions for 90 days
             const uniqueQuestionsAnswered90 = new Set(
-                userAnswers?.filter((a: any) => new Date(a.created_at).getTime() > ninetyDaysAgoTime)
-                    .map((a: any) => a.activity_id)
+                userAnswers?.filter(a => new Date(a.created_at).getTime() > ninetyDaysAgoTime)
+                    .map(a => a.activity_id)
             ).size
 
             // Leaderboard Stats Calculation
@@ -203,8 +238,8 @@ export function useRelationshipStats() {
             let ties = 0
 
             // Group memories by title to find pairs
-            const memoriesByTitle = new Map<string, any[]>();
-            challengeMemories?.forEach((m: any) => {
+            const memoriesByTitle = new Map<string, ChallengeMemory[]>();
+            challengeMemories?.forEach(m => {
                 if (!memoriesByTitle.has(m.title)) {
                     memoriesByTitle.set(m.title, []);
                 }
@@ -221,8 +256,8 @@ export function useRelationshipStats() {
                 // A better approach: Iterate through unique titles. For each title, check if there is a pair of memories
                 // that are "agreed".
 
-                const myMem = mems.find((m: any) => m.uploader_id === userProfile.id);
-                const partnerMem = mems.find((m: any) => m.uploader_id !== userProfile.id);
+                const myMem = mems.find(m => m.uploader_id === userProfile.id);
+                const partnerMem = mems.find(m => m.uploader_id !== userProfile.id);
 
                 // Don't count skipped challenges for mastery or leaderboard
                 if (myMem?.metadata?.skipped || partnerMem?.metadata?.skipped) return;
@@ -282,7 +317,7 @@ export function useRelationshipStats() {
             };
 
             if (challengeHistory) {
-                challengeHistory.forEach((entry: any) => {
+                challengeHistory.forEach(entry => {
                     const type = entry.challenge_type as 'daily' | 'weekly' | 'monthly' | 'question';
                     if (historyByType[type]) {
                         historyByType[type].possible++;
@@ -312,7 +347,7 @@ export function useRelationshipStats() {
             }
 
             // 90 Day Logic - Use challenge_history filtered by date
-            const coupleCreatedAt = (couple as any).created_at;
+            const coupleCreatedAt = couple.created_at;
             const daysSinceStart = coupleCreatedAt
                 ? Math.floor((new Date().getTime() - new Date(coupleCreatedAt).getTime()) / (1000 * 60 * 60 * 24))
                 : daysTogether;
@@ -328,7 +363,7 @@ export function useRelationshipStats() {
             };
 
             if (challengeHistory) {
-                challengeHistory.forEach((entry: any) => {
+                challengeHistory.forEach(entry => {
                     const type = entry.challenge_type as 'daily' | 'weekly' | 'monthly' | 'question';
                     const shownAt = new Date(entry.shown_at);
                     if (shownAt.getTime() > ninetyDaysAgoTime && history90ByType[type]) {
@@ -359,17 +394,17 @@ export function useRelationshipStats() {
             }
 
             // 4. Travel Stats (Enhanced)
-            const memoryLocations = memories
-                .filter((m: any) => m.location?.trim())
-                .map((m: any) => ({ location: m.location!.trim(), country: m.country, id: m.id, type: 'memory' }));
+            const memoryLocations = (memories || [])
+                .filter(m => m.location?.trim())
+                .map(m => ({ location: m.location!.trim(), country: m.country, id: m.id, type: 'memory' }));
 
-            const eventLocations = events
-                .filter((e: any) => {
+            const eventLocations = (events || [])
+                .filter(e => {
                     const hasLocation = e.location?.trim();
                     const isPast = e.event_date ? new Date(e.event_date).getTime() < new Date().getTime() : false;
                     return hasLocation && isPast;
                 })
-                .map((e: any) => ({ location: e.location!.trim(), country: e.country, id: e.id, type: 'event' }));
+                .map(e => ({ location: e.location!.trim(), country: e.country, id: e.id, type: 'event' }));
 
             const allLocations = [...memoryLocations, ...eventLocations];
 
@@ -380,7 +415,7 @@ export function useRelationshipStats() {
 
             // 2. Calculate Unique Countries
             const rawCountries = allLocations.map(l => l.country);
-            const validCountries = rawCountries.filter(c => c && c.trim());
+            const validCountries = rawCountries.filter((c): c is string => !!c && !!c.trim());
             const uniqueCountries = new Set(validCountries);
             const countriesVisited = uniqueCountries.size;
 
@@ -427,7 +462,7 @@ export function useRelationshipStats() {
                                     const table = item.type === 'memory' ? 'memories' : 'calendar_events';
                                     await supabase
                                         .from(table)
-                                        .update({ country: result.country } as any)
+                                        .update({ country: result.country })
                                         .eq('id', item.id);
 
                                     // Polite delay
@@ -441,10 +476,9 @@ export function useRelationshipStats() {
                 })();
             }
 
-            // 5. Fun Stats
             const allTimestamps = [
-                ...(journalEntries?.map((j: any) => j.created_at) || []),
-                ...(challengeMemories?.map((c: any) => c.created_at) || [])
+                ...(journalEntries?.map(j => j.created_at) || []),
+                ...(challengeMemories?.map(c => c.created_at) || [])
             ]
 
             const dayCounts = [0, 0, 0, 0, 0, 0, 0]
@@ -474,7 +508,7 @@ export function useRelationshipStats() {
             const totalQuestions = uniqueQuestionsAnswered || 0;
             const totalChallenges = (completedDaily || 0) + (completedWeekly || 0) + (completedMonthly || 0);
             // Count past events as "Dates"
-            const totalDates = events?.filter((e: any) => e.event_date && new Date(e.event_date).getTime() < new Date().getTime()).length || 0;
+            const totalDates = events?.filter(e => e.event_date && new Date(e.event_date).getTime() < new Date().getTime()).length || 0;
             const totalJournal = journalEntries?.length || 0;
 
             // Count sticky notes (Notes)
@@ -493,7 +527,7 @@ export function useRelationshipStats() {
 
             // Calculate completed questions (where both partners answered)
             const answersByActivity = new Map<string, Set<string>>();
-            userAnswers?.forEach((a: any) => {
+            userAnswers?.forEach(a => {
                 if (!answersByActivity.has(a.activity_id)) {
                     answersByActivity.set(a.activity_id, new Set());
                 }
@@ -512,7 +546,7 @@ export function useRelationshipStats() {
                 challengeCompletion,
                 challengeCompletion90,
                 leaderboard: { myScore, partnerScore, myWins, partnerWins, ties },
-                totalLovePoints: (couple as any).total_love_points || 0,
+                totalLovePoints: couple.total_love_points || 0,
                 travelStats: { placesVisited, countriesVisited, topLocation, visitedCountries: Array.from(uniqueCountries) },
                 funStats: { mostActiveDay, timeOfDay },
                 activityBreakdown,

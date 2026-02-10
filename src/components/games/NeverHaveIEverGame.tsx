@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // IMPORTS
 // ═══════════════════════════════════════
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { MessageCircle, ThumbsUp, ThumbsDown, Clock, Trophy } from "lucide-react"
 import { useGameSession, type GameSession } from "@/hooks/useGameSession"
@@ -60,35 +60,7 @@ export function NeverHaveIEverGame({ session }: NeverHaveIEverGameProps) {
 
     const [isAdvancing, setIsAdvancing] = useState(false);
 
-    // Auto-advance
-    useEffect(() => {
-        if (bothAnswered && !gameComplete && isPlayerOne && !isAdvancing) {
-            const timer = setTimeout(() => {
-                handleNextRound();
-            }, 1500);
-            return () => clearTimeout(timer);
-        }
-    }, [bothAnswered, gameComplete, isPlayerOne, isAdvancing]);
-
-    // Check if game is complete
-    useEffect(() => {
-        if (session.current_round > session.total_rounds) {
-            setGameComplete(true);
-        }
-    }, [session.current_round, session.total_rounds]);
-
-    const handleSelectAnswer = async (hasDoneIt: boolean) => {
-        if (myAnswer !== undefined || !myId) return;
-
-        await updateGameState({
-            round_answers: {
-                ...roundAnswers,
-                [myId]: hasDoneIt
-            }
-        });
-    };
-
-    const handleNextRound = async () => {
+    const handleNextRound = useCallback(async () => {
         if (isAdvancing) return;
         setIsAdvancing(true);
 
@@ -144,6 +116,34 @@ export function NeverHaveIEverGame({ session }: NeverHaveIEverGameProps) {
         } finally {
             setIsAdvancing(false);
         }
+    }, [isAdvancing, session.id, session.current_round, session.total_rounds, myId, partnerId, currentQuestion, updateGameState, nextRound]);
+
+    // Auto-advance
+    useEffect(() => {
+        if (bothAnswered && !gameComplete && isPlayerOne && !isAdvancing) {
+            const timer = setTimeout(() => {
+                handleNextRound();
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [bothAnswered, gameComplete, isPlayerOne, isAdvancing, handleNextRound]);
+
+    // Check if game is complete
+    useEffect(() => {
+        if (session.current_round > session.total_rounds) {
+            setGameComplete(true);
+        }
+    }, [session.current_round, session.total_rounds]);
+
+    const handleSelectAnswer = async (hasDoneIt: boolean) => {
+        if (myAnswer !== undefined || !myId) return;
+
+        await updateGameState({
+            round_answers: {
+                ...roundAnswers,
+                [myId]: hasDoneIt
+            }
+        });
     };
 
 

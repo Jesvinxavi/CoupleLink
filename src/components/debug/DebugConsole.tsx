@@ -1,11 +1,9 @@
-// ═══════════════════════════════════════
-// IMPORTS
-// ═══════════════════════════════════════
 import { useState, useEffect, useRef, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Copy, Trash2, ChevronUp, ChevronDown, Bug } from "lucide-react"
 import { useDeveloperSettings } from "@/context/DeveloperContext"
+import { getLogs, subscribeToLogs, clearLogs } from "@/lib/debug"
 
 // ═══════════════════════════════════════
 // TYPES
@@ -15,48 +13,6 @@ interface LogEntry {
     timestamp: string
     message: string
     type: "log" | "warn" | "error" | "info"
-}
-
-// ═══════════════════════════════════════
-// CONSTANTS
-// ═══════════════════════════════════════
-const LOG_LIMIT = 200
-
-// ═══════════════════════════════════════
-// LOG STORE
-// ═══════════════════════════════════════
-const logStore: LogEntry[] = []
-let logId = 0
-let listeners: Array<() => void> = []
-
-const addLog = (message: string, type: LogEntry["type"] = "log") => {
-    const entry: LogEntry = {
-        id: logId++,
-        timestamp: new Date().toLocaleTimeString("en-US", {
-            hour12: false,
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            fractionalSecondDigits: 3
-        }),
-        message,
-        type
-    }
-    logStore.push(entry)
-    if (logStore.length > LOG_LIMIT) {
-        logStore.shift()
-    }
-    listeners.forEach((listener) => listener())
-}
-
-const clearLogs = () => {
-    logStore.length = 0
-    listeners.forEach((listener) => listener())
-}
-
-// Export for use in other components
-export const debugLog = (message: string, type: LogEntry["type"] = "log") => {
-    addLog(message, type)
 }
 
 // ═══════════════════════════════════════
@@ -70,7 +26,7 @@ export function DebugConsole() {
     // ═══════════════════════════════════════
     const [isOpen, setIsOpen] = useState(false)
     const [isMinimized, setIsMinimized] = useState(false)
-    const [logs, setLogs] = useState<LogEntry[]>(() => [...logStore])
+    const [logs, setLogs] = useState<LogEntry[]>(() => getLogs() as unknown as LogEntry[])
     const [copied, setCopied] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
     const copyTimeoutRef = useRef<number | null>(null)
@@ -79,11 +35,8 @@ export function DebugConsole() {
     // EFFECTS
     // ═══════════════════════════════════════
     useEffect(() => {
-        const listener = () => setLogs([...logStore])
-        listeners.push(listener)
-        return () => {
-            listeners = listeners.filter((existing) => existing !== listener)
-        }
+        const unsubscribe = subscribeToLogs(() => setLogs(getLogs() as unknown as LogEntry[]))
+        return unsubscribe
     }, [])
 
     useEffect(() => {

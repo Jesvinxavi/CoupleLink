@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
@@ -49,16 +50,16 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
 
             if (error) throw error;
 
-            const mappedEvents: CalendarEvent[] = (data || []).map((e: any) => ({
+            const mappedEvents: CalendarEvent[] = (data || []).map((e) => ({
                 id: e.id,
-                title: e.title,
-                event_date: e.event_date,
+                title: e.title || '',
+                event_date: e.event_date || '',
                 end_date: e.end_date,
-                category: e.category || 'Event',
+                category: (e.category || 'Event') as CalendarEvent['category'],
                 color: e.color || '#e11d48',
                 location: e.location,
                 description: e.description,
-                recurrence: e.recurrence
+                recurrence: e.recurrence as CalendarEvent['recurrence']
             }));
 
             setEvents(mappedEvents);
@@ -133,7 +134,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
                 color: event.color,
                 location: event.location,
                 description: event.description,
-                recurrence: event.recurrence as any // Database might be loose string, type is specific
+                recurrence: event.recurrence as string | null
             };
 
             if (event.id) {

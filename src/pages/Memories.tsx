@@ -49,7 +49,7 @@ export default function MemoriesPage() {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             if (activeTab !== tabParam) setActiveTab(tabParam)
         }
-    }, [tabParam])
+    }, [tabParam, activeTab])
 
     // ═══════════════════════════════════════
     // HANDLERS

@@ -23,7 +23,7 @@ import { SexplorationSummaryTile } from "@/components/dashboard/SexplorationSumm
 
 
 import { motion } from "framer-motion"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { logger } from "@/lib/logger"
 import { FoundArchivedSpaceModal } from "@/components/ui/FoundArchivedSpaceModal"
@@ -81,7 +81,7 @@ export default function Dashboard() {
     // ═══════════════════════════════════════
     // HANDLERS
     // ═══════════════════════════════════════
-    const checkArchivedSpace = async () => {
+    const checkArchivedSpace = useCallback(async () => {
         // Only check if we are in a couple
         if (!couple || !userProfile?.couple_id) return
 
@@ -121,7 +121,7 @@ export default function Dashboard() {
         } catch (err) {
             logger.error("Dashboard", "Error checking archive", err)
         }
-    }
+    }, [couple, userProfile?.couple_id])
 
     // Effect to close modal if we detect we are joined to the very archive we found
     useEffect(() => {
@@ -225,7 +225,7 @@ export default function Dashboard() {
         if (couple?.id && !statsLoading && userProfile?.couple_id) {
             checkArchivedSpace()
         }
-    }, [couple?.id, statsLoading, userProfile?.couple_id]) // Run when couple or stats loading changes
+    }, [couple?.id, statsLoading, userProfile?.couple_id, checkArchivedSpace]) // Run when couple or stats loading changes
 
     // ═══════════════════════════════════════
     // RENDER

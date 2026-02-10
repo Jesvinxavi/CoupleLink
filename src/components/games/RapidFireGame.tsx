@@ -53,7 +53,7 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
         return rapidFireQuestions.find(q => q.id === currentQuestionId);
     }, [currentQuestionId]);
     const gameState = session.game_state || {};
-    const roundAnswers = gameState.round_answers || {};
+    const roundAnswers = useMemo(() => gameState.round_answers || {}, [gameState.round_answers]);
     const allAnswers = gameState.all_answers || [];
 
     const myAnswer = roundAnswers[myId || ''];
@@ -111,16 +111,6 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
 
     const [isAdvancing, setIsAdvancing] = useState(false);
 
-    // Auto-advance
-    useEffect(() => {
-        if (bothAnswered && !gameComplete && isPlayerOne && !isAdvancing) {
-            const timer = setTimeout(() => {
-                handleNextRound();
-            }, 1500);
-            return () => clearTimeout(timer);
-        }
-    }, [bothAnswered, gameComplete, isPlayerOne, isAdvancing]);
-
     // Reset state when round changes
     useEffect(() => {
         setTimeLeft(10);
@@ -149,7 +139,7 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
         });
     };
 
-    const handleNextRound = async () => {
+    const handleNextRound = useCallback(async () => {
         if (isAdvancing) return;
         setIsAdvancing(true);
 
@@ -208,7 +198,17 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
         } finally {
             setIsAdvancing(false);
         }
-    };
+    }, [isAdvancing, session.id, session.current_round, session.total_rounds, myId, partnerId, currentQuestion, updateGameState, nextRound]);
+
+    // Auto-advance
+    useEffect(() => {
+        if (bothAnswered && !gameComplete && isPlayerOne && !isAdvancing) {
+            const timer = setTimeout(() => {
+                handleNextRound();
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [bothAnswered, gameComplete, isPlayerOne, isAdvancing, handleNextRound]);
 
 
 

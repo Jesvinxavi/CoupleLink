@@ -88,7 +88,7 @@ export default function Sidebar() {
         // Also listen if restore is completed? We might want to clear it.
         // Assuming refresh works.
         return () => window.removeEventListener("restore_modal_dismissed", checkRestore)
-    }, [])
+    }, [canRestore])
 
 
     // ═══════════════════════════════════════

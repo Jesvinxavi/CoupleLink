@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 type LogPayload = {
     data?: unknown
     error?: unknown

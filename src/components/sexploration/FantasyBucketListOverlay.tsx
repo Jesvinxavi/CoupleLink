@@ -148,7 +148,7 @@ export function FantasyBucketListOverlay({
             // Reset focus state on close
             if (onFocusChange) onFocusChange(false);
         };
-    }, [isOpen]);
+    }, [isOpen, onFocusChange]);
 
     // ═══════════════════════════════════════
     // HANDLERS

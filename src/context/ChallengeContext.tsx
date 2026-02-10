@@ -1,9 +1,12 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { useCoupleData } from '@/hooks/useCoupleData';
 import type { Challenge } from '@/types/challenge';
+import type { Memory, MemoryMetadata } from '@/types/memory';
+import type { CoupleData } from '@/context/CoupleContext';
 import { formatTime, getWeekNumber, getDateRange, getPeriodKey } from '@/utils/dateUtils';
 
 // ═══════════════════════════════════════
@@ -44,14 +47,14 @@ export interface ChallengeState {
     monthlyStatus: ChallengeStatus;
 
     // Raw Data (exposed for specific UI needs if any)
-    myDailyMemory: any;
-    myWeeklyMemory: any;
-    myMonthlyMemory: any;
-    partnerDailyMemory: any;
-    partnerWeeklyMemory: any;
-    partnerMonthlyMemory: any;
+    myDailyMemory: Memory | null;
+    myWeeklyMemory: Memory | null;
+    myMonthlyMemory: Memory | null;
+    partnerDailyMemory: Memory | null;
+    partnerWeeklyMemory: Memory | null;
+    partnerMonthlyMemory: Memory | null;
 
-    history: Array<{ id: string; title: string; date: string; type: 'daily' | 'weekly' | 'monthly'; metadata?: any }>;
+    history: Array<{ id: string; title: string; created_at: string; type: 'daily' | 'weekly' | 'monthly'; metadata?: Memory['metadata'] }>;
     completeChallenge: (type: 'daily' | 'weekly' | 'monthly', file?: File | null, winnerSelection?: 'me' | 'partner' | 'tie') => Promise<void>;
     undoChallenge: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
     skipChallenge: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
@@ -62,7 +65,7 @@ export interface ChallengeState {
         monthly: 'agreed' | 'disagreed' | 'pending' | 'none';
     };
     markChallengeConfettiSeen: (memoryId: string) => Promise<void>;
-    couple: any;
+    couple: CoupleData | null;
     refreshCoupleData: () => Promise<void>;
     loadingChallenges: boolean;
 
@@ -100,9 +103,9 @@ interface ChallengeProviderProps {
 // ═══════════════════════════════════════
 export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
     // Raw State
-    const [myMemories, setMyMemories] = useState<any[]>([]);
-    const [partnerMemories, setPartnerMemories] = useState<any[]>([]);
-    const [history, setHistory] = useState<Array<{ id: string; title: string; date: string; type: 'daily' | 'weekly' | 'monthly'; metadata?: any }>>([]);
+    const [myMemories, setMyMemories] = useState<Memory[]>([]);
+    const [partnerMemories, setPartnerMemories] = useState<Memory[]>([]);
+    const [history, setHistory] = useState<Array<{ id: string; title: string; created_at: string; type: 'daily' | 'weekly' | 'monthly'; metadata?: Memory['metadata'] }>>([]);
     const [loadingPartner, setLoadingPartner] = useState(true);
     const [loadingChallenges, setLoadingChallenges] = useState(true);
     const [isCompleting, setIsCompleting] = useState(false);
@@ -151,13 +154,25 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
             const parsedHistory = JSON.parse(h);
             setHistory(parsedHistory);
 
-            const rehydratedMemories = parsedHistory.map((h: any) => ({
-                id: h.id,
-                title: h.title,
-                created_at: h.date,
-                type: 'challenge',
-                metadata: h.metadata || {}
+            const rehydratedHistory = parsedHistory.map((h: Record<string, unknown>) => ({
+                id: h.id as string,
+                title: h.title as string,
+                created_at: (h.created_at || h.date) as string,
+                type: h.type as string,
+                metadata: (h.metadata || {}) as MemoryMetadata
             }));
+            setHistory(rehydratedHistory);
+
+            const rehydratedMemories = rehydratedHistory.map((h: { id: string; title: string; created_at: string; type: string; metadata: MemoryMetadata }) => ({
+                id: h.id,
+                couple_id: couple?.id || '',
+                uploader_id: currentUser?.id || '',
+                title: h.title,
+                media_url: null,
+                created_at: h.created_at,
+                type: 'challenge',
+                metadata: h.metadata
+            } as Memory));
             setMyMemories(rehydratedMemories);
         }
     }, []);
@@ -262,8 +277,8 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         if (!couple) return;
 
         const updateSeen = async () => {
-            const stats = (couple.challenge_stats as any) || {};
-            const updates: any = {};
+            const stats = (couple.challenge_stats as Record<string, unknown>) || {};
+            const updates: Record<string, object> = {};
             let needsUpdate = false;
             const historyInserts: Array<{ couple_id: string; challenge_type: 'daily' | 'weekly' | 'monthly'; activity_id: string; period_key: string }> = [];
 
@@ -272,7 +287,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
 
                 if (seenUpdateRef.current[type] === seedDateStr) return;
 
-                const typeStats = stats[type] || { count: 0, last_seen: null };
+                const typeStats = (stats[type] || { count: 0, last_seen: null }) as { count: number; last_seen: string | null };
 
                 const lastSeen = typeStats.last_seen ? new Date(typeStats.last_seen) : null;
                 const now = new Date();
@@ -316,7 +331,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
             // Update legacy challenge_stats (for backwards compatibility)
             if (needsUpdate) {
                 const newStats = { ...stats, ...updates };
-                await supabase.from('couples').update({ challenge_stats: newStats }).eq('id', couple.id);
+                await supabase.from('couples').update({ challenge_stats: newStats as unknown as import('@/lib/database.types').Json }).eq('id', couple.id);
             }
 
             // Insert into challenge_history (upsert to handle conflicts)
@@ -334,10 +349,10 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
 
 
     // Helper to find relevant memory
-    const findMemory = (memories: any[], challenge: Challenge | null, type: 'daily' | 'weekly' | 'monthly') => {
+    const findMemory = (memories: Memory[], challenge: Challenge | null, type: 'daily' | 'weekly' | 'monthly') => {
         if (!challenge) return null;
         const { start, end } = getDateRange(type);
-        return memories.find((m: any) =>
+        return memories.find((m) =>
             m.title === challenge.title &&
             m.created_at >= start &&
             m.created_at <= end
@@ -354,7 +369,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
     const partnerMonthlyMemory = findMemory(partnerMemories, monthly, 'monthly');
 
     // Status Derivation Helper
-    const deriveStatus = (myMem: any, partnerMem: any, challenge: Challenge | null, agreement: 'agreed' | 'disagreed' | 'pending' | 'none'): ChallengeStatus => {
+    const deriveStatus = (myMem: Memory | null, partnerMem: Memory | null, challenge: Challenge | null, agreement: 'agreed' | 'disagreed' | 'pending' | 'none'): ChallengeStatus => {
         const mySkipped = myMem?.metadata?.skipped;
         const partnerSkipped = partnerMem?.metadata?.skipped;
 
@@ -399,7 +414,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
             const partnerQuery = partnerId
                 ? supabase
                     .from('memories')
-                    .select('title, created_at, metadata')
+                    .select('*')
                     .eq('couple_id', couple.id)
                     .eq('uploader_id', partnerId)
                     .eq('type', 'challenge')
@@ -407,13 +422,17 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
 
             const myQuery = supabase
                 .from('memories')
-                .select('id, title, created_at, metadata')
+                .select('*')
                 .eq('couple_id', couple.id)
                 .eq('uploader_id', currentUser.id)
                 .eq('type', 'challenge');
 
             // Parallel Execution
-            const [{ data: pMemories, error: pError }, { data: mMemories, error: mError }] = await Promise.all([partnerQuery, myQuery]);
+            const [pRes, mRes] = await Promise.all([partnerQuery, myQuery]);
+            const pMemories = pRes.data as Memory[] | null;
+            const mMemories = mRes.data as Memory[] | null;
+            const pError = pRes.error;
+            const mError = mRes.error;
 
             if (pError) throw pError;
             if (mError) throw mError;
@@ -435,7 +454,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                 optimisticMemories.forEach(opt => {
                     const exists = safeNewMemories.some(real =>
                         real.title === opt.title &&
-                        (real.metadata as any)?.challenge_type === opt.metadata?.challenge_type
+                        real.metadata?.challenge_type === opt.metadata?.challenge_type
                     );
                     if (!exists) {
                         combined.push(opt);
@@ -450,16 +469,16 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                 // Also filter zombies here
                 const safeHistoryMemories = mMemories.filter(m => !recentlyDeletedIds.current.has(m.id));
 
-                const dbHistory = safeHistoryMemories.map((mem: any) => ({
+                const dbHistory = safeHistoryMemories.map((mem) => ({
                     id: mem.id,
                     title: mem.title,
-                    date: mem.created_at,
+                    created_at: mem.created_at,
                     type: mem.metadata?.challenge_type || 'daily',
                     metadata: mem.metadata
                 }));
 
                 // Sort by date descending
-                dbHistory.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                dbHistory.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
                 setHistory(dbHistory);
                 localStorage.setItem('challenge_history', JSON.stringify(dbHistory));
@@ -501,8 +520,11 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                     // Replication Lag Protection:
                     // If we receive a DELETE event for my own memory, track it!
                     // Though usually we initiate the delete, sometimes it might come from another device
-                    if (payload.eventType === 'DELETE' && payload.old && (payload.old as any).uploader_id === currentUser?.id) {
-                        addToRecentlyDeleted((payload.old as any).id);
+                    if (payload.eventType === 'DELETE' && payload.old) {
+                        const old = payload.old as Record<string, unknown>;
+                        if (old.uploader_id === currentUser?.id) {
+                            addToRecentlyDeleted(old.id as string);
+                        }
                     }
 
                     // Debounce the refresh to prevent "flash" from double events
@@ -538,7 +560,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
 
     // Agreement Logic
     useEffect(() => {
-        const calculateAgreement = (challenge: Challenge | null, myMem: any, partnerMem: any) => {
+        const calculateAgreement = (challenge: Challenge | null, myMem: Memory | null, partnerMem: Memory | null) => {
             if (!challenge || !challenge.isCompetition) return 'none';
             if (!myMem && !partnerMem) return 'none';
             if (myMem && !partnerMem) {
@@ -584,8 +606,8 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
 
             if (!latestCouple) return;
 
-            const stats = (latestCouple.challenge_stats as any) || {};
-            const celebrated = stats.celebrated_history || {};
+            const stats = (latestCouple.challenge_stats as Record<string, unknown>) || {};
+            const celebrated = (stats.celebrated_history || {}) as Record<string, string[]>;
             const challengedCelebratedUsers = celebrated[challengeId] || [];
 
             if (challengedCelebratedUsers.includes(userProfile.id)) return;
@@ -609,7 +631,7 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         }
     }, [couple?.id, userProfile?.id]);
 
-    const completeChallenge = async (type: 'daily' | 'weekly' | 'monthly', file?: File | null, winnerSelection?: 'me' | 'partner' | 'tie') => {
+    const completeChallenge = useCallback(async (type: 'daily' | 'weekly' | 'monthly', file?: File | null, winnerSelection?: 'me' | 'partner' | 'tie') => {
         if (isCompleting) return;
         setIsCompleting(true);
 
@@ -650,17 +672,31 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
                 const tempId = 'temp-' + Date.now();
                 const newEntry = {
                     id: tempId,
+                    couple_id: couple?.id || '',
+                    uploader_id: currentUser?.id || '',
                     title: challenge.title,
-                    date: new Date().toISOString(),
-                    type,
-                    metadata: { winner_selection: winnerSelection }
+                    media_url: null,
+                    created_at: new Date().toISOString(),
+                    type: 'challenge',
+                    metadata: {
+                        winner_selection: winnerSelection,
+                        challenge_type: type
+                    }
+                } as Memory;
+
+                const historyEntry = {
+                    id: newEntry.id,
+                    title: newEntry.title,
+                    created_at: newEntry.created_at,
+                    type: type, // Matches 'daily' | 'weekly' | 'monthly'
+                    metadata: newEntry.metadata
                 };
 
-                const updatedHistory = [newEntry, ...history];
+                const updatedHistory = [historyEntry, ...history];
                 setHistory(updatedHistory);
                 localStorage.setItem('challenge_history', JSON.stringify(updatedHistory));
 
-                setMyMemories(prev => [...prev, { ...newEntry, created_at: newEntry.date }]);
+                setMyMemories(prev => [...prev, newEntry]);
 
                 if (couple && currentUser) {
                     let mediaUrl: string | null = null;
@@ -747,9 +783,10 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         } finally {
             setIsCompleting(false);
         }
-    };
+    }, [isCompleting, daily, weekly, monthly, myMemories, history, couple, currentUser, partnerDailyMemory, partnerWeeklyMemory, partnerMonthlyMemory, checkPartnerCompletion]);
 
-    const undoChallenge = async (type: 'daily' | 'weekly' | 'monthly') => {
+
+    const undoChallenge = useCallback(async (type: 'daily' | 'weekly' | 'monthly') => {
         if (isUndoing) return;
         setIsUndoing(true);
 
@@ -868,9 +905,10 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         } else {
             setIsUndoing(false);
         }
-    };
+    }, [isUndoing, daily, weekly, monthly, myMemories, history, couple, currentUser, myDailyMemory, myWeeklyMemory, myMonthlyMemory, partnerDailyMemory, partnerWeeklyMemory, partnerMonthlyMemory, addToRecentlyDeleted, checkPartnerCompletion]);
 
-    const skipChallenge = async (type: 'daily' | 'weekly' | 'monthly') => {
+
+    const skipChallenge = useCallback(async (type: 'daily' | 'weekly' | 'monthly') => {
         if (!couple || !currentUser) return;
         const challenge = type === 'daily' ? daily : type === 'weekly' ? weekly : monthly;
         if (!challenge) return;
@@ -881,16 +919,26 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
 
             const newEntry = {
                 id: 'skipped-' + Date.now(),
+                couple_id: couple.id,
+                uploader_id: currentUser.id,
                 title: challenge.title,
-                date: new Date().toISOString(),
-                type,
-                metadata: { skipped: true }
+                media_url: null,
+                created_at: new Date().toISOString(),
+                type: 'challenge',
+                metadata: { skipped: true, challenge_type: type }
+            } as Memory;
+            const historyEntry = {
+                id: newEntry.id,
+                title: newEntry.title,
+                created_at: newEntry.created_at,
+                type: type,
+                metadata: newEntry.metadata
             };
-            const updatedHistory = [newEntry, ...history];
+            const updatedHistory = [historyEntry, ...history];
             setHistory(updatedHistory);
             localStorage.setItem('challenge_history', JSON.stringify(updatedHistory));
 
-            setMyMemories(prev => [...prev, { ...newEntry, created_at: newEntry.date }]);
+            setMyMemories(prev => [...prev, newEntry]);
 
             await supabase.from('memories').insert({
                 couple_id: couple.id,
@@ -906,10 +954,11 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
             logger.error('ChallengeContext', 'Error skipping challenge', error);
             checkPartnerCompletion();
         }
-    };
+    }, [couple, currentUser, daily, weekly, monthly, history, checkPartnerCompletion]);
+
 
     // Reset challenge cycle (clears cooloff for a frequency)
-    const resetCycle = async (type: 'daily' | 'weekly' | 'monthly') => {
+    const resetCycle = useCallback(async (type: 'daily' | 'weekly' | 'monthly') => {
         logger.debug('ChallengeContext', 'resetCycle started', { type });
         if (!couple) {
             logger.error('ChallengeContext', 'resetCycle aborted: no couple found');
@@ -952,7 +1001,8 @@ export const ChallengeProvider = ({ children }: ChallengeProviderProps) => {
         } catch (error) {
             logger.error('ChallengeContext', 'resetCycle exception', error);
         }
-    };
+    }, [couple, refreshCoupleData]);
+
 
     useEffect(() => {
         const timer = setInterval(() => {

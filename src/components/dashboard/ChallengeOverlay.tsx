@@ -74,7 +74,7 @@ export function ChallengeOverlay({
         if (isOpen) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setWinnerSelection(initialSelection ?? null)
-            // eslint-disable-next-line react-hooks/set-state-in-effect
+             
             setEvidence(null)
         }
     }, [isOpen, initialSelection])

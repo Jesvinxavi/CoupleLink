@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // IMPORTS
 // ═══════════════════════════════════════
-import { useEffect, useState, memo } from "react"
+import { useEffect, useState, memo, useCallback } from "react"
 import { differenceInDays, parseISO, setYear, isBefore, addYears, startOfDay, addMilliseconds } from "date-fns"
 import { Plus } from "lucide-react"
 import { motion } from "framer-motion"
@@ -89,7 +89,7 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
     // ═══════════════════════════════════════
     // HANDLERS
     // ═══════════════════════════════════════
-    const fetchAnniversary = async () => {
+    const fetchAnniversary = useCallback(async () => {
         if (!couple) return
 
         // Check calendar events first
@@ -121,11 +121,11 @@ export const PartnerTile = memo(function PartnerTile({ partner }: PartnerTilePro
         } else {
             setAnniversaryDays(null)
         }
-    }
+    }, [couple?.id, couple?.anniversary_date])
 
     useEffect(() => {
         fetchAnniversary()
-    }, [couple?.id, couple?.anniversary_date])
+    }, [fetchAnniversary])
 
     const handleSaveAnniversary = async (event: CalendarEvent) => {
         if (!couple) return

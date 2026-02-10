@@ -90,10 +90,18 @@ export async function backfillChallengeHistoryFromMemories(coupleId: string): Pr
         if (!memories || memories.length === 0) return;
 
         // Group by challenge_type + period_key to avoid duplicates
-        const uniqueEntries = new Map<string, any>();
+        const uniqueEntries = new Map<string, {
+            couple_id: string;
+            challenge_type: string;
+            activity_id: string | null;
+            period_key: string;
+            status: string;
+            shown_at: string;
+            completed_at: string | null;
+        }>();
 
         for (const mem of memories) {
-            const metadata = mem.metadata as any;
+            const metadata = mem.metadata as { challenge_type?: 'daily' | 'weekly' | 'monthly' | 'question'; skipped?: boolean } | null;
             const challengeType = metadata?.challenge_type || 'daily';
             const createdAt = new Date(mem.created_at);
             const periodKey = getPeriodKey(challengeType, createdAt);

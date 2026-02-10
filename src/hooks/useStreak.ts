@@ -4,6 +4,11 @@ import { logger } from '@/lib/logger';
 import { useCoupleData } from '@/hooks/useCoupleData';
 import { useGlobalModalQueue } from '@/context/GlobalModalQueueContext';
 
+interface StreakBrokenResult {
+    is_broken: boolean;
+    previous_streak: number;
+}
+
 // ═══════════════════════════════════════
 // HOOK
 // ═══════════════════════════════════════
@@ -60,9 +65,10 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
                     p_couple_id: couple.id
                 });
                 if (error) throw error;
-                if (data && (data as any).is_broken) {
+                const result = data as StreakBrokenResult | null;
+                if (result?.is_broken) {
                     enqueueModal('streak_broken', {
-                        previousStreak: (data as any).previous_streak
+                        previousStreak: result.previous_streak
                     });
                 }
             } catch (err) {
@@ -101,7 +107,7 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
 
         prevTokensRef.current = currentTokens;
 
-    }, [couple?.id, couple?.rain_check_tokens, couple?.current_streak, userProfile?.last_seen_rain_check_tokens, enableTokenCheck, enqueueModal]);
+    }, [couple, userProfile, enableTokenCheck, enqueueModal]);
 
     const handleCloseTokenModal = useCallback(async () => {
         // Acknowledge the modal to remove it from queue
@@ -112,7 +118,7 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
             try {
                 await supabase
                     .from('profiles')
-                    .update({ last_seen_rain_check_tokens: currentTokens } as any)
+                    .update({ last_seen_rain_check_tokens: currentTokens })
                     .eq('id', userProfile.id);
             } catch (err) {
                 logger.error('useStreak', 'Failed to update last_seen_rain_check_tokens', err);
@@ -131,7 +137,7 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
             logger.debug('useStreak', 'Current tokens < last seen. Syncing baseline', { currentTokens, lastSeen });
             supabase
                 .from('profiles')
-                .update({ last_seen_rain_check_tokens: currentTokens } as any)
+                .update({ last_seen_rain_check_tokens: currentTokens })
                 .eq('id', userProfile.id)
                 .then(({ error }) => {
                     if (error) {
@@ -139,7 +145,7 @@ export function useStreak({ enableTokenCheck = true }: { enableTokenCheck?: bool
                     }
                 });
         }
-    }, [couple?.rain_check_tokens, userProfile?.last_seen_rain_check_tokens, userProfile?.id]);
+    }, [couple, userProfile, enableTokenCheck]);
 
     const handleCloseStreakBroken = useCallback(() => {
         ackModal('streak_broken');

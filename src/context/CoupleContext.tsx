@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -9,9 +10,9 @@ import { useAuth } from './AuthContext';
 // ═══════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════
-type Profile = Database['public']['Tables']['profiles']['Row'];
+export type Profile = Database['public']['Tables']['profiles']['Row'];
 
-type CoupleData = Database['public']['Tables']['couples']['Row'];
+export type CoupleData = Database['public']['Tables']['couples']['Row'];
 
 interface CoupleContextType {
     couple: CoupleData | null;
@@ -124,9 +125,9 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
                     setPartner(null);
                 }
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('CoupleContext', 'Error fetching couple data', err);
-            setError(err?.message || 'Failed to fetch couple data');
+            setError((err as Error)?.message || 'Failed to fetch couple data');
         } finally {
             if (!silent) setLoading(false);
         }
@@ -195,7 +196,7 @@ export const CoupleProvider = ({ children }: { children: ReactNode }) => {
         return () => {
             supabase.removeChannel(profileChannel);
         };
-    }, [user?.id, authLoading, fetchCoupleData, refreshCoupleData, navigate]);
+    }, [user, authLoading, fetchCoupleData, refreshCoupleData, navigate]);
 
     // Subscribe to Realtime changes for the active couple only
     useEffect(() => {

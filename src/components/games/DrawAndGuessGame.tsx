@@ -169,22 +169,7 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
 
     const [isAdvancing, setIsAdvancing] = useState(false);
 
-    // Auto-advance after 3 seconds when answer is shown
-    useEffect(() => {
-        if (!showAnswer) return;
-
-
-        const timer = setTimeout(() => {
-            // Only Player One triggers the round advance to prevent race conditions (double increments)
-            if (isPlayerOne && !isAdvancing) {
-                handleNextRound();
-            }
-        }, 3000);
-
-        return () => clearTimeout(timer);
-    }, [showAnswer, isPlayerOne, isAdvancing]);
-
-    const handleNextRound = async () => {
+    const handleNextRound = useCallback(async () => {
         if (isAdvancing) return;
         setIsAdvancing(true);
 
@@ -233,7 +218,23 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
         } finally {
             setIsAdvancing(false);
         }
-    };
+    }, [isAdvancing, session, currentPrompt, isDrawer, isPlayerOne, isCorrect, guess, updateGameState, nextRound]);
+
+    // Auto-advance after 3 seconds when answer is shown
+    useEffect(() => {
+        if (!showAnswer) return;
+
+
+        const timer = setTimeout(() => {
+            // Only Player One triggers the round advance to prevent race conditions (double increments)
+            if (isPlayerOne && !isAdvancing) {
+                handleNextRound();
+            }
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    }, [showAnswer, isPlayerOne, isAdvancing, handleNextRound]);
+
 
     if (!currentPrompt || session.current_round > session.total_rounds) {
         // Calculate Stats

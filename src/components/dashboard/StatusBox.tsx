@@ -1,12 +1,24 @@
 import type { NavigateFunction } from "react-router-dom"
 import { ROUTES } from "@/lib/constants"
+import type { Challenge, UserAnswer } from "@/types/challenge"
 
 // ═══════════════════════════════════════
 // TYPES & HELPERS
 // ═══════════════════════════════════════
 export type StatusType = "todays_question" | "daily" | "weekly" | "monthly"
 
-export const getStatusStyle = (type: StatusType, poolStatus: any, daily: any, weekly: any, monthly: any, userAnswer: any, partnerAnswer: any, dailyStatus: any, weeklyStatus: any, monthlyStatus: any) => {
+const getStatusStyle = (
+    type: StatusType,
+    poolStatus: Record<string, { allShown: boolean }>,
+    daily: Challenge | null,
+    weekly: Challenge | null,
+    monthly: Challenge | null,
+    userAnswer: UserAnswer | null,
+    partnerAnswer: UserAnswer | null,
+    dailyStatus: string,
+    weeklyStatus: string,
+    monthlyStatus: string
+) => {
     // Check for All Explored State first
     if (type !== "todays_question") {
         const isAllExplored = poolStatus?.[type]?.allShown
@@ -54,15 +66,15 @@ interface StatusBoxProps {
     dailyTimeLeft: string
     weeklyTimeLeft: string
     monthlyTimeLeft: string
-    poolStatus: any
-    daily: any
-    weekly: any
-    monthly: any
-    userAnswer: any
-    partnerAnswer: any
-    dailyStatus: any
-    weeklyStatus: any
-    monthlyStatus: any
+    poolStatus: Record<string, { allShown: boolean }>
+    daily: Challenge | null
+    weekly: Challenge | null
+    monthly: Challenge | null
+    userAnswer: UserAnswer | null
+    partnerAnswer: UserAnswer | null
+    dailyStatus: string
+    weeklyStatus: string
+    monthlyStatus: string
 }
 
 export const StatusBox = ({

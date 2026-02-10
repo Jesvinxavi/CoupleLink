@@ -55,7 +55,7 @@ const SexplorationCarousel = ({
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setVisibleCount(SEXPLORATION_PAGE_SIZE)
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         setCurrentIndex(0)
     }, [items])
 

@@ -46,7 +46,7 @@ self.addEventListener('push', (event) => {
 });
 
 // Handle notification click
-self.addEventListener('notificationclick', (event: any) => {
+self.addEventListener('notificationclick', (event: NotificationEvent) => {
     event.notification.close();
 
     const urlToOpen = toAbsoluteUrl(event.notification.data?.url || '/');

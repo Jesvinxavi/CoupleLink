@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default tseslint.config(
-  { ignores: ['dist', 'supabase'] },
+  { ignores: ['dist', 'supabase', 'node_modules', '.agent'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/purity */
+/* eslint-disable react-refresh/only-export-components, react-hooks/purity */
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useFantasyBucketList } from '@/hooks/useFantasyBucketList';
@@ -74,22 +74,18 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
     const { userProfile, refreshCoupleData } = useCoupleData();
 
     // Fallback to Date.now() if not loaded yet, or 0 if null, but we'll handle checks gracefully
-    // eslint-disable-next-line react-hooks/purity
     const lastSeenFantasyPending = useMemo(() => userProfile?.last_seen_fantasy_pending
         ? new Date(userProfile.last_seen_fantasy_pending).getTime()
         : Date.now(), [userProfile?.last_seen_fantasy_pending]);
 
-    // eslint-disable-next-line react-hooks/purity
     const lastSeenFantasyApproved = useMemo(() => userProfile?.last_seen_fantasy_approved
         ? new Date(userProfile.last_seen_fantasy_approved).getTime()
         : Date.now(), [userProfile?.last_seen_fantasy_approved]);
 
-    // eslint-disable-next-line react-hooks/purity
     const lastSeenFantasyCompleted = useMemo(() => userProfile?.last_seen_fantasy_completed
         ? new Date(userProfile.last_seen_fantasy_completed).getTime()
         : Date.now(), [userProfile?.last_seen_fantasy_completed]);
 
-    // eslint-disable-next-line react-hooks/purity
     const lastSeenCoupons = useMemo(() => userProfile?.last_seen_coupons
         ? new Date(userProfile.last_seen_coupons).getTime()
         : Date.now(), [userProfile?.last_seen_coupons]);
@@ -104,7 +100,7 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
 
             await supabase
                 .from('profiles')
-                .update({ [column]: now } as any)
+                .update({ [column]: now } as Record<string, string>)
                 .eq('id', userProfile.id);
             // Silent refresh
             refreshCoupleData(true);
@@ -119,7 +115,7 @@ export function SexplorationModalProvider({ children }: SexplorationModalProvide
             const now = new Date().toISOString();
             await supabase
                 .from('profiles')
-                .update({ last_seen_coupons: now } as any) // Temporary cast until types update
+                .update({ last_seen_coupons: now })
                 .eq('id', userProfile.id);
             refreshCoupleData(true);
         } catch (error) {

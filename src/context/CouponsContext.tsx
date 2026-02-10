@@ -1,8 +1,12 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { Database } from '@/lib/database.types';
 import { logger } from '@/lib/logger';
 import { useCoupleData } from '@/hooks/useCoupleData';
 import { type Coupon, type CouponTemplate } from '@/hooks/useCoupons';
+
+type CouponInsert = Database['public']['Tables']['coupons']['Insert'];
 
 // ═══════════════════════════════════════
 // TYPES
@@ -55,25 +59,7 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
 
             const { data, error } = await supabase
                 .from('coupons')
-                .select([
-                    'id',
-                    'couple_id',
-                    'assigned_to',
-                    'title',
-                    'description',
-                    'category',
-                    'template_id',
-                    'status',
-                    'is_redeemed',
-                    'redeemed_at',
-                    'created_at',
-                    'expires_at',
-                    'activated_at',
-                    'is_gift',
-                    'gifted_by',
-                    'gift_message',
-                    'acknowledged_at'
-                ].join(', '))
+                .select('*')
                 .eq('assigned_to', userProfile.id) // Only show my coupons
                 .eq('couple_id', couple.id) // Strict Scope: Only this couple
                 .order('created_at', { ascending: false });
@@ -81,19 +67,18 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             if (error) throw error;
 
             // Cast the data to match our Coupon interface since Supabase types might be loose on status string
-            const typedCoupons = (data || []).map(item => {
-                const anyItem = item as any;
+            const typedCoupons: Coupon[] = (data || []).map((item) => {
                 return {
-                    ...anyItem,
-                    status: (anyItem.status as 'active' | 'redeemed') || 'active'
-                };
+                    ...item,
+                    status: (item.status as 'active' | 'redeemed') || 'active'
+                } as Coupon;
             });
 
             setCoupons(typedCoupons);
             hasLoaded.current = true;
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('CouponsContext', 'Error fetching coupons', err);
-            setError(err?.message || 'Failed to fetch coupons');
+            setError((err as Error)?.message || 'Failed to fetch coupons');
         } finally {
             setLoading(false);
         }
@@ -101,23 +86,15 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
 
     const fetchTemplates = useCallback(async () => {
         try {
-            const { data, error } = await (supabase
-                .from('coupon_templates' as any)
-                .select([
-                    'id',
-                    'created_at',
-                    'title',
-                    'description',
-                    'category',
-                    'intensity',
-                    'icon'
-                ].join(', ')) as any)
+            const { data, error } = await supabase
+                .from('coupon_templates')
+                .select('*')
                 .order('intensity', { ascending: true });
 
             if (error) throw error;
 
-            setTemplates((data || []) as any as CouponTemplate[]);
-        } catch (err: any) {
+            setTemplates((data || []) as CouponTemplate[]);
+        } catch (err: unknown) {
             logger.error('CouponsContext', 'Error fetching templates', err);
         }
     }, []);
@@ -126,13 +103,7 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
         if (!couple?.id || !userProfile?.id) return;
 
         // Fetch coupons to check for new gifts
-        // In a more optimized version, we might just query for new gifts specifically
-        // But re-fetching coupons is safe and robust
         await fetchCoupons();
-
-        // Note: The actual modal trigger logic is in PleasureCouponsTile, which watches 'coupons'
-        // So just updating 'coupons' via fetchCoupons is sufficient.
-
     }, [couple?.id, userProfile?.id, fetchCoupons]);
 
     // Channel Ref to allow sending broadcasts
@@ -202,8 +173,8 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
         if (!couple?.id) throw new Error('No couple found');
 
         try {
-            const { data, error } = await (supabase
-                .from('coupons' as any)
+            const { data, error } = await supabase
+                .from('coupons')
                 .insert([
                     {
                         couple_id: couple.id,
@@ -213,16 +184,15 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
                         status: 'active',
                         is_gift: false
                     }
-                ]) as any)
+                ])
                 .select()
                 .single();
 
             if (error) throw error;
-            const anyData = data as any;
-            const newCoupon = { ...anyData, status: anyData.status || 'active' };
+            const newCoupon = { ...data, status: (data.status as 'active' | 'redeemed') || 'active' } as Coupon;
             setCoupons(prevCoupons => [newCoupon, ...prevCoupons]);
             return newCoupon;
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('CouponsContext', 'Error creating coupon', err);
             throw err;
         }
@@ -233,38 +203,36 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
 
         try {
             // 1. Create the coupon
-            const { data: couponData, error: couponError } = await (supabase
-                .from('coupons' as any)
+            const { data: couponData, error: couponError } = await supabase
+                .from('coupons')
                 .insert([{
                     couple_id: couple.id,
                     title: template.title,
-                    description: template.description,
+                    description: template.description || '',
                     template_id: template.id,
                     assigned_to: userProfile.id,
                     status: 'active',
                     is_gift: false
-                }]) as any)
+                }])
                 .select()
                 .single();
 
             if (couponError) throw couponError;
 
             // 2. Decrement unclaimed vouchers
-            const profile = userProfile as any;
-            if (profile.unclaimed_vouchers && profile.unclaimed_vouchers > 0) {
-                await (supabase
-                    .from('profiles' as any)
-                    .update({ unclaimed_vouchers: profile.unclaimed_vouchers - 1 }) as any)
+            if (userProfile.unclaimed_vouchers && userProfile.unclaimed_vouchers > 0) {
+                await supabase
+                    .from('profiles')
+                    .update({ unclaimed_vouchers: userProfile.unclaimed_vouchers - 1 })
                     .eq('id', userProfile.id);
 
                 refreshCoupleData(); // Refresh to get updated voucher count
             }
 
-            const anyCouponData = couponData as any;
-            const newCoupon = { ...anyCouponData, status: anyCouponData.status || 'active' };
+            const newCoupon = { ...couponData, status: (couponData.status as 'active' | 'redeemed') || 'active' } as Coupon;
             setCoupons(prevCoupons => [newCoupon, ...prevCoupons]);
             return newCoupon;
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('CouponsContext', 'Error claiming coupon', err);
             throw err;
         }
@@ -279,65 +247,65 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
         if (!couple?.id || !userProfile?.id) return;
 
         try {
-            const couponPayload: any = {
+            let title = '';
+            let description = '';
+            let templateId: string | undefined;
+
+            if (type === 'specific' && template) {
+                title = template.title;
+                description = template.description;
+                templateId = template.id;
+            } else if (type === 'create' && customData) {
+                title = customData.title;
+                description = customData.description;
+            } else if (type === 'random') {
+                const randomIndex = Math.floor(Math.random() * templates.length);
+                const randomTemplate = templates[randomIndex];
+                title = randomTemplate.title;
+                description = randomTemplate.description;
+                templateId = randomTemplate.id;
+            }
+
+            const couponPayload: CouponInsert = {
                 couple_id: couple.id,
+                title,
+                description,
                 assigned_to: recipientId,
                 gifted_by: userProfile.id,
                 is_gift: true,
                 status: 'active',
-                gift_message: "A gift for you!"
+                gift_message: "A gift for you!",
+                ...(templateId ? { template_id: templateId } : {})
             };
 
-            if (type === 'specific' && template) {
-                couponPayload.title = template.title;
-                couponPayload.description = template.description;
-                couponPayload.template_id = template.id;
-            } else if (type === 'create' && customData) {
-                couponPayload.title = customData.title;
-                couponPayload.description = customData.description;
-            } else if (type === 'random') {
-                const randomIndex = Math.floor(Math.random() * templates.length);
-                const randomTemplate = templates[randomIndex];
-                couponPayload.title = randomTemplate.title;
-                couponPayload.description = randomTemplate.description;
-                couponPayload.template_id = randomTemplate.id;
-            }
-
-            const { data, error } = await (supabase
-                .from('coupons' as any)
-                .insert([couponPayload]) as any)
+            const { data, error } = await supabase
+                .from('coupons')
+                .insert([couponPayload])
                 .select()
                 .single();
 
             if (error) throw error;
 
             const now = Date.now();
-
-
-            const anyData = data as any;
             const newCoupon: Coupon = {
-                ...anyData,
-                status: (anyData.status as 'active' | 'redeemed') || 'active'
-            };
+                ...data,
+                status: (data.status as 'active' | 'redeemed') || 'active'
+            } as Coupon;
 
             // Send broadcast to partner using existing channel
             if (channelRef.current) {
                 await channelRef.current.send({
                     type: 'broadcast',
                     event: 'coupon_gift',
-                    payload: { giftId: anyData.id, sentAt: now }
+                    payload: { giftId: data.id, sentAt: now }
                 });
             } else {
                 logger.warn('CouponsContext', 'No channelRef available to broadcast');
             }
 
-            // Note: We don't add to *our* list because we gifted it to partner
-            // But if we wanted to show 'Sent Gifts', we would need a different list.
-            // For now, no local state update needed for gifter, but receiver will get it via polling.
-
             return newCoupon;
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('CouponsContext', 'Error gifting coupon', err);
             throw err;
         }
@@ -348,23 +316,22 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             const now = new Date();
             const expires = new Date(now.getTime() + 48 * 60 * 60 * 1000); // 48 hours
 
-            const { data, error } = await (supabase
-                .from('coupons' as any)
+            const { data, error } = await supabase
+                .from('coupons')
                 .update({
                     activated_at: now.toISOString(),
                     expires_at: expires.toISOString()
-                }) as any)
+                })
                 .eq('id', id)
                 .select()
                 .single();
 
             if (error) throw error;
 
-            const anyData = data as any;
-            const updatedCoupon = { ...anyData, status: anyData.status || 'active' };
+            const updatedCoupon = { ...data, status: (data.status as 'active' | 'redeemed') || 'active' } as Coupon;
             setCoupons(prevCoupons => prevCoupons.map(c => c.id === id ? updatedCoupon : c));
             return updatedCoupon;
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('CouponsContext', 'Error activating coupon', err);
             throw err;
         }
@@ -372,23 +339,22 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
 
     const redeemCoupon = useCallback(async (id: string) => {
         try {
-            const { data, error } = await (supabase
-                .from('coupons' as any)
+            const { data, error } = await supabase
+                .from('coupons')
                 .update({
                     status: 'redeemed',
                     redeemed_at: new Date().toISOString()
-                }) as any)
+                })
                 .eq('id', id)
                 .select()
                 .single();
 
             if (error) throw error;
 
-            const anyData = data as any;
-            const updatedCoupon = { ...anyData, status: anyData.status || 'active' };
+            const updatedCoupon = { ...data, status: (data.status as 'active' | 'redeemed') || 'active' } as Coupon;
             setCoupons(prevCoupons => prevCoupons.map(c => c.id === id ? updatedCoupon : c));
             return updatedCoupon;
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('CouponsContext', 'Error redeeming coupon', err);
             throw err;
         }
@@ -398,18 +364,17 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
         try {
             const { data, error } = await supabase
                 .from('coupons')
-                .update(updates as any)
+                .update(updates as Record<string, unknown>)
                 .eq('id', id)
                 .select()
                 .single();
 
             if (error) throw error;
 
-            const anyData = data as any;
-            const updatedCoupon = { ...anyData, status: anyData.status || 'active' };
+            const updatedCoupon = { ...data, status: (data.status as 'active' | 'redeemed') || 'active' } as Coupon;
             setCoupons(prevCoupons => prevCoupons.map(c => c.id === id ? updatedCoupon : c));
             return updatedCoupon;
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('CouponsContext', 'Error updating coupon', err);
             throw err;
         }
@@ -419,18 +384,17 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
         try {
             const { data, error } = await supabase
                 .from('coupons')
-                .update({ acknowledged_at: new Date().toISOString() } as any)
+                .update({ acknowledged_at: new Date().toISOString() })
                 .eq('id', id)
                 .select()
                 .single();
 
             if (error) throw error;
 
-            const anyData = data as any;
-            const updatedCoupon = { ...anyData, status: anyData.status || 'active' };
+            const updatedCoupon = { ...data, status: (data.status as 'active' | 'redeemed') || 'active' } as Coupon;
             setCoupons(prevCoupons => prevCoupons.map(c => c.id === id ? updatedCoupon : c));
             return updatedCoupon;
-        } catch (err: any) {
+        } catch (err: unknown) {
             logger.error('CouponsContext', 'Error acknowledging coupon', err);
             throw err;
         }

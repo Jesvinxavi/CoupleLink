@@ -60,7 +60,7 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
             setError(null)
             setViewportStyle(undefined)
         }
-    }, [isOpen])
+    }, [isOpen, previewUrls])
 
     // Visual Viewport logic for mobile keyboard
     useEffect(() => {
@@ -93,7 +93,7 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
             // Reset focus state on close
             if (onFocusChange) onFocusChange(false)
         }
-    }, [isOpen])
+    }, [isOpen, onFocusChange])
 
     const handleOverlayFocus = (e: React.FocusEvent) => {
         const target = e.target as HTMLElement

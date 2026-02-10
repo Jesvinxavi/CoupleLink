@@ -42,7 +42,7 @@ export const GameTimer = memo(function GameTimer({
         }, 1000)
 
         return () => clearInterval(timer)
-    }, [showAnswer, isPaused])
+    }, [showAnswer, isPaused, timeLeft])
 
     // Handle time up in a separate effect to avoid state updates during render
     const hasFiredTimeUp = useRef(false)

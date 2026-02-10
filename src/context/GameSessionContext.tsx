@@ -16,6 +16,16 @@ import {
 // ═══════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════
+export interface GameState {
+    question_ids?: string[];
+    round_answers?: Record<string, any>;
+    all_answers?: any[];
+    drawer_id?: string | null;
+    current_question_index?: number;
+    scores?: Record<string, number>;
+    [key: string]: any;
+}
+
 export interface GameSession {
     id: string;
     couple_id: string;
@@ -24,7 +34,7 @@ export interface GameSession {
     created_by: string;
     current_round: number;
     total_rounds: number;
-    game_state: Record<string, any>;
+    game_state: GameState;
     player_one_id: string | null;
     player_two_id: string | null;
     player_one_joined_at: string | null;
@@ -50,7 +60,7 @@ interface GameSessionContextType {
     joinSession: (sessionId: string) => Promise<boolean>;
     leaveSession: () => Promise<void>;
     endSession: () => Promise<void>;
-    updateGameState: (newState: Record<string, any>) => Promise<void>;
+    updateGameState: (newState: Partial<GameState>) => Promise<void>;
     nextRound: () => Promise<void>;
     joinOrStartSession: (gameType: GameType) => Promise<GameSession | null>;
 
@@ -100,9 +110,9 @@ const generateSessionQuestions = async (gameType: string, coupleId: string, coun
     const seenQuestionIds = new Set<string>();
 
     previousSessions?.forEach(session => {
-        const state = session.game_state as Record<string, any>;
+        const state = (session.game_state as unknown) as GameState;
         if (state?.question_ids) {
-            (state.question_ids as string[]).forEach((id: string) => seenQuestionIds.add(id));
+            state.question_ids.forEach((id: string) => seenQuestionIds.add(id));
         }
     });
 
@@ -340,7 +350,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [couple?.id, fetchActiveSession, currentUser?.id]);
+    }, [couple?.id, fetchActiveSession, currentUser?.id, activeSession?.id]);
 
     // Create a new game session
     const createSession = useCallback(async (gameType: GameType): Promise<GameSession | null> => {
@@ -538,8 +548,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
         }
     }, [activeSession]);
 
-    // Update game state
-    const updateGameState = useCallback(async (newState: Record<string, any>) => {
+    const updateGameState = useCallback(async (newState: Partial<GameState>) => {
         if (!activeSession) return;
 
         try {
@@ -555,19 +564,20 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
             if (fetchError) throw fetchError;
 
             // Merge the new state with the LATEST stored state
-            const currentGameState = latestSession?.game_state || {};
-            const finalState: Record<string, any> = { ...(currentGameState as object) };
+            const currentGameState = (latestSession?.game_state as unknown) as GameState || {};
+            const finalState: GameState = { ...currentGameState };
 
-            for (const key in newState) {
-                if (key === 'round_answers' && typeof newState[key] === 'object' && currentGameState && typeof currentGameState === 'object' && (currentGameState as any)[key]) {
-                    finalState[key] = {
-                        ...(currentGameState as any)[key],
-                        ...newState[key]
+            (Object.keys(newState) as Array<keyof GameState>).forEach(key => {
+                const newValue = newState[key];
+                if (key === 'round_answers' && typeof newValue === 'object' && newValue !== null && currentGameState.round_answers) {
+                    finalState.round_answers = {
+                        ...currentGameState.round_answers,
+                        ...newValue
                     };
                 } else {
-                    finalState[key] = newState[key];
+                    finalState[key] = newValue;
                 }
-            }
+            });
 
             const { error: updateError } = await supabase
                 .from('game_sessions')
@@ -577,13 +587,6 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
             if (updateError) throw updateError;
 
             // Optimistic update
-            // Note: We might rely purely on realtime for this, but optimistic is snappier
-            // CAUTION: If realtime is slow, this might flick back and forth if we aren't careful.
-            // But since we seek a SINGLE source of truth, maybe we should rely on realtime? 
-            // Actually, optimistic update is fine as long as we know our update went through. 
-            // But we already updated DB above.
-            // Let's simpler: Set local state to what we just sent.
-
             setActiveSession(prev => prev ? { ...prev, game_state: finalState } : null);
         } catch (err: unknown) {
             logger.error('GameSessionContext', 'Error updating game state', err);
