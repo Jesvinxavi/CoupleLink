@@ -69,6 +69,20 @@ interface ChallengesTileProps {
 // ═══════════════════════════════════════
 // SUBCOMPONENTS
 // ═══════════════════════════════════════
+interface ChallengeFrequencyCardProps {
+    type: ChallengeFrequency;
+    title: string;
+    challenge: Challenge | null;
+    timeLeft: string;
+    isUrgent: boolean;
+    status: ChallengeStatus;
+    myMemory: any;
+    partnerMemory: any;
+    agreement: "agreed" | "disagreed" | "pending" | "none";
+    onOpen: (t: ChallengeFrequency) => void;
+    allShown?: boolean;
+}
+
 function ChallengeFrequencyCard({
     type,
     title,
@@ -80,20 +94,8 @@ function ChallengeFrequencyCard({
     partnerMemory,
     agreement,
     onOpen,
-    allShown,
-}: {
-    type: ChallengeFrequency
-    title: string
-    challenge: Challenge | null
-    timeLeft: string
-    isUrgent: boolean
-    status: ChallengeStatus
-    myMemory: any
-    partnerMemory: any
-    agreement: "agreed" | "disagreed" | "pending" | "none";
-    onOpen: (t: ChallengeFrequency) => void;
-    allShown?: boolean;
-}) {
+    allShown
+}: ChallengeFrequencyCardProps) {
 
 
     const isPlaceholder = !challenge;
