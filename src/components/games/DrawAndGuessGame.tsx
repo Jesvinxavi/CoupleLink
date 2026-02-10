@@ -2,10 +2,19 @@
 // IMPORTS
 // ═══════════════════════════════════════
 import { useEffect, useRef, useState, useMemo, useCallback } from "react"
+import React from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Palette, Eraser, Undo, Clock, Eye, Check, Sparkles } from "lucide-react"
 import CanvasDraw from "react-canvas-draw"
 import { Button } from "@/components/ui/button"
+
+console.log('DEBUG: DrawAndGuessGame module load');
+try {
+    console.log('DEBUG: React inside DrawAndGuessGame version:', React?.version);
+    console.log('DEBUG: CanvasDraw inside DrawAndGuessGame:', typeof CanvasDraw);
+} catch (e) {
+    console.error('DEBUG: Error logging in DrawAndGuessGame:', e);
+}
 import { useGameSession, type GameSession } from "@/hooks/useGameSession"
 import { useCoupleData } from "@/hooks/useCoupleData"
 import { supabase } from "@/lib/supabase"

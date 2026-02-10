@@ -1,7 +1,16 @@
-import { StrictMode } from 'react'
+import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+
+console.log('DEBUG: main.tsx initialized');
+try {
+  console.log('DEBUG: React version:', React.version);
+  console.log('DEBUG: React object keys:', Object.keys(React));
+  console.log('DEBUG: React.createContext exists:', typeof React.createContext);
+} catch (e) {
+  console.error('DEBUG: Error loging React:', e);
+}
 import { logger } from './lib/logger'
 
 // Clean up stale service workers in development
