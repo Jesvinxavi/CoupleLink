@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Palette, Eraser, Undo, Clock, Eye, Check, Sparkles } from "lucide-react"
-import CanvasDraw from "react-canvas-draw"
+// import CanvasDraw from "react-canvas-draw"
 import { Button } from "@/components/ui/button"
 import { useGameSession, type GameSession } from "@/hooks/useGameSession"
 import { useCoupleData } from "@/hooks/useCoupleData"
@@ -356,7 +356,7 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
 
             {/* Canvas */}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-4 border-2 border-black dark:border-white">
-                <CanvasDraw
+                {/* <CanvasDraw
                     ref={canvasRef}
                     brushColor={brushColor}
                     brushRadius={brushRadius}
@@ -368,7 +368,10 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
                     disabled={!isDrawer}
                     hideGrid
                     className="touch-none mx-auto"
-                />
+                /> */}
+                <div className="flex items-center justify-center h-[350px] bg-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+                    <p className="text-gray-500 font-medium">Drawing Canvas Disabled (Maintenance)</p>
+                </div>
             </div>
 
             {/* Drawing Tools (only for drawer) */}
