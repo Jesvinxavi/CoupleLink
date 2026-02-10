@@ -100,6 +100,7 @@ export function JournalFeed() {
     const canLoadMore = filteredEntries.length > visibleCount
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setVisibleCount(PAGE_SIZE)
     }, [normalizedQuery, entries.length])
 

@@ -37,6 +37,7 @@ export const QuickActionsTile = memo(function QuickActionsTile({ onFocusChange }
     useEffect(() => {
         // Rotate prompt every time component mounts or randomly
         const randomPrompt = JOURNAL_PROMPTS[Math.floor(Math.random() * JOURNAL_PROMPTS.length)]
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPrompt(randomPrompt)
     }, [])
 

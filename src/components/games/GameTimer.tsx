@@ -29,6 +29,7 @@ export const GameTimer = memo(function GameTimer({
 
     // Reset timer when round changes
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setTimeLeft(duration)
     }, [currentRound, duration])
 

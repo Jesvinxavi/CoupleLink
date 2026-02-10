@@ -119,6 +119,7 @@ export function GameSessionOverlay({ isOpen, onClose, session, onFocusChange }: 
 
     // Reset focus state when round changes (e.g. going from guessing to drawing) to prevents sticky header
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsFocused(false)
         if (onFocusChange) onFocusChange(false)
     }, [session?.current_round, onFocusChange])

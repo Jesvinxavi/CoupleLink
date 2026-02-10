@@ -15,6 +15,7 @@ interface Stat {
     value: string | number
     icon: string
     color: string
+    bg?: string
 }
 
 interface StatOfTheDayTileProps {
@@ -28,64 +29,70 @@ export const StatOfTheDayTile = memo(function StatOfTheDayTile({ stats: relation
 
     const { couple } = useCoupleData()
 
+    // Calculate days together (memoized to avoid re-calculation on every render)
+    const daysTogether = useMemo(() => {
+        if (!couple?.anniversary_date) return 0
+        // eslint-disable-next-line react-hooks/purity
+        return Math.floor((Date.now() - new Date(couple.anniversary_date).getTime()) / URGENCY_THRESHOLDS.ONE_DAY)
+    }, [couple?.anniversary_date])
+
     const stats: Stat[] = useMemo(() => {
         if (!couple || !relationshipStats) return []
 
-        const daysTogether = couple.anniversary_date
-            ? Math.floor((Date.now() - new Date(couple.anniversary_date).getTime()) / URGENCY_THRESHOLDS.ONE_DAY)
-            : 0
-
         const nextMilestone = 365 - (daysTogether % 365)
 
-        return [
+        const baseStats: Stat[] = [
             {
                 label: "Days Together",
-                value: daysTogether,
+                value: daysTogether.toLocaleString(),
                 icon: "favorite",
-                color: "text-rose-500"
+                color: "text-rose-500",
+                bg: "bg-rose-50"
+            },
+            {
+                label: "Next Milestone",
+                value: `${nextMilestone} days`,
+                icon: "flag",
+                color: "text-amber-500",
+                bg: "bg-amber-50"
             },
             {
                 label: "Current Streak",
-                value: `${couple.current_streak} Days`,
+                value: `${relationshipStats.currentStreak} days`,
                 icon: "local_fire_department",
-                color: "text-orange-500"
+                color: "text-orange-500",
+                bg: "bg-orange-50"
             },
             {
-                label: "Longest Streak",
-                value: `${couple.longest_streak} Days`,
+                label: "Challenges Completed",
+                value: relationshipStats.activityBreakdown.find(i => i.name === 'Challenges')?.value?.toString() || "0",
                 icon: "emoji_events",
-                color: "text-yellow-500"
+                color: "text-yellow-600",
+                bg: "bg-yellow-50"
             },
             {
-                label: "Next Anniversary",
-                value: `In ${nextMilestone} Days`,
-                icon: "event",
-                color: "text-purple-500"
+                label: "Memories Shared",
+                value: relationshipStats.totalMemories.toString(),
+                icon: "photo_library",
+                color: "text-blue-500",
+                bg: "bg-blue-50"
             },
             {
-                label: "Rain Checks",
-                value: couple.rain_check_tokens || 0,
-                icon: "umbrella",
-                color: "text-blue-500"
-            },
-            {
-                label: "Places Visited",
-                value: `${relationshipStats.travelStats.placesVisited} Places`,
-                icon: "flight_takeoff",
-                color: "text-green-500"
-            },
-            {
-                label: "Most Active Day",
-                value: relationshipStats.funStats.mostActiveDay,
-                icon: "calendar_month",
-                color: "text-indigo-500"
+                label: "Questions Answered",
+                value: relationshipStats.activityBreakdown.find(i => i.name === 'Deep Questions')?.value?.toString() || "0",
+                icon: "psychology",
+                color: "text-green-500",
+                bg: "bg-green-50"
             }
         ]
-    }, [couple, relationshipStats])
+
+        return baseStats
+    }, [couple, relationshipStats, daysTogether])
 
     // Rotate stat every week
     const currentStatIndex = useMemo(() => {
         if (stats.length === 0) return 0
+        // eslint-disable-next-line react-hooks/purity
         const today = Date.now()
         const oneWeek = URGENCY_THRESHOLDS.ONE_DAY * 7
         return Math.floor(today / oneWeek) % stats.length

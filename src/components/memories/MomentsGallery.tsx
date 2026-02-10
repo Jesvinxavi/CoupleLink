@@ -35,15 +35,12 @@ interface FolderItem {
     created_at: string
 }
 
-interface MomentsGalleryProps {
-}
-
 const MOMENTS_PAGE_SIZE = 24
 
 // ═══════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════
-export function MomentsGallery({ }: MomentsGalleryProps) {
+export const MomentsGallery = () => {
     const { couple } = useCoupleData()
 
     // ═══════════════════════════════════════
