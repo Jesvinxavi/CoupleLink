@@ -307,9 +307,9 @@ export function SexplorationHistorySection({ monthYear }: SexplorationHistoryPro
                 })
 
                 setHistory({
-                    vouchers,
-                    fantasies,
-                    positions: positionItems
+                    vouchers: vouchers.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+                    fantasies: fantasies.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+                    positions: positionItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                 })
 
             } catch (err) {
@@ -363,6 +363,7 @@ export function SexplorationHistorySection({ monthYear }: SexplorationHistoryPro
                             Vouchers
                         </TabsTrigger>
                     </TabsList>
+
 
                     <TabsContent value="positions" className="space-y-4">
                         {history.positions.length > 0 ? (

@@ -289,7 +289,7 @@ export function ChallengeHistory() {
                     .order("created_at", { ascending: false }),
                 supabase
                     .from("memories")
-                    .select("id, caption, created_at, metadata, media_urls")
+                    .select("id, title, caption, created_at, metadata, media_urls")
                     .eq("couple_id", couple.id)
                     .eq("type", "challenge")
                     .order("created_at", { ascending: false })
@@ -328,7 +328,7 @@ export function ChallengeHistory() {
                 // Group memories by title + date (approx) to avoid duplicates if both partners completed
                 const chalGrouped = new Map<string, HistoryItem>()
                 memories.forEach((mem: any) => {
-                    const title = mem.caption || "Challenge"
+                    const title = mem.title || mem.caption || "Challenge"
                     // Use a key that combines title and frequency (since same title could repeat across weeks/months, though unlikely)
                     const key = `${title}-${mem.metadata?.frequency || 'daily'}`
 
@@ -376,6 +376,13 @@ export function ChallengeHistory() {
                 }
                 return acc
             }, {} as GroupedHistory)
+
+            // Sort each category by date DESC to ensure interleaving works
+            Object.values(grouped).forEach(month => {
+                month.daily.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                month.weekly.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                month.monthly.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            })
 
             // Ensure current month always exists
             const now = new Date()
