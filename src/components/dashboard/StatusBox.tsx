@@ -66,7 +66,7 @@ interface StatusBoxProps {
     dailyTimeLeft: string
     weeklyTimeLeft: string
     monthlyTimeLeft: string
-    poolStatus: Record<string, { allShown: boolean }>
+    poolStatus: Record<string, { allShown: boolean }> | null
     daily: Challenge | null
     weekly: Challenge | null
     monthly: Challenge | null
