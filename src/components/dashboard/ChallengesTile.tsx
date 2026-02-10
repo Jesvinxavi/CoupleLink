@@ -80,7 +80,7 @@ function ChallengeFrequencyCard({
     partnerMemory,
     agreement,
     onOpen,
-    allShown
+    allShown,
 }: {
     type: ChallengeFrequency
     title: string
@@ -90,9 +90,9 @@ function ChallengeFrequencyCard({
     status: ChallengeStatus
     myMemory: any
     partnerMemory: any
-    agreement: "agreed" | "disagreed" | "pending" | "none"
-    onOpen: (t: ChallengeFrequency) => void
-    allShown?: boolean
+    agreement: "agreed" | "disagreed" | "pending" | "none";
+    onOpen: (t: ChallengeFrequency) => void;
+    allShown?: boolean;
 }) {
 
 
