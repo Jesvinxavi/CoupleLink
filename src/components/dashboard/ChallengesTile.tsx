@@ -9,6 +9,11 @@ import { useChallengePoints } from "@/hooks/useChallengePoints"
 import { ChallengeOverlay } from "@/components/dashboard/ChallengeOverlay"
 import { PaywallModal } from "@/components/ui/PaywallModal"
 import { type PoolStatus } from "@/context/ChallengeContext"
+import type { Challenge } from "@/types/challenge"
+import type { Database } from "@/lib/database.types"
+
+type Couple = Database['public']['Tables']['couples']['Row']
+type Profile = Database['public']['Tables']['profiles']['Row']
 
 // ═══════════════════════════════════════
 // ANIMATION VARIANTS
@@ -34,17 +39,24 @@ const item = {
 type ChallengeFrequency = "daily" | "weekly" | "monthly"
 
 interface ChallengesTileProps {
-    daily: any; weekly: any; monthly: any;
+    daily: Challenge | null; weekly: Challenge | null; monthly: Challenge | null;
     dailyTimeLeft: string; weeklyTimeLeft: string; monthlyTimeLeft: string;
     dailyTimeUrgent: boolean; weeklyTimeUrgent: boolean; monthlyTimeUrgent: boolean;
     dailyStatus: ChallengeStatus; weeklyStatus: ChallengeStatus; monthlyStatus: ChallengeStatus;
-    completeChallenge: any; undoChallenge: any; skipChallenge: any;
-    loadingPartner: boolean; winnerAgreement: any;
+    completeChallenge: (type: 'daily' | 'weekly' | 'monthly', file?: File | null, winnerSelection?: 'me' | 'partner' | 'tie') => Promise<void>;
+    undoChallenge: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
+    skipChallenge: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
+    loadingPartner: boolean;
+    winnerAgreement: {
+        daily: 'agreed' | 'disagreed' | 'pending' | 'none';
+        weekly: 'agreed' | 'disagreed' | 'pending' | 'none';
+        monthly: 'agreed' | 'disagreed' | 'pending' | 'none';
+    };
     myDailyMemory: any; myWeeklyMemory: any; myMonthlyMemory: any;
     partnerDailyMemory: any; partnerWeeklyMemory: any; partnerMonthlyMemory: any;
-    markChallengeConfettiSeen: any;
-    couple: any;
-    userProfile: any;
+    markChallengeConfettiSeen: (id: string) => Promise<void>;
+    couple: Couple | null;
+    userProfile: Profile | null;
     poolStatus: PoolStatus | null;
     resetCycle: (type: 'daily' | 'weekly' | 'monthly') => Promise<void>;
     /**
@@ -72,7 +84,7 @@ function ChallengeFrequencyCard({
 }: {
     type: ChallengeFrequency
     title: string
-    challenge: any
+    challenge: Challenge | null
     timeLeft: string
     isUrgent: boolean
     status: ChallengeStatus
@@ -334,7 +346,12 @@ export function ChallengesTile({
         prevDailyBoth.current = dailyBoth;
         prevWeeklyBoth.current = weeklyBoth;
         prevMonthlyBoth.current = monthlyBoth;
-    }, [dailyStatus, weeklyStatus, monthlyStatus, loadingPartner, myDailyMemory, myWeeklyMemory, myMonthlyMemory]);
+    }, [
+        dailyStatus, weeklyStatus, monthlyStatus,
+        loadingPartner,
+        myDailyMemory, myWeeklyMemory, myMonthlyMemory,
+        couple, daily, weekly, monthly, userProfile, markChallengeConfettiSeen
+    ]);
 
     const [selectedChallenge, setSelectedChallenge] = useState<{ type: 'daily' | 'weekly' | 'monthly', data: any } | null>(null);
     const [allExploredType, setAllExploredType] = useState<'daily' | 'weekly' | 'monthly' | null>(null);

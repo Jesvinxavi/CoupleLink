@@ -6,11 +6,11 @@ import { supabase } from "@/lib/supabase"
 import { logger } from "@/lib/logger"
 import { useCoupleData } from "@/hooks/useCoupleData"
 import {
-    Loader2,
     Calendar,
     CalendarDays,
     Quote,
     Image as ImageIcon,
+    Loader2,
     HelpCircle,
     X,
     MapPin,
@@ -56,6 +56,25 @@ interface MemoryItem {
     event_color?: string | null
     challenge_type?: "daily" | "weekly" | "monthly" | null
     is_competition?: boolean
+    partner_completed?: boolean
+}
+
+type ThrowbackType = "journal" | "photo" | "challenge" | "position" | "fantasy" | "voucher" | "sticky_note" | "event" | "quiz";
+
+interface ChallengeAnswer {
+    user_id: string;
+    answer: string;
+}
+
+interface ThrowbackExtraData {
+    answers?: ChallengeAnswer[];
+    assigned_to?: string;
+    category?: string;
+    event_color?: string;
+    activity_question?: string;
+    challenge_type?: "daily" | "weekly" | "monthly";
+    is_competition?: boolean;
+    partner_completed?: boolean;
 }
 
 // ═══════════════════════════════════════
@@ -111,7 +130,7 @@ export function ThrowbackTile() {
                     media_urls: string[] | null;
                     location: string | null;
                     uploader_id: string | null;
-                    extra_data: any; // Ideally strictly typed too, but mapped to generic Json in Supabase types
+                    extra_data: ThrowbackExtraData;
                 };
 
                 let selectedItem: OnThisDayItem | null = null;
@@ -119,7 +138,7 @@ export function ThrowbackTile() {
                 if (onThisDayData && onThisDayData.length > 0) {
                     // Pick random item from "On This Day" using consistent daily seed
                     const index = seed % onThisDayData.length;
-                    selectedItem = onThisDayData[index];
+                    selectedItem = onThisDayData[index] as OnThisDayItem;
                 } else {
 
                     // 2. Fallback: "Throwback" via RPC
@@ -144,7 +163,7 @@ export function ThrowbackTile() {
 
 
                     if (throwbackData && throwbackData.length > 0) {
-                        selectedItem = throwbackData[0];
+                        selectedItem = throwbackData[0] as OnThisDayItem;
                     }
                 }
 
@@ -153,11 +172,11 @@ export function ThrowbackTile() {
                 if (selectedItem) {
                     // Transform RPC result to MemoryItem
                     // Challenges need answer mapping
-                    let challengeAnswers: any = {};
+                    let challengeAnswers: Partial<MemoryItem> = {};
                     if ((selectedItem.type === 'challenge' || selectedItem.type === 'quiz') && selectedItem.extra_data?.answers) {
-                        const answers = selectedItem.extra_data.answers as any[];
-                        const userOne = answers.find((a: any) => a.user_id === couple.user_one_id);
-                        const userTwo = answers.find((a: any) => a.user_id === couple.user_two_id);
+                        const answers = selectedItem.extra_data.answers;
+                        const userOne = answers.find((a) => a.user_id === couple.user_one_id);
+                        const userTwo = answers.find((a) => a.user_id === couple.user_two_id);
                         challengeAnswers = {
                             user_one_id: couple.user_one_id,
                             user_one_answer: userOne?.answer,
@@ -168,11 +187,12 @@ export function ThrowbackTile() {
 
                     const constructedItem = {
                         id: selectedItem.id,
-                        type: selectedItem.type as any,
+                        type: selectedItem.type as ThrowbackType,
                         content: selectedItem.content,
                         title: selectedItem.title,
                         media_urls: selectedItem.media_urls,
                         location: selectedItem.location,
+                        extra_data: (selectedItem.extra_data as unknown) as ThrowbackExtraData,
                         created_at: selectedItem.created_at,
                         uploader_id: selectedItem.uploader_id,
                         requester_id: selectedItem.uploader_id, // For fantasy (requester_id mapped to uploader_id in RPC)
@@ -300,7 +320,7 @@ export function ThrowbackTile() {
 
     const uploaderIsMe = item.uploader_id === currentUser?.id
     const uploaderIsPartner = item.uploader_id === partner?.id
-    const rpcPartnerCompleted = !!(item as any).partner_completed; // "non-uploader completed"
+    const rpcPartnerCompleted = item.partner_completed; // "non-uploader completed"
 
     // When I am the uploader: I completed (obviously), partner_completed tells if partner did
     // When partner is the uploader: partner completed (obviously), partner_completed tells if I did

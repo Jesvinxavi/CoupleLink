@@ -27,6 +27,8 @@ export function useGameProgress(coupleId: string | undefined, spicyMode: boolean
     const [loading, setLoading] = useState(true);
 
     const fetchProgress = useCallback(async () => {
+        if (!coupleId) return;
+
         try {
             // Fetch all COMPLETED game sessions for this couple
             // We only care about completed sessions to count "answered" questions

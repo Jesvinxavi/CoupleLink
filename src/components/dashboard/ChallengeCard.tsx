@@ -18,7 +18,7 @@ interface ChallengeCardProps {
     activity: Activity | null
     userAnswer: UserAnswer | null
     partnerAnswer: UserAnswer | null
-    onSubmit: (answer: string) => Promise<any>
+    onSubmit: (answer: string) => Promise<void>
     onMarkSeen?: () => Promise<void>
     isNewAnswer?: boolean
     loading: boolean

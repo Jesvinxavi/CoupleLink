@@ -76,7 +76,7 @@ export default function DateNightPage() {
             setLoadingUserDates(true)
             const { data, error } = await supabase
                 .from("user_dates")
-                .select("id, title, description, image_url, duration, cost, checklist, created_at, is_completed, completed_at, couple_id")
+                .select("id, title, description, image_url, duration, cost, checklist, couple_id, created_at")
                 .eq("couple_id", couple.id)
                 .order("created_at", { ascending: false })
 
@@ -200,6 +200,7 @@ export default function DateNightPage() {
                                                 <DateIdeaCard
                                                     key={index}
                                                     {...idea}
+                                                    cost={idea.cost || ''}
                                                     category={idea.categories[0]} // Display primary category
                                                     onStart={() => handleStartDate(idea)}
                                                 />

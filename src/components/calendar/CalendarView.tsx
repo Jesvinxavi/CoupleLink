@@ -52,7 +52,7 @@ export function CalendarView() {
         try {
             await saveEvent(event);
             setErrorMessage(null);
-        } catch (error: any) {
+        } catch (error) {
             logger.error('CalendarView', 'Error saving event', error);
             setErrorMessage('Failed to save event. Please try again.');
             throw error;
@@ -66,7 +66,7 @@ export function CalendarView() {
             setIsAddModalOpen(false);
             setEditingEvent(null);
             setErrorMessage(null);
-        } catch (error: any) {
+        } catch (error) {
             logger.error('CalendarView', 'Error deleting event', error);
             setErrorMessage('Failed to delete event. Please try again.');
         }

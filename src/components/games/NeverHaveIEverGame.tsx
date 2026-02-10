@@ -16,6 +16,15 @@ interface NeverHaveIEverGameProps {
     session: GameSession
 }
 
+interface NHIERoundResult {
+    round: number;
+    question?: string;
+    answers: Record<string, boolean | undefined>;
+    myAnswer?: boolean;
+    partnerAnswer?: boolean;
+    matched: boolean;
+}
+
 // ═══════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════
@@ -91,7 +100,7 @@ export function NeverHaveIEverGame({ session }: NeverHaveIEverGameProps) {
                 .eq('id', session.id)
                 .single();
 
-            const latestGameState = data?.game_state as any || {};
+            const latestGameState = (data?.game_state as { all_answers?: NHIERoundResult[]; round_answers?: Record<string, boolean> }) || {};
             const currentAllAnswers = latestGameState.all_answers || [];
             const latestRoundAnswers = latestGameState.round_answers || {};
 
@@ -139,7 +148,7 @@ export function NeverHaveIEverGame({ session }: NeverHaveIEverGameProps) {
 
 
     // Calculate results
-    const matchCount = allAnswers.filter((a: any) => a.matched).length;
+    const matchCount = allAnswers.filter((a: NHIERoundResult) => a.matched).length;
     const matchPercentage = allAnswers.length > 0 ? Math.round((matchCount / allAnswers.length) * 100) : 0;
 
     // Game Complete Results Screen
@@ -171,7 +180,7 @@ export function NeverHaveIEverGame({ session }: NeverHaveIEverGameProps) {
                     <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Your Answers:</h4>
                     <div className="max-h-[16.25rem] overflow-y-auto pr-1">
                         <div className="space-y-2">
-                            {allAnswers.map((answer: any, idx: number) => {
+                            {allAnswers.map((answer: NHIERoundResult, idx: number) => {
                                 // Resolve answers based on IDs for correctness
                                 // For new data: use answer.answers[id]
                                 // For legacy data: fallback to myAnswer/partnerAnswer, BUT context depends on who is viewing

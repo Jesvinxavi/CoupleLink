@@ -20,6 +20,8 @@ export type { CalendarEvent };
 // ═══════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════
+type RecurrenceType = 'none' | 'monthly' | 'six_months' | 'yearly';
+
 interface AddEventOverlayProps {
     isOpen: boolean;
     onClose: () => void;
@@ -85,7 +87,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
 
     const [location, setLocation] = useState('');
     const [description, setDescription] = useState('');
-    const [recurrence, setRecurrence] = useState<'none' | 'monthly' | 'six_months' | 'yearly'>('none');
+    const [recurrence, setRecurrence] = useState<RecurrenceType>('none');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -188,7 +190,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                 }
                 setLocation(eventToEdit.location || '');
                 setDescription(eventToEdit.description || '');
-                setRecurrence((eventToEdit.recurrence as any) || 'none');
+                setRecurrence((eventToEdit.recurrence as RecurrenceType) || 'none');
 
                 // Find or create category
                 const existingCategory = categories.find(c => c.name === eventToEdit.category);
@@ -208,7 +210,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                 setIsMultiDay(!!initialValues?.end_date);
                 setLocation(initialValues?.location || '');
                 setDescription(initialValues?.description || '');
-                setRecurrence((initialValues?.recurrence as any) || 'none');
+                setRecurrence((initialValues?.recurrence as RecurrenceType) || 'none');
 
                 if (initialValues?.category) {
                     const category = categories.find(c => c.name === initialValues.category);
@@ -368,7 +370,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                     const result = await resolveCountry(location);
                     if (result) country = result.country;
                 } catch (e) {
-                    logger.warn('AddEventOverlay', 'Failed to resolve country', e, { location });
+                    logger.warn('AddEventOverlay', 'Failed to resolve country', { error: e, location });
                 }
             }
 
@@ -669,7 +671,7 @@ export function AddEventOverlay({ isOpen, onClose, selectedDate, eventToEdit, in
                                         <select
                                             id="recurrence"
                                             value={recurrence}
-                                            onChange={(e) => setRecurrence(e.target.value as any)}
+                                            onChange={(e) => setRecurrence(e.target.value as RecurrenceType)}
                                             className="flex h-11 w-full rounded-md border border-input bg-white dark:bg-gray-800 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             <option value="none">Does not repeat</option>

@@ -30,7 +30,7 @@ export function expandRecurringEvents(
 
         // Logic for Recurring
         let currentStart = new Date(event.event_date);
-        let currentEnd = event.end_date ? new Date(event.end_date) : new Date(event.event_date);
+        const currentEnd = event.end_date ? new Date(event.end_date) : new Date(event.event_date);
         const duration = currentEnd.getTime() - currentStart.getTime();
 
         // Limit iteration to avoid infinite loops (1000 instances or safety break)

@@ -16,6 +16,15 @@ interface RapidFireGameProps {
     session: GameSession
 }
 
+interface RapidFireRoundResult {
+    round: number;
+    question?: string;
+    answers: Record<string, 'yes' | 'no' | 'skip'>;
+    myAnswer?: 'yes' | 'no' | 'skip';
+    partnerAnswer?: 'yes' | 'no' | 'skip';
+    matched: boolean;
+}
+
 // ═══════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════
@@ -152,7 +161,7 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                 .eq('id', session.id)
                 .single();
 
-            const latestGameState = data?.game_state as any || {};
+            const latestGameState = (data?.game_state as { all_answers?: RapidFireRoundResult[]; round_answers?: Record<string, 'yes' | 'no' | 'skip'> }) || {};
             const currentAllAnswers = latestGameState.all_answers || [];
             const latestRoundAnswers = latestGameState.round_answers || {};
 
@@ -204,7 +213,7 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
 
 
     // Calculate results
-    const matchCount = allAnswers.filter((a: any) => a.matched).length;
+    const matchCount = allAnswers.filter((a: RapidFireRoundResult) => a.matched).length;
     const matchPercentage = allAnswers.length > 0 ? Math.round((matchCount / allAnswers.length) * 100) : 0;
 
     const getAnswerEmoji = (answer: string | undefined) => {
@@ -243,7 +252,7 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                     <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Your Answers:</h4>
                     <div className="max-h-[16.25rem] overflow-y-auto pr-1">
                         <div className="space-y-2">
-                            {allAnswers.map((answer: any, idx: number) => {
+                            {allAnswers.map((answer: RapidFireRoundResult, idx: number) => {
                                 // Resolve answers based on IDs for correctness
                                 // For new data: use answer.answers[id]
                                 // For legacy data: fallback to myAnswer/partnerAnswer, BUT context depends on who is viewing
@@ -251,8 +260,8 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
 
                                 const isPlayerOne = currentUser?.id === session.player_one_id;
 
-                                let myCorrectAnswer = answer.answers?.[currentUser?.id || ''];
-                                let partnerCorrectAnswer = answer.answers?.[partner?.id || ''];
+                                let myCorrectAnswer: 'yes' | 'no' | 'skip' | undefined = answer.answers?.[currentUser?.id || ''];
+                                let partnerCorrectAnswer: 'yes' | 'no' | 'skip' | undefined = answer.answers?.[partner?.id || ''];
 
                                 if (myCorrectAnswer === undefined) {
                                     // Fallback for legacy data
@@ -285,8 +294,8 @@ export function RapidFireGame({ session }: RapidFireGameProps) {
                                             Q{answer.round}: {answer.question?.substring(0, 40)}...
                                         </p>
                                         <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
-                                            <span>You: {getAnswerEmoji(myCorrectAnswer)} {myCorrectAnswer?.charAt(0).toUpperCase() + myCorrectAnswer?.slice(1)}</span>
-                                            <span>{partner?.first_name}: {getAnswerEmoji(partnerCorrectAnswer)} {partnerCorrectAnswer?.charAt(0).toUpperCase() + partnerCorrectAnswer?.slice(1)}</span>
+                                            <span>You: {getAnswerEmoji(myCorrectAnswer)} {(myCorrectAnswer || '').charAt(0).toUpperCase() + (myCorrectAnswer || '').slice(1)}</span>
+                                            <span>{partner?.first_name}: {getAnswerEmoji(partnerCorrectAnswer)} {(partnerCorrectAnswer || '').charAt(0).toUpperCase() + (partnerCorrectAnswer || '').slice(1)}</span>
                                         </div>
                                     </div>
                                 );

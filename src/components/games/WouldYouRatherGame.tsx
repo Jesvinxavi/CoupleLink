@@ -16,6 +16,15 @@ interface WouldYouRatherGameProps {
     session: GameSession
 }
 
+interface RoundResult {
+    round: number;
+    question?: string;
+    answers: Record<string, number>;
+    myAnswer?: number;
+    partnerAnswer?: number;
+    matched: boolean;
+}
+
 // ═══════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════
@@ -92,7 +101,7 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
                 .eq("id", session.id)
                 .single()
 
-            const latestGameState = data?.game_state as any || {}
+            const latestGameState = (data?.game_state as { all_answers?: RoundResult[]; round_answers?: Record<string, number> }) || {}
             const currentAllAnswers = latestGameState.all_answers || []
             const latestRoundAnswers = latestGameState.round_answers || {}
 
@@ -141,7 +150,7 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
 
 
     // Calculate results
-    const matchCount = allAnswers.filter((a: any) => a.matched).length
+    const matchCount = allAnswers.filter((a: RoundResult) => a.matched).length
     const matchPercentage = allAnswers.length > 0 ? Math.round((matchCount / allAnswers.length) * 100) : 0
 
     // Game Complete Results Screen
@@ -173,10 +182,10 @@ export function WouldYouRatherGame({ session }: WouldYouRatherGameProps) {
                     <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Your Answers:</h4>
                     <div className="max-h-[16.25rem] overflow-y-auto pr-1">
                         <div className="space-y-2">
-                            {allAnswers.map((answer: any, idx: number) => (
+                            {allAnswers.map((answer: RoundResult, idx: number) => (
                                 <div
                                     key={idx}
-                                className={`p-3 rounded-lg text-sm ${answer.matched
+                                    className={`p-3 rounded-lg text-sm ${answer.matched
                                         ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
                                         : "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800"
                                         }`}

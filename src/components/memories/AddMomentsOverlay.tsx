@@ -59,9 +59,8 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
             setSelectedFiles([])
             setCaption("")
             setError(null)
-            setViewportStyle(undefined)
         }
-    }, [isOpen])
+    }, [isOpen, previewUrls])
 
     // Visual Viewport logic for mobile keyboard
     useEffect(() => {

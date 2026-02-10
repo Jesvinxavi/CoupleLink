@@ -448,7 +448,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            const session = latestSession as GameSession;
+            const session = latestSession as unknown as GameSession;
             const amPlayerOne = session.player_one_id === currentUser.id;
             const amPlayerTwo = session.player_two_id === currentUser.id;
 
@@ -599,7 +599,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
 
             if (fetchError || !latestData) throw fetchError || new Error("Session not found");
 
-            const currentSession = latestData as GameSession;
+            const currentSession = latestData as unknown as GameSession;
             const newRound = currentSession.current_round + 1;
 
             // Use the FRESH game_state from DB, only modifying what we need
@@ -646,8 +646,9 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
                 .maybeSingle();
 
             if (existingSession) {
-                await joinSession(existingSession.id);
-                return existingSession as GameSession;
+                const session = existingSession as unknown as GameSession;
+                await joinSession(session.id);
+                return session;
             }
             return await createSession(gameType);
         } catch (err) {

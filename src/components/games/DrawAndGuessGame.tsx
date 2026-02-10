@@ -19,6 +19,15 @@ interface DrawAndGuessGameProps {
     session: GameSession
 }
 
+interface DrawRoundResult {
+    round: number;
+    word: string;
+    drawerId: string;
+    guesserId: string;
+    correct: boolean;
+    guess: string;
+}
+
 // ═══════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════
@@ -187,20 +196,20 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
                 .eq('id', session.id)
                 .single();
 
-            const latestGameState = data?.game_state as any || {};
+            const latestGameState = (data?.game_state as { all_answers?: DrawRoundResult[] }) || {};
             const currentAllAnswers = latestGameState.all_answers || [];
 
             // Define the result for this round
             const roundResult = {
                 round: session.current_round,
                 word: currentPrompt ? currentPrompt.word : '',
-                drawerId: isDrawer ? (isPlayerOne ? session.player_one_id : session.player_two_id) : (isPlayerOne ? session.player_two_id : session.player_one_id),
-                guesserId: !isDrawer ? (isPlayerOne ? session.player_one_id : session.player_two_id) : (isPlayerOne ? session.player_two_id : session.player_one_id),
+                drawerId: (isDrawer ? (isPlayerOne ? session.player_one_id : session.player_two_id) : (isPlayerOne ? session.player_two_id : session.player_one_id)) || '',
+                guesserId: (!isDrawer ? (isPlayerOne ? session.player_one_id : session.player_two_id) : (isPlayerOne ? session.player_two_id : session.player_one_id)) || '',
                 correct: isCorrect,
                 guess: guess
             };
 
-            const alreadySaved = currentAllAnswers.some((a: any) => a.round === session.current_round);
+            const alreadySaved = currentAllAnswers.some((a: DrawRoundResult) => a.round === session.current_round);
             let newAllAnswers = currentAllAnswers;
 
             if (!alreadySaved) {
@@ -228,7 +237,7 @@ export function DrawAndGuessGame({ session }: DrawAndGuessGameProps) {
 
     if (!currentPrompt || session.current_round > session.total_rounds) {
         // Calculate Stats
-        const allAnswers = (session.game_state?.all_answers || []) as any[];
+        const allAnswers = (session.game_state?.all_answers || []) as DrawRoundResult[];
         const totalGames = allAnswers.length;
         const correctGames = allAnswers.filter(a => a.correct).length;
         const percentage = totalGames > 0 ? Math.round((correctGames / totalGames) * 100) : 0;
