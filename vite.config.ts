@@ -54,13 +54,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          if (!id.includes('node_modules')) return
-          // if (id.includes('react')) return 'react'
-          if (id.includes('@supabase')) return 'supabase'
-          if (id.includes('recharts')) return 'charts'
-          return 'vendor'
-        }
+        // Letting Vite handle chunking automatically to avoid initialization order issues
       }
     }
   }
