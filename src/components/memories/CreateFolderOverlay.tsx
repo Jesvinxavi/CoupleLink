@@ -52,15 +52,17 @@ export function CreateFolderOverlay({ isOpen, onClose, onSuccess, onFocusChange 
     // Cleanup effect when closing
     useEffect(() => {
         if (!isOpen) {
-            // Reset state
-            previewUrls.forEach((url) => URL.revokeObjectURL(url))
-            setPreviewUrls([])
+            // Reset state — use functional setState to avoid needing previewUrls in deps
+            setPreviewUrls((prev) => {
+                prev.forEach((url) => URL.revokeObjectURL(url))
+                return []
+            })
             setSelectedFiles([])
             setFolderName("")
             setError(null)
             setViewportStyle(undefined)
         }
-    }, [isOpen, previewUrls])
+    }, [isOpen])
 
     // Visual Viewport logic for mobile keyboard
     useEffect(() => {

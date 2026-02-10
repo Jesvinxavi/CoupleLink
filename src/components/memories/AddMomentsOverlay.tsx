@@ -54,13 +54,15 @@ export function AddMomentsOverlay({ isOpen, onClose, currentFolderId, onSuccess,
     useEffect(() => {
         if (!isOpen) {
             // Clean up previews when closed
-            previewUrls.forEach((url) => URL.revokeObjectURL(url))
-            setPreviewUrls([])
+            setPreviewUrls((prev) => {
+                prev.forEach((url) => URL.revokeObjectURL(url))
+                return []
+            })
             setSelectedFiles([])
             setCaption("")
             setError(null)
         }
-    }, [isOpen, previewUrls])
+    }, [isOpen])
 
     // Visual Viewport logic for mobile keyboard
     useEffect(() => {
