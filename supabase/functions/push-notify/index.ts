@@ -3,9 +3,9 @@
 // Triggered by database webhooks on INSERT/UPDATE
 // Sends Web Push to partner when actions occur
 // ═══════════════════════════════════════
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import webPush from 'npm:web-push';
+import "edge-runtime";
+import { createClient } from "@supabase/supabase-js";
+import webPush from "web-push";
 
 // ═══════════════════════════════════════
 // TYPES
@@ -14,8 +14,8 @@ interface WebhookPayload {
     type: 'INSERT' | 'UPDATE' | 'DELETE';
     table: string;
     schema: string;
-    record: Record<string, any>;
-    old_record: Record<string, any> | null;
+    record: Record<string, unknown>;
+    old_record: Record<string, unknown> | null;
 }
 
 interface NotificationPreferences {
@@ -37,6 +37,10 @@ type VapidDetails = {
     publicKey: string;
     privateKey: string;
 };
+
+interface WebPushError extends Error {
+    statusCode?: number;
+}
 
 // ═══════════════════════════════════════
 // CONSTANTS
@@ -61,6 +65,47 @@ const SECTION_MAP: Record<string, string> = {
     coupon_activation: 'sexploration_fun',
     new_sticky_note: 'dates_reminders',
     new_journal_post: 'dates_reminders',
+    calendar_events: 'dates_reminders',
+};
+
+// Notification message templates with random selection (Matches NotificationListener.tsx)
+const NOTIFICATION_MESSAGES: Record<string, string[]> = {
+    daily_question: [
+        "Your partner answered the Daily Question! 💬",
+        "See what your partner answered for today's question! 👀"
+    ],
+    challenge_completion: [
+        "Partner completed a Challenge! 🏆",
+        "Challenge done by partner! Your turn! ⚡"
+    ],
+    new_journal_post: [
+        "New Journal Post from partner! 📖",
+        "Partner shared a moment in the Journal. Tap to see! ✨"
+    ],
+    new_sticky_note: [
+        "You have a new sticky note! 📝",
+        "Partner left you a love note. Tap to read! 💌"
+    ],
+    fantasies: [ // fantasies_added in frontend
+        "Partner added a new fantasy... 🔥",
+        "New fantasy from your partner! Check it out! 💕"
+    ],
+    fantasies_approved: [
+        "It's a match! Your fantasy was approved! 💖",
+        "Fantasy approved! Your partner is on board! 🎉"
+    ],
+    coupons: [
+        "You received a Pleasure Coupon! 🎁",
+        "Lucky you! Partner sent a coupon. Redeem it soon! 🎟️"
+    ],
+    coupon_activation: [
+        "Partner activated a Pleasure Coupon! 🔥",
+        "It's happening! Partner activated a coupon. Get ready! ⚡"
+    ],
+    calendar_events: [
+        "New Event added to your calendar! 📅",
+        "Partner planned something special! 🥂"
+    ]
 };
 
 const RETRY_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
@@ -77,6 +122,14 @@ function shouldNotify(prefs: NotificationPreferences | null, type: string): bool
     return true;
 }
 
+function getMessage(type: string): string {
+    const messages = NOTIFICATION_MESSAGES[type];
+    if (!messages || messages.length === 0) {
+        return "New notification from CoupleLink";
+    }
+    return messages[Math.floor(Math.random() * messages.length)];
+}
+
 function wait(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -91,8 +144,8 @@ async function sendWithRetry(
         try {
             await webPush.sendNotification(pushSub, payload, { vapidDetails });
             return;
-        } catch (error: any) {
-            const statusCode = error?.statusCode;
+        } catch (error: unknown) {
+            const statusCode = (error as WebPushError)?.statusCode;
             if (!statusCode || !RETRY_STATUS_CODES.has(statusCode) || attempt === maxRetries) {
                 throw error;
             }
@@ -109,18 +162,16 @@ function resolveNotification(
 
     // ── memories table ──
     if (table === 'memories' && eventType === 'INSERT') {
-        const memoryType = record.type;
-        const senderId = record.uploader_id;
+        const memoryType = record.type as string;
+        const senderId = record.uploader_id as string;
 
         if (memoryType === 'sticky_note') {
             return {
-                recipientId: '', // resolved later via couple
+                recipientId: '',
                 senderId,
                 type: 'new_sticky_note',
                 title: '💌 New Sticky Note',
-                body: record.caption
-                    ? `"${record.caption.substring(0, 80)}${record.caption.length > 80 ? '...' : ''}"`
-                    : 'Your partner left you a note!',
+                body: getMessage('new_sticky_note'),
                 url: '#/dashboard',
             };
         }
@@ -130,9 +181,7 @@ function resolveNotification(
                 senderId,
                 type: 'new_journal_post',
                 title: '📔 New Journal Entry',
-                body: record.title
-                    ? `"${record.title.substring(0, 80)}"`
-                    : 'Your partner wrote a journal entry!',
+                body: getMessage('new_journal_post'),
                 url: '#/memories',
             };
         }
@@ -142,7 +191,7 @@ function resolveNotification(
                 senderId,
                 type: 'challenge_completion',
                 title: '🏆 Challenge Completed!',
-                body: 'Your partner completed a challenge!',
+                body: getMessage('challenge_completion'),
                 url: '#/challenges',
             };
         }
@@ -153,10 +202,10 @@ function resolveNotification(
     if (table === 'user_answers' && eventType === 'INSERT') {
         return {
             recipientId: '',
-            senderId: record.user_id,
+            senderId: record.user_id as string,
             type: 'daily_question',
             title: '💬 Daily Question Answered',
-            body: 'Your partner answered today\'s question!',
+            body: getMessage('daily_question'),
             url: '#/challenges',
         };
     }
@@ -166,21 +215,20 @@ function resolveNotification(
         if (eventType === 'INSERT') {
             return {
                 recipientId: '',
-                senderId: record.requester_id,
+                senderId: record.requester_id as string,
                 type: 'fantasies',
                 title: '✨ New Fantasy Added',
-                body: 'Your partner added a new fantasy to the bucket list!',
+                body: getMessage('fantasies'),
                 url: '#/sexploration',
             };
         }
         if (eventType === 'UPDATE' && record.status === 'approved' && old_record?.status === 'pending') {
-            // Notify the requester that their fantasy was approved
             return {
-                recipientId: record.requester_id, // the requester gets notified
-                senderId: '', // doesn't matter, we know who to notify
+                recipientId: record.requester_id as string,
+                senderId: '',
                 type: 'fantasies',
                 title: '💚 Fantasy Approved!',
-                body: `Your fantasy was approved: "${record.fantasy_text?.substring(0, 60) || '...'}"`,
+                body: getMessage('fantasies_approved'),
                 url: '#/sexploration',
             };
         }
@@ -191,30 +239,37 @@ function resolveNotification(
     if (table === 'coupons') {
         if (eventType === 'INSERT' && record.is_gift === true) {
             return {
-                recipientId: record.assigned_to,
-                senderId: record.gifted_by,
+                recipientId: record.assigned_to as string,
+                senderId: record.gifted_by as string,
                 type: 'coupons',
                 title: '🎁 New Coupon Gift!',
-                body: record.title
-                    ? `You received a coupon: "${record.title}"`
-                    : 'Your partner sent you a coupon!',
+                body: getMessage('coupons'),
                 url: '#/sexploration',
             };
         }
         if (eventType === 'UPDATE' && record.activated_at && !old_record?.activated_at && record.gifted_by) {
-            // Notify the gifter that their coupon was activated
             return {
-                recipientId: record.gifted_by,
-                senderId: record.assigned_to,
+                recipientId: record.gifted_by as string,
+                senderId: record.assigned_to as string,
                 type: 'coupon_activation',
                 title: '🔥 Coupon Activated!',
-                body: record.title
-                    ? `Your coupon "${record.title}" was activated!`
-                    : 'Your partner activated a coupon!',
+                body: getMessage('coupon_activation'),
                 url: '#/sexploration',
             };
         }
         return null;
+    }
+
+    // ── calendar_events table ──
+    if (table === 'calendar_events' && eventType === 'INSERT') {
+        return {
+            recipientId: '',
+            senderId: record.created_by as string,
+            type: 'calendar_events',
+            title: '📅 Calendar Event',
+            body: getMessage('calendar_events'),
+            url: '#/dashboard', // Or a calendar specific route if exists
+        };
     }
 
     return null;
@@ -223,7 +278,7 @@ function resolveNotification(
 // ═══════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -253,7 +308,7 @@ Deno.serve(async (req) => {
 
         // ── Parse webhook payload ──
         const webhook: WebhookPayload = await req.json();
-        log.info('Received webhook', { table: webhook.table, type: webhook.type, recordId: webhook.record?.id });
+        log.info('Received webhook', { table: webhook.table, type: webhook.type, recordId: (webhook.record as any)?.id });
 
         // ── Resolve notification ──
         const notification = resolveNotification(webhook);
@@ -272,7 +327,6 @@ Deno.serve(async (req) => {
 
         if (!recipientId && notification.senderId) {
             // Look up partner via couple
-            // First find the sender's couple_id
             const { data: senderProfile, error: senderError } = await supabase
                 .from('profiles')
                 .select('couple_id')
@@ -381,12 +435,13 @@ Deno.serve(async (req) => {
                     .update({ last_used_at: new Date().toISOString() })
                     .eq('id', sub.id);
 
-            } catch (error: any) {
-                log.error(`Push failed for ${sub.endpoint}`, error);
+            } catch (error: unknown) {
+                const webPushError = error as WebPushError;
+                log.error(`Push failed for ${sub.endpoint}`, webPushError);
                 failed++;
 
                 // Remove expired subscriptions (410/404)
-                if (error.statusCode === 410 || error.statusCode === 404) {
+                if (webPushError.statusCode === 410 || webPushError.statusCode === 404) {
                     log.warn('Removing expired subscription', { endpoint: sub.endpoint });
                     await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
                 }

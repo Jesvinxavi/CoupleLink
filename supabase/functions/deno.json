@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window", "deno.unstable"],
+    "strict": true
+  },
+  "imports": {
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "web-push": "npm:web-push@3.6.7",
+    "edge-runtime": "jsr:@supabase/functions-js/edge-runtime.d.ts"
+  },
+  "nodeModulesDir": "auto"
+}
