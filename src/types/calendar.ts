@@ -16,4 +16,5 @@ export interface CalendarEvent {
      * Examples: 'none', 'daily', 'weekly', 'monthly', 'six_months', 'yearly'.
      */
     recurrence?: string;
+    created_by?: string;
 }

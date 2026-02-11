@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { useCoupleData } from '@/hooks/useCoupleData';
+import { useAuth } from '@/context/AuthContext';
 import type { CalendarEvent } from '@/types/calendar';
 
 // Re-export for convenience if needed, or consumers should import from types
@@ -29,7 +30,7 @@ const CalendarContext = createContext<CalendarContextType | undefined>(undefined
 // ═══════════════════════════════════════
 export function CalendarProvider({ children }: { children: ReactNode }) {
     const { couple } = useCoupleData();
-    // Removed unused user hook
+    const { user } = useAuth();
 
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -134,7 +135,8 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
                 color: event.color,
                 location: event.location,
                 description: event.description,
-                recurrence: event.recurrence as string | null
+                recurrence: event.recurrence as string | null,
+                created_by: user?.id
             };
 
             if (event.id) {
@@ -168,7 +170,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
             logger.error('CalendarContext', 'Error saving event', error);
             throw error;
         }
-    }, [couple, fetchEvents]);
+    }, [couple, user, fetchEvents]);
 
     const deleteEvent = useCallback(async (eventId: string) => {
         try {

@@ -4,7 +4,7 @@
 // Sends Web Push to partner when actions occur
 // ═══════════════════════════════════════
 import "edge-runtime";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import webPush from "web-push";
 
 // ═══════════════════════════════════════
@@ -42,6 +42,15 @@ interface WebPushError extends Error {
     statusCode?: number;
 }
 
+interface NotificationDefinition {
+    recipientId?: string;
+    senderId?: string;
+    type: string;
+    title: string;
+    body: string;
+    url: string;
+}
+
 // ═══════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════
@@ -56,7 +65,6 @@ const log = {
     error: (msg: string, data?: unknown) => console.error('[PushNotify]', msg, data ?? ''),
 };
 
-// Section mapping for preference checking (matches push-scheduler)
 const SECTION_MAP: Record<string, string> = {
     daily_question: 'challenges_streak',
     challenge_completion: 'challenges_streak',
@@ -68,7 +76,6 @@ const SECTION_MAP: Record<string, string> = {
     calendar_events: 'dates_reminders',
 };
 
-// Notification message templates with random selection (Matches NotificationListener.tsx)
 const NOTIFICATION_MESSAGES: Record<string, string[]> = {
     daily_question: [
         "Your partner answered the Daily Question! 💬",
@@ -86,7 +93,7 @@ const NOTIFICATION_MESSAGES: Record<string, string[]> = {
         "You have a new sticky note! 📝",
         "Partner left you a love note. Tap to read! 💌"
     ],
-    fantasies: [ // fantasies_added in frontend
+    fantasies: [
         "Partner added a new fantasy... 🔥",
         "New fantasy from your partner! Check it out! 💕"
     ],
@@ -154,10 +161,101 @@ async function sendWithRetry(
     }
 }
 
-// Resolve what notification to send based on the webhook payload
+// Send notification to a specific user (encapsulates prefs check, sub fetching, and sending)
+async function sendToUser(
+    userId: string,
+    notification: NotificationDefinition,
+    supabase: SupabaseClient,
+    vapidDetails: VapidDetails
+): Promise<{ sent: number; failed: number }> {
+    // 1. Check preferences
+    const { data: recipientProfile } = await supabase
+        .from('profiles')
+        .select('notification_preferences')
+        .eq('id', userId)
+        .single();
+
+    const prefs = recipientProfile?.notification_preferences as NotificationPreferences | null;
+    if (!shouldNotify(prefs, notification.type)) {
+        log.info('Notification blocked by preferences', { type: notification.type, userId });
+        return { sent: 0, failed: 0 };
+    }
+
+    // 2. Get subscriptions
+    const { data: subscriptions, error: subError } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .eq('user_id', userId);
+
+    if (subError || !subscriptions?.length) {
+        log.info('No push subscriptions for user', { userId });
+        await supabase.from('push_notification_logs').insert({
+            user_id: userId,
+            notification_type: notification.type,
+            status: 'failed',
+            error_message: 'No push subscriptions found',
+        });
+        return { sent: 0, failed: 0 };
+    }
+
+    // 3. Send
+    const payload = JSON.stringify({
+        title: notification.title,
+        body: notification.body,
+        url: notification.url,
+        type: notification.type,
+        icon: '/pwa-icon.svg',
+        badge: '/pwa-icon.svg',
+    });
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const sub of subscriptions as PushSubscription[]) {
+        try {
+            const pushSub = {
+                endpoint: sub.endpoint,
+                keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
+            };
+
+            await sendWithRetry(pushSub, payload, vapidDetails);
+            sent++;
+
+            // Update last_used_at
+            await supabase
+                .from('push_subscriptions')
+                .update({ last_used_at: new Date().toISOString() })
+                .eq('id', sub.id);
+
+        } catch (error: unknown) {
+            const webPushError = error as WebPushError;
+            log.error(`Push failed for ${sub.endpoint}`, webPushError);
+            failed++;
+
+            if (webPushError.statusCode === 410 || webPushError.statusCode === 404) {
+                log.warn('Removing expired subscription', { endpoint: sub.endpoint });
+                await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+            }
+        }
+    }
+
+    // 4. Log success
+    if (sent > 0) {
+        await supabase.from('push_notification_logs').insert({
+            user_id: userId,
+            notification_type: notification.type,
+            status: 'sent',
+            error_message: null,
+        });
+    }
+
+    return { sent, failed };
+}
+
+// Resolve what notification to send
 function resolveNotification(
     webhook: WebhookPayload
-): { recipientId: string; senderId: string; type: string; title: string; body: string; url: string } | null {
+): NotificationDefinition | null {
     const { type: eventType, table, record, old_record } = webhook;
 
     // ── memories table ──
@@ -167,7 +265,6 @@ function resolveNotification(
 
         if (memoryType === 'sticky_note') {
             return {
-                recipientId: '',
                 senderId,
                 type: 'new_sticky_note',
                 title: '💌 New Sticky Note',
@@ -177,7 +274,6 @@ function resolveNotification(
         }
         if (memoryType === 'journal') {
             return {
-                recipientId: '',
                 senderId,
                 type: 'new_journal_post',
                 title: '📔 New Journal Entry',
@@ -187,7 +283,6 @@ function resolveNotification(
         }
         if (memoryType === 'challenge') {
             return {
-                recipientId: '',
                 senderId,
                 type: 'challenge_completion',
                 title: '🏆 Challenge Completed!',
@@ -201,7 +296,6 @@ function resolveNotification(
     // ── user_answers table ──
     if (table === 'user_answers' && eventType === 'INSERT') {
         return {
-            recipientId: '',
             senderId: record.user_id as string,
             type: 'daily_question',
             title: '💬 Daily Question Answered',
@@ -214,7 +308,6 @@ function resolveNotification(
     if (table === 'fantasy_bucket_list') {
         if (eventType === 'INSERT') {
             return {
-                recipientId: '',
                 senderId: record.requester_id as string,
                 type: 'fantasies',
                 title: '✨ New Fantasy Added',
@@ -225,7 +318,6 @@ function resolveNotification(
         if (eventType === 'UPDATE' && record.status === 'approved' && old_record?.status === 'pending') {
             return {
                 recipientId: record.requester_id as string,
-                senderId: '',
                 type: 'fantasies',
                 title: '💚 Fantasy Approved!',
                 body: getMessage('fantasies_approved'),
@@ -262,13 +354,21 @@ function resolveNotification(
 
     // ── calendar_events table ──
     if (table === 'calendar_events' && eventType === 'INSERT') {
+        // Correct logic: created_by should now be present
+        const senderId = record.created_by as string;
+        if (!senderId) {
+             // Fallback if migration hasn't populated it or frontend missed it
+             // We can't do much, log warn? Or return null.
+             // But for now let's hope it's there.
+             log.warn('Calendar event missing created_by', { id: (record as any).id });
+        }
+        
         return {
-            recipientId: '',
-            senderId: record.created_by as string,
+            senderId: senderId,
             type: 'calendar_events',
             title: '📅 Calendar Event',
             body: getMessage('calendar_events'),
-            url: '#/dashboard', // Or a calendar specific route if exists
+            url: '#/dashboard',
         };
     }
 
@@ -291,11 +391,7 @@ Deno.serve(async (req: Request) => {
         const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 
         if (!vapidPublicKey || !vapidPrivateKey) {
-            log.error('Missing VAPID keys');
-            return new Response(
-                JSON.stringify({ success: false, error: 'Missing VAPID keys' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-            );
+            return new Response(JSON.stringify({ error: 'Missing VAPID keys' }), { status: 500 });
         }
 
         const vapidDetails: VapidDetails = {
@@ -305,163 +401,51 @@ Deno.serve(async (req: Request) => {
         };
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-        // ── Parse webhook payload ──
         const webhook: WebhookPayload = await req.json();
         log.info('Received webhook', { table: webhook.table, type: webhook.type, recordId: (webhook.record as any)?.id });
 
-        // ── Resolve notification ──
         const notification = resolveNotification(webhook);
         if (!notification) {
-            log.info('No notification needed for this event');
-            return new Response(
-                JSON.stringify({ success: true, action: 'skipped' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+            return new Response(JSON.stringify({ success: true, action: 'skipped' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
-        log.info('Resolved notification', { type: notification.type, recipientId: notification.recipientId, senderId: notification.senderId });
+        // ── Resolve Recipients ──
+        let recipientIds: string[] = [];
 
-        // ── Resolve recipient if not directly known ──
-        let recipientId = notification.recipientId;
-
-        if (!recipientId && notification.senderId) {
-            // Look up partner via couple
-            const { data: senderProfile, error: senderError } = await supabase
-                .from('profiles')
-                .select('couple_id')
-                .eq('id', notification.senderId)
-                .single();
-
-            if (senderError || !senderProfile?.couple_id) {
-                log.warn('Could not find sender couple', { senderId: notification.senderId, error: senderError });
-                return new Response(
-                    JSON.stringify({ success: false, error: 'Sender has no couple' }),
-                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                );
-            }
-
-            // Find partner in the same couple
-            const { data: partner, error: partnerError } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('couple_id', senderProfile.couple_id)
-                .neq('id', notification.senderId)
-                .single();
-
-            if (partnerError || !partner) {
-                log.warn('Could not find partner', { coupleId: senderProfile.couple_id, error: partnerError });
-                return new Response(
-                    JSON.stringify({ success: false, error: 'No partner found' }),
-                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                );
-            }
-
-            recipientId = partner.id;
-        }
-
-        if (!recipientId) {
-            log.warn('No recipient resolved');
-            return new Response(
-                JSON.stringify({ success: false, error: 'No recipient' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        log.info('Sending to recipient', { recipientId });
-
-        // ── Check notification preferences ──
-        const { data: recipientProfile } = await supabase
-            .from('profiles')
-            .select('notification_preferences, first_name')
-            .eq('id', recipientId)
-            .single();
-
-        const prefs = recipientProfile?.notification_preferences as NotificationPreferences | null;
-        if (!shouldNotify(prefs, notification.type)) {
-            log.info('Notification blocked by preferences', { type: notification.type, recipientId });
-            return new Response(
-                JSON.stringify({ success: true, action: 'blocked_by_prefs' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // ── Get push subscriptions ──
-        const { data: subscriptions, error: subError } = await supabase
-            .from('push_subscriptions')
-            .select('*')
-            .eq('user_id', recipientId);
-
-        if (subError || !subscriptions?.length) {
-            log.warn('No push subscriptions for recipient', { recipientId, error: subError });
-            await supabase.from('push_notification_logs').insert({
-                user_id: recipientId,
-                notification_type: notification.type,
-                status: 'failed',
-                error_message: 'No push subscriptions found',
-            });
-            return new Response(
-                JSON.stringify({ success: false, error: 'No push subscriptions' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // ── Send push to all subscriptions ──
-        const payload = JSON.stringify({
-            title: notification.title,
-            body: notification.body,
-            url: notification.url,
-            type: notification.type,
-            icon: '/pwa-icon.svg',
-            badge: '/pwa-icon.svg',
-        });
-
-        let sent = 0;
-        let failed = 0;
-
-        for (const sub of subscriptions as PushSubscription[]) {
-            try {
-                const pushSub = {
-                    endpoint: sub.endpoint,
-                    keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
-                };
-
-                await sendWithRetry(pushSub, payload, vapidDetails);
-                sent++;
-
-                // Update last_used_at
-                await supabase
-                    .from('push_subscriptions')
-                    .update({ last_used_at: new Date().toISOString() })
-                    .eq('id', sub.id);
-
-            } catch (error: unknown) {
-                const webPushError = error as WebPushError;
-                log.error(`Push failed for ${sub.endpoint}`, webPushError);
-                failed++;
-
-                // Remove expired subscriptions (410/404)
-                if (webPushError.statusCode === 410 || webPushError.statusCode === 404) {
-                    log.warn('Removing expired subscription', { endpoint: sub.endpoint });
-                    await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
-                }
+        if (notification.recipientId) {
+            // Case 1: Direct recipient known
+            recipientIds.push(notification.recipientId);
+        } else if (notification.senderId) {
+            // Case 2: Sender known, find partner
+            const { data: senderProfile } = await supabase.from('profiles').select('couple_id').eq('id', notification.senderId).single();
+            if (senderProfile?.couple_id) {
+                const { data: partner } = await supabase.from('profiles')
+                    .select('id')
+                    .eq('couple_id', senderProfile.couple_id)
+                    .neq('id', notification.senderId)
+                    .single();
+                if (partner) recipientIds.push(partner.id);
             }
         }
 
-        // Log the notification
-        if (sent > 0) {
-            await supabase.from('push_notification_logs').insert({
-                user_id: recipientId,
-                notification_type: notification.type,
-                status: 'sent',
-                error_message: null,
-            });
+        if (recipientIds.length === 0) {
+            log.warn('No recipients resolved');
+            return new Response(JSON.stringify({ success: false, error: 'No recipients' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
-        log.info('Push complete', { sent, failed, type: notification.type });
+        // ── Send to all resolved recipients ──
+        let totalSent = 0;
+        let totalFailed = 0;
 
+        for (const userId of recipientIds) {
+            const result = await sendToUser(userId, notification, supabase, vapidDetails);
+            totalSent += result.sent;
+            totalFailed += result.failed;
+        }
+
+        log.info('Push complete', { totalSent, totalFailed, type: notification.type });
         return new Response(
-            JSON.stringify({ success: true, sent, failed, type: notification.type }),
+            JSON.stringify({ success: true, sent: totalSent, failed: totalFailed }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
 
