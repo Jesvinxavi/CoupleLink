@@ -360,7 +360,7 @@ function resolveNotification(
              // Fallback if migration hasn't populated it or frontend missed it
              // We can't do much, log warn? Or return null.
              // But for now let's hope it's there.
-             log.warn('Calendar event missing created_by', { id: (record as any).id });
+             log.warn('Calendar event missing created_by', { id: record['id'] });
         }
         
         return {
@@ -402,7 +402,7 @@ Deno.serve(async (req: Request) => {
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const webhook: WebhookPayload = await req.json();
-        log.info('Received webhook', { table: webhook.table, type: webhook.type, recordId: (webhook.record as any)?.id });
+        log.info('Received webhook', { table: webhook.table, type: webhook.type, recordId: webhook.record['id'] });
 
         const notification = resolveNotification(webhook);
         if (!notification) {
@@ -410,7 +410,7 @@ Deno.serve(async (req: Request) => {
         }
 
         // ── Resolve Recipients ──
-        let recipientIds: string[] = [];
+        const recipientIds: string[] = [];
 
         if (notification.recipientId) {
             // Case 1: Direct recipient known
