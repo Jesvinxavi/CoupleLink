@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
+import { debugLog } from '@/lib/debug';
 import { useCoupleData } from '@/hooks/useCoupleData';
 import { useAuth } from './AuthContext';
 
@@ -146,8 +147,10 @@ export function PartnerNotesProvider({ children }: { children: ReactNode }) {
     const sendNote = useCallback(async (caption: string) => {
         if (!couple || !user) return;
 
+        debugLog(`[SENDER] [STICKY_NOTE] Starting sendNote, user=${user.id}, couple=${couple.id}`, 'info')
         try {
-            const { error } = await supabase
+            debugLog(`[SENDER] [STICKY_NOTE] Inserting into memories table...`, 'info')
+            const { data, error } = await supabase
                 .from('memories')
                 .insert({
                     couple_id: couple.id,
@@ -156,22 +159,34 @@ export function PartnerNotesProvider({ children }: { children: ReactNode }) {
                     caption: caption.trim(),
                     created_at: new Date().toISOString(),
                     metadata: {}
-                });
+                })
+                .select('id')
+                .single();
 
-            if (error) throw error;
+            if (error) {
+                debugLog(`[SENDER] [STICKY_NOTE] ❌ Insert FAILED: ${error.message}`, 'error')
+                throw error;
+            }
+
+            debugLog(`[SENDER] [STICKY_NOTE] ✅ Insert SUCCESS, id=${data?.id}`, 'info')
 
             // Broadcast
             if (channelRef.current) {
+                debugLog(`[SENDER] [STICKY_NOTE] Broadcasting note_update...`, 'info')
                 await channelRef.current.send({
                     type: 'broadcast',
                     event: 'note_update',
                     payload: {}
                 });
+                debugLog(`[SENDER] [STICKY_NOTE] ✅ Broadcast sent`, 'info')
+            } else {
+                debugLog(`[SENDER] [STICKY_NOTE] ⚠️ No channelRef, skipping broadcast`, 'warn')
             }
 
             fetchNotes();
 
         } catch (error) {
+            debugLog(`[SENDER] [STICKY_NOTE] ❌ Error: ${error}`, 'error')
             logger.error('PartnerNotesContext', 'Error sending note', error);
             throw error;
         }

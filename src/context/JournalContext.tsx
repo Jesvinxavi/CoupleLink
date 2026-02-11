@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
+import { debugLog } from '@/lib/debug';
 import { useCoupleData } from '@/hooks/useCoupleData';
 import { useAuth } from './AuthContext';
 
@@ -242,7 +243,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
                 if (error) throw error;
             } else {
                 // Insert new entry
-                const { error } = await supabase
+                debugLog(`[SENDER] [JOURNAL] Inserting into memories table, user=${user.id}, couple=${couple.id}`, 'info')
+                const { data, error } = await supabase
                     .from('memories')
                     .insert({
                         couple_id: couple.id,
@@ -253,18 +255,28 @@ export function JournalProvider({ children }: { children: ReactNode }) {
                         location: location || null,
                         media_urls: finalMediaUrls.length > 0 ? finalMediaUrls : null,
                         created_at: new Date(date).toISOString()
-                    });
+                    })
+                    .select('id')
+                    .single();
 
-                if (error) throw error;
+                if (error) {
+                    debugLog(`[SENDER] [JOURNAL] ❌ Insert FAILED: ${error.message}`, 'error')
+                    throw error;
+                }
+                debugLog(`[SENDER] [JOURNAL] ✅ Insert SUCCESS, id=${data?.id}`, 'info')
             }
 
             // Broadcast update
             if (channelRef.current) {
+                debugLog(`[SENDER] [JOURNAL] Broadcasting journal_update...`, 'info')
                 await channelRef.current.send({
                     type: 'broadcast',
                     event: 'journal_update',
                     payload: {}
                 });
+                debugLog(`[SENDER] [JOURNAL] ✅ Broadcast sent`, 'info')
+            } else {
+                debugLog(`[SENDER] [JOURNAL] ⚠️ No channelRef, skipping broadcast`, 'warn')
             }
 
             fetchEntries();

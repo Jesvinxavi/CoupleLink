@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/lib/database.types';
 import { logger } from '@/lib/logger';
+import { debugLog } from '@/lib/debug';
 import { useCoupleData } from '@/hooks/useCoupleData';
 import { type Coupon, type CouponTemplate } from '@/hooks/useCoupons';
 
@@ -278,13 +279,20 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
                 ...(templateId ? { template_id: templateId } : {})
             };
 
+            debugLog(`[SENDER] [COUPON_GIFT] Inserting gift coupon, from=${userProfile.id}, to=${recipientId}, couple=${couple.id}`, 'info')
+
             const { data, error } = await supabase
                 .from('coupons')
                 .insert([couponPayload])
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                debugLog(`[SENDER] [COUPON_GIFT] ❌ Insert FAILED: ${error.message}`, 'error')
+                throw error;
+            }
+
+            debugLog(`[SENDER] [COUPON_GIFT] ✅ Insert SUCCESS, id=${data.id}, assigned_to=${data.assigned_to}, gifted_by=${data.gifted_by}`, 'info')
 
             const now = Date.now();
             const newCoupon: Coupon = {
@@ -294,12 +302,15 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
 
             // Send broadcast to partner using existing channel
             if (channelRef.current) {
+                debugLog(`[SENDER] [COUPON_GIFT] Broadcasting coupon_gift...`, 'info')
                 await channelRef.current.send({
                     type: 'broadcast',
                     event: 'coupon_gift',
                     payload: { giftId: data.id, sentAt: now }
                 });
+                debugLog(`[SENDER] [COUPON_GIFT] ✅ Broadcast sent`, 'info')
             } else {
+                debugLog(`[SENDER] [COUPON_GIFT] ⚠️ No channelRef available to broadcast`, 'warn')
                 logger.warn('CouponsContext', 'No channelRef available to broadcast');
             }
 
@@ -316,6 +327,8 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
             const now = new Date();
             const expires = new Date(now.getTime() + 48 * 60 * 60 * 1000); // 48 hours
 
+            debugLog(`[SENDER] [COUPON_ACTIVATE] Activating coupon id=${id}`, 'info')
+
             const { data, error } = await supabase
                 .from('coupons')
                 .update({
@@ -326,7 +339,12 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                debugLog(`[SENDER] [COUPON_ACTIVATE] ❌ Update FAILED: ${error.message}`, 'error')
+                throw error;
+            }
+
+            debugLog(`[SENDER] [COUPON_ACTIVATE] ✅ Update SUCCESS, id=${data.id}, activated_at=${data.activated_at}, gifted_by=${data.gifted_by}`, 'info')
 
             const updatedCoupon = { ...data, status: (data.status as 'active' | 'redeemed') || 'active' } as Coupon;
             setCoupons(prevCoupons => prevCoupons.map(c => c.id === id ? updatedCoupon : c));

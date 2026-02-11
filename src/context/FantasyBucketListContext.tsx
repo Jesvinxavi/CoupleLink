@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
+import { debugLog } from '@/lib/debug';
 import { useCoupleData } from '@/hooks/useCoupleData';
 
 // ═══════════════════════════════════════
@@ -143,6 +144,8 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
     const addFantasy = useCallback(async (text: string) => {
         if (!couple?.id || !userProfile?.id) return;
 
+        debugLog(`[SENDER] [FANTASY] Starting addFantasy, user=${userProfile.id}, couple=${couple.id}`, 'info')
+
         const newFantasy = {
             couple_id: couple.id,
             requester_id: userProfile.id,
@@ -165,6 +168,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
         setFantasies((prev) => [optimisticFantasy, ...prev]);
 
         try {
+            debugLog(`[SENDER] [FANTASY] Inserting into fantasy_bucket_list table...`, 'info')
             const { data, error } = await db
                 .from('fantasy_bucket_list')
                 .insert(newFantasy)
@@ -172,17 +176,23 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
                 .single();
 
             if (data) {
+                debugLog(`[SENDER] [FANTASY] ✅ Insert SUCCESS, id=${data.id}`, 'info')
 
                 if (channelRef.current) {
+                    debugLog(`[SENDER] [FANTASY] Broadcasting fantasy_update...`, 'info')
                     await channelRef.current.send({
                         type: 'broadcast',
                         event: 'fantasy_update',
                         payload: { action: 'add', id: data.id }
                     });
+                    debugLog(`[SENDER] [FANTASY] ✅ Broadcast sent`, 'info')
+                } else {
+                    debugLog(`[SENDER] [FANTASY] ⚠️ No channelRef, skipping broadcast`, 'warn')
                 }
             }
 
             if (error) {
+                debugLog(`[SENDER] [FANTASY] ❌ Insert FAILED: ${error.message}`, 'error')
                 logger.error('FantasyBucketListContext', 'Insert error', error);
                 throw error;
             }
@@ -200,6 +210,7 @@ export function FantasyBucketListProvider({ children }: { children: ReactNode })
             ignoredFantasyIds.current.add(data.id);
             setTimeout(() => ignoredFantasyIds.current.delete(data.id), 2000);
         } catch (error) {
+            debugLog(`[SENDER] [FANTASY] ❌ Error: ${error}`, 'error')
             logger.error('FantasyBucketListContext', 'Error adding fantasy', error);
             // Revert optimistic update
             setFantasies((prev) => prev.filter((f) => f.id !== tempId));
