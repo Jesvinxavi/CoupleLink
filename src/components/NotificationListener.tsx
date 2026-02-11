@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // IMPORTS
 // ═══════════════════════════════════════
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
 import { useCoupleData } from "@/hooks/useCoupleData"
@@ -100,7 +100,17 @@ interface NotificationPreferences {
 
 export function NotificationListener() {
     const { user } = useAuth()
-    const { couple } = useCoupleData()
+    const { couple, userProfile } = useCoupleData()
+    const prefsRef = useRef<NotificationPreferences | null>(null)
+
+    // Keep prefs updated in ref to access inside subscription closures
+    useEffect(() => {
+        if (userProfile?.notification_preferences) {
+            prefsRef.current = userProfile.notification_preferences as unknown as NotificationPreferences
+            // Simple debug log to confirm update (optional, can be removed)
+            // console.log('[NOTIF] Prefs ref updated:', prefsRef.current)
+        }
+    }, [userProfile])
 
     // ═══════════════════════════════════════
     // DEBUG HELPER
@@ -195,29 +205,6 @@ export function NotificationListener() {
                 if (error) logger.error("NotificationListener", "Failed to update timezone", error)
             })
 
-        // Fetch user's notification preferences
-        let userPreferences: NotificationPreferences | null = null
-        const fetchPreferences = async () => {
-            try {
-                const { data } = await supabase
-                    .from("profiles")
-                    .select("notification_preferences")
-                    .eq("id", user.id)
-                    .single()
-
-                if (data?.notification_preferences) {
-                    userPreferences = data.notification_preferences as unknown as NotificationPreferences
-                    dbg('PREFS', `Loaded preferences:`, userPreferences)
-                } else {
-                    dbg('PREFS', `No notification_preferences in profile, will use defaults (allow all)`)
-                }
-            } catch (error) {
-                dbg('PREFS', `❌ Error fetching preferences`, error)
-                logger.error("NotificationListener", "Error fetching notification preferences", error)
-            }
-        }
-        fetchPreferences()
-
         // Helper to log channel status changes
         const logChannelStatus = (channelName: string) => (status: string, err?: Error) => {
             if (err) {
@@ -257,17 +244,17 @@ export function NotificationListener() {
 
                         if (memoryType === "journal") {
                             dbg('MEMORIES', `→ Checking journal notification preferences...`)
-                            if (shouldNotify("new_journal_post", userPreferences)) {
+                            if (shouldNotify("new_journal_post", prefsRef.current)) {
                                 showNotification("new_journal_post")
                             }
                         } else if (memoryType === "sticky_note") {
                             dbg('MEMORIES', `→ Checking sticky_note notification preferences...`)
-                            if (shouldNotify("new_sticky_note", userPreferences)) {
+                            if (shouldNotify("new_sticky_note", prefsRef.current)) {
                                 showNotification("new_sticky_note")
                             }
                         } else if (memoryType === "challenge") {
                             dbg('MEMORIES', `→ Checking challenge notification preferences...`)
-                            if (shouldNotify("challenge_completion", userPreferences)) {
+                            if (shouldNotify("challenge_completion", prefsRef.current)) {
                                 showNotification("challenge_completion")
                             }
                         } else {
@@ -305,7 +292,7 @@ export function NotificationListener() {
 
                     if (payload.new.user_id !== user.id) {
                         dbg('ANSWERS', `Event is from partner, checking daily_question preferences...`)
-                        if (shouldNotify('daily_question', userPreferences)) {
+                        if (shouldNotify('daily_question', prefsRef.current)) {
                             showNotification('daily_question');
                         }
                     } else {
@@ -340,7 +327,7 @@ export function NotificationListener() {
 
                     if (payload.new.requester_id !== user.id) {
                         dbg('FANTASY', `Event is from partner, checking fantasies preferences...`)
-                        if (shouldNotify('fantasies', userPreferences)) {
+                        if (shouldNotify('fantasies', prefsRef.current)) {
                             showNotification('fantasies_added');
                         }
                     } else {
@@ -368,7 +355,7 @@ export function NotificationListener() {
 
                     if (payload.new.status === 'approved' && payload.new.requester_id === user.id) {
                         dbg('FANTASY', `Fantasy approved AND I'm the requester, checking preferences...`)
-                        if (shouldNotify('fantasies', userPreferences)) {
+                        if (shouldNotify('fantasies', prefsRef.current)) {
                             showNotification('fantasies_approved');
                         }
                     } else {
@@ -404,7 +391,7 @@ export function NotificationListener() {
 
                     if (payload.new.assigned_to === user.id) {
                         dbg('COUPONS', `I'm the recipient, checking coupons preferences...`)
-                        if (shouldNotify('coupons', userPreferences)) {
+                        if (shouldNotify('coupons', prefsRef.current)) {
                             showNotification('coupons');
                         }
                     } else {
@@ -436,7 +423,7 @@ export function NotificationListener() {
                         !payload.old.activated_at
                     ) {
                         dbg('COUPONS', `Coupon activated by partner AND I'm the gifter, checking preferences...`)
-                        if (shouldNotify('coupon_activation', userPreferences)) {
+                        if (shouldNotify('coupon_activation', prefsRef.current)) {
                             showNotification('coupon_activation');
                         }
                     } else {
@@ -471,7 +458,7 @@ export function NotificationListener() {
 
                     if (payload.new.created_by !== user.id) {
                         dbg('CALENDAR', `Event is from partner, checking calendar_events preferences...`)
-                        if (shouldNotify('calendar_events', userPreferences)) {
+                        if (shouldNotify('calendar_events', prefsRef.current)) {
                             showNotification('calendar_events');
                         }
                     } else {
